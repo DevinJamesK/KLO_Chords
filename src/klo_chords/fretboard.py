@@ -70,7 +70,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
             dpg.draw_text([x - 4, y0 - 10], "O",
                           color=COLOR_OPEN, size=12, parent=canvas_tag)
         else:
-            dot_y = y0 + (fret - start_fret) * fret_gap
+            dot_y = y0 + (fret - max(start_fret, 1)) * fret_gap
             circle_cy = dot_y + fret_gap / 2
             note_pc = (OPEN_STRING_PCS[s_idx] + fret) % 12
             col = COLOR_ROOT_DOT if note_pc == root_pc else COLOR_DOT
@@ -144,7 +144,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
                           color=COLOR_OPEN, size=14,
                           parent="fretboard_canvas")
         else:
-            dot_y = y_start + (fret - start_fret) * fret_spacing
+            dot_y = y_start + (fret - max(start_fret, 1)) * fret_spacing
             circle_cy = dot_y + fret_spacing / 2
             note_pc = (OPEN_STRING_PCS[s_idx] + fret) % 12
             dot_color = COLOR_ROOT_DOT if note_pc == root_pc else COLOR_DOT
