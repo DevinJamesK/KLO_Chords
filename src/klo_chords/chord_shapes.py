@@ -168,7 +168,7 @@ def _score_shape(
 
 @lru_cache(maxsize=1)
 def _load_curated_shapes() -> dict[tuple[str, str], tuple[ShapeCandidate, ...]]:
-    data_path = resources.files("klo_chord_sample").joinpath(
+    data_path = resources.files("klo_chords").joinpath(
         "assets", "chords", "guitar_standard.json"
     )
     with data_path.open("r", encoding="utf-8") as fh:

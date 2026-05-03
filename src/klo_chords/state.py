@@ -9,16 +9,16 @@ from typing import List, Optional, Set
 
 import dearpygui.dearpygui as dpg
 
-from klo_chord_sample.chords import (
+from klo_chords.chords import (
     NOTE_NAMES, SCALE_TYPES, ChordInfo,
     get_diatonic_chords, get_guitar_diagram, get_all_voicings,
     get_scale_notes, note_to_pc,
 )
-from klo_chord_sample.quality import quality_spelled
-from klo_chord_sample.fretboard import draw_fretboard, draw_mini_fretboard
-from klo_chord_sample.chord_box import draw_chord_label
-from klo_chord_sample.piano import update_piano_keys
-from klo_chord_sample.theme import COLOR_ACCENT, COLOR_TEXT, COLOR_CHORD_BORDER
+from klo_chords.quality import quality_spelled
+from klo_chords.fretboard import draw_fretboard, draw_mini_fretboard
+from klo_chords.chord_box import draw_chord_label
+from klo_chords.piano import update_piano_keys
+from klo_chords.theme import COLOR_ACCENT, COLOR_TEXT, COLOR_CHORD_BORDER
 
 # ── Global state ─────────────────────────────────────────────────────────────────
 _current_key          = "C"

@@ -4,9 +4,9 @@ Shows degree, root + quality, and notes in a compact tile.
 """
 
 import dearpygui.dearpygui as dpg
-from klo_chord_sample.chords import ChordInfo
-from klo_chord_sample.quality import quality_symbol
-from klo_chord_sample.theme import (
+from klo_chords.chords import ChordInfo
+from klo_chords.quality import quality_symbol
+from klo_chords.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_CHORD_BG, COLOR_CHORD_BORDER,
 )
 

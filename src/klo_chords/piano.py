@@ -5,7 +5,7 @@ Piano keyboard rendering on a Dear PyGui drawlist.
 import dearpygui.dearpygui as dpg
 from typing import Set
 
-from klo_chord_sample.theme import (
+from klo_chords.theme import (
     COLOR_ACCENT,
 )
 

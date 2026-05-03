@@ -1,5 +1,5 @@
 ﻿"""
-KLO Chord Sample - Application entry point.
+KLO Chords - Application entry point.
 
 Builds the Dear PyGui window layout and runs the event loop.
 All logic (rendering, callbacks, state) lives in sibling modules.
@@ -8,15 +8,15 @@ All logic (rendering, callbacks, state) lives in sibling modules.
 import dearpygui.dearpygui as dpg
 import os
 
-from klo_chord_sample.chords import NOTE_NAMES, SCALE_TYPES
-from klo_chord_sample.theme import (
+from klo_chords.chords import NOTE_NAMES, SCALE_TYPES
+from klo_chords.theme import (
     COLOR_ACCENT, COLOR_BG_LIGHT, COLOR_TEXT_DIM,
-    font_path,
+    font_path, icon_path,
 )
-from klo_chord_sample.piano import (
+from klo_chords.piano import (
     build_piano_keys, PIANO_CANVAS_W, PIANO_CANVAS_H,
 )
-from klo_chord_sample.state import (
+from klo_chords.state import (
     on_key_change, on_scale_change, on_sevenths_toggle,
     on_next_voicing, on_prev_voicing,
     _refresh_chords,
@@ -155,8 +155,12 @@ def build_ui():
             dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 4, 4)
 
     dpg.bind_theme(global_theme)
-    dpg.create_viewport(title="KLO Chord Sample", width=780,
+    dpg.create_viewport(title="KLO Chords", width=780,
                         height=950, resizable=False)
+    ico = icon_path()
+    if os.path.exists(ico):
+        dpg.set_viewport_large_icon(ico)
+        dpg.set_viewport_small_icon(ico)
     dpg.setup_dearpygui()
     dpg.set_primary_window("main_win", True)
     dpg.show_viewport()

@@ -1,4 +1,4 @@
-# KLO Chord Sample
+# KLO Chords
 
 A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/DearPyGui) that shows diatonic chords for any key and scale, with guitar fretboard diagrams and a piano keyboard visualizer.
 
@@ -22,22 +22,22 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 ### Conda / Miniforge Setup
 
 ```powershell
-conda create -n klo-chord python=3.11
-conda activate klo-chord
+conda create -n klo-chords python=3.11
+conda activate klo-chords
 pip install -e .
-python -m klo_chord_sample
+python -m klo_chords
 ```
 
 ### Run
 
 ```bash
-python -m klo_chord_sample
+python -m klo_chords
 ```
 
 Or directly:
 
 ```bash
-python src/klo_chord_sample/gui.py
+python src/klo_chords/gui.py
 ```
 
 ### Controls
@@ -77,22 +77,32 @@ The bundled data starts with hand-curated canonical shapes and source labels for
 ## Project Structure
 
 ```text
-src/klo_chord_sample/
+src/klo_chords/
 |-- __init__.py                 Package init
 |-- __main__.py                 python -m entry point
 |-- gui.py                      UI layout + main loop
 |-- state.py                    Global state and callbacks
 |-- chords.py                   Music theory engine
 |-- chord_shapes.py             Guitar shape loading, validation, and ranking
-|-- theme.py                    Colors and font path
+|-- theme.py                    Colors, font path, and icon path
 |-- quality.py                  Chord quality formatting
 |-- chord_box.py                Chord name tile rendering
 |-- fretboard.py                Mini and large fretboard drawing
 |-- piano.py                    Piano keyboard rendering
 `-- assets/
     |-- chords/guitar_standard.json
-    `-- fonts/JetBrainsMono-Regular.ttf
+    |-- fonts/JetBrainsMono-Regular.ttf
+    `-- icons/app_icon.ico
 ```
+
+## Download
+
+Pre-built binaries are produced automatically by GitHub Actions on every push to `main`.
+
+- **Windows** — `KLO Chords.exe` (single-file executable)
+- **macOS** — `KLO Chords.app` bundle
+
+Download the latest build from the [Actions](../../actions) tab.
 
 ## Dependencies
 

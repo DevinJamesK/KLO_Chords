@@ -1,9 +1,9 @@
 import unittest
 
-from klo_chord_sample.chord_shapes import (
+from klo_chords.chord_shapes import (
     shape_pitch_classes,
 )
-from klo_chord_sample.chords import get_all_voicings, get_diatonic_chords, note_to_pc
+from klo_chords.chords import get_all_voicings, get_diatonic_chords, note_to_pc
 
 
 class ChordShapeTests(unittest.TestCase):

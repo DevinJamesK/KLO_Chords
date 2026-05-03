@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Added
+- GitHub Actions build workflow (`.github/workflows/build.yml`) — produces standalone executables for Windows (`.exe`) and macOS (`.app`) on every push to `main`.
+- App icon (`assets/icons/app_icon.ico`) displayed in the OS title bar via `dpg.set_viewport_large_icon` and `dpg.set_viewport_small_icon`.
+- `icon_path()` helper in `theme.py` resolves the icon for both frozen (PyInstaller) and dev-mode runs.
+- Download section in README linking to GitHub Actions artifacts.
+
+### Changed
+- Renamed project from `KLO_Chord_Sample` / `klo_chord_sample` to `KLO_Chords` / `klo_chords` across all source files, config, and documentation.
+- Package name changed from `klo-chord-sample` to `klo-chords` in `pyproject.toml`.
+- Conda environment name updated to `klo-chords` in README setup instructions.
+- Project structure diagram in README updated to reflect new package directory and icons asset.
+
+---
+### Added (prior)
 - README with project overview, usage instructions, and structure diagram.
 - This changelog.
 - Local guitar chord-shape data file at `assets/chords/guitar_standard.json`.

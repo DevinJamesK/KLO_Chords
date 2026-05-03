@@ -5,8 +5,8 @@ Fretboard rendering: full-size (detail panel) and mini (chord list preview).
 import dearpygui.dearpygui as dpg
 from typing import List, Optional, Tuple
 
-from klo_chord_sample.chords import ChordInfo, get_guitar_diagram, note_to_pc
-from klo_chord_sample.theme import (
+from klo_chords.chords import ChordInfo, get_guitar_diagram, note_to_pc
+from klo_chords.theme import (
     COLOR_BG_LIGHT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_STRING, COLOR_FRET, COLOR_DOT, COLOR_ROOT_DOT,
     COLOR_MUTED, COLOR_OPEN,

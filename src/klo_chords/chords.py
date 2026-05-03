@@ -8,7 +8,7 @@ The chromatic layout is: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from klo_chord_sample.chord_shapes import (
+from klo_chords.chord_shapes import (
     get_ranked_voicings,
     shape_to_diagram,
 )

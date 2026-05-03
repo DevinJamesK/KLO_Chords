@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -e . pyinstaller
+
+      - name: Install macOS extras
+        if: runner.os == 'macOS'
+        run: pip install pyobjc-framework-Cocoa pillow
+
+      - name: Convert icon to icns (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          python -c "from PIL import Image; Image.open('src/klo_chords/assets/icons/app_icon.ico').save('app_icon_tmp.png')"
+          sips -s format icns app_icon_tmp.png --out app_icon.icns
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: pyinstaller --windowed --name "KLO Chords" --paths src --collect-all dearpygui --icon app_icon.icns --add-data "src/klo_chords/assets/fonts/JetBrainsMono-Regular.ttf:klo_chords/assets/fonts" --add-data "src/klo_chords/assets/chords/guitar_standard.json:klo_chords/assets/chords" src/klo_chords/gui.py
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: pyinstaller --windowed --onefile --name "KLO Chords" --paths src --collect-all dearpygui --icon src/klo_chords/assets/icons/app_icon.ico --add-data "src/klo_chords/assets/fonts/JetBrainsMono-Regular.ttf;klo_chords/assets/fonts" --add-data "src/klo_chords/assets/chords/guitar_standard.json;klo_chords/assets/chords" src/klo_chords/gui.py
+
+      - name: Upload macOS artifact
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: KLO-Chords-macOS
+          path: dist/
+
+      - name: Upload Windows artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: KLO-Chords-Windows
+          path: "dist/KLO Chords.exe"

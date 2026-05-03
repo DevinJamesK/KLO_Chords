@@ -1,12 +1,12 @@
 """
-Color palette, fonts, and theme constants for the KLO Chord Sample GUI.
+Color palette, fonts, and theme constants for the KLO Chords GUI.
 """
 
 import os, sys
 from importlib import resources
 from pathlib import Path
 
-PACKAGE = "klo_chord_sample"
+PACKAGE = "klo_chords"
 
 # ── Color palette ──────────────────────────────────────────────────────────────
 COLOR_BG_LIGHT      = [25,  25,  33,  255]
@@ -32,3 +32,12 @@ def font_path() -> str:
         return str(base / "assets" / "fonts" / "JetBrainsMono-Regular.ttf")
     return str(resources.files(PACKAGE).joinpath(
         "assets", "fonts", "JetBrainsMono-Regular.ttf"))
+
+
+def icon_path() -> str:
+    """Return the path to the app icon."""
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        return str(base / "assets" / "icons" / "app_icon.ico")
+    return str(resources.files(PACKAGE).joinpath(
+        "assets", "icons", "app_icon.ico"))
