@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-05-03
 
 ### Added
 - `.vscode/settings.json` — workspace-level Python interpreter, Conda path, and terminal activation settings.
