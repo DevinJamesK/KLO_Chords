@@ -5,8 +5,13 @@ All note math is done in pitch-class (0-11) space.
 The chromatic layout is: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
+from klo_chord_sample.chord_shapes import (
+    get_ranked_voicings,
+    shape_to_diagram,
+)
 
 # ── Note names ────────────────────────────────────────────────────────────────
 
@@ -242,261 +247,17 @@ def get_scale_notes(root_note: str, scale_name: str = "Major") -> List[str]:
 STANDARD_TUNING = [40, 45, 50, 55, 59, 64]
 STRING_NAMES = ['E', 'A', 'D', 'G', 'B', 'e']
 
-# Each voicing: list of (string_idx, fret) pairs describing a chord shape.
-# string_idx: 0 = high e, 5 = low E
-# fret: 0 = open string, None = don't play (muted / not fretted)
-#
-# Multiple voicings per (root_note, quality) give the user choices.
-
-COMMON_CHORD_SHAPES: Dict[Tuple[str, str], List[List[Tuple[int, int]]]] = {
-    # ── C major ────────────────────────────────────────────────────────────
-    ("C", "M"): [
-        [(5, 3), (4, 2), (3, 0), (2, 1), (1, 0), (0, 0)],           # open C
-        [(4, 3), (3, 5), (2, 5), (1, 5), (0, 3)],                    # A-barre fr3
-        [(4, 3), (3, 5), (2, 5)],                                     # power chord
-        [(5, 3), (4, 2), (3, 0), (2, 1), (1, 0), (0, 3)],           # C/G
-    ],
-    # ── C minor ───────────────────────────────────────────────────────────
-    ("C", "m"): [
-        [(5, 3), (4, 3), (3, 0), (2, 1), (1, 0), (0, 0)],           # open Cm
-        [(4, 3), (3, 5), (2, 5), (1, 4), (0, 3)],                    # A-barre Cm
-    ],
-    # ── D major ────────────────────────────────────────────────────────────
-    ("D", "M"): [
-        [(4, 0), (3, 2), (2, 3), (1, 2), (0, 0)],                    # open D
-        [(4, 5), (3, 7), (2, 7), (1, 7), (0, 5)],                    # A-barre fr5
-        [(4, 5), (3, 7), (2, 7)],                                     # power chord A5
-        [(5, 2), (4, 0), (3, 2), (2, 3), (1, 2), (0, 0)],           # D/F# (bass on E)
-    ],
-    # ── D minor ───────────────────────────────────────────────────────────
-    ("D", "m"): [
-        [(4, 0), (3, 2), (2, 3), (1, 1), (0, 0)],                    # open Dm
-        [(4, 5), (3, 7), (2, 7), (1, 6), (0, 5)],                    # A-barre Dm
-    ],
-    # ── E major ────────────────────────────────────────────────────────────
-    ("E", "M"): [
-        [(5, 0), (4, 2), (3, 2), (2, 1), (1, 0), (0, 0)],           # open E
-        [(5, 7), (4, 9), (3, 9), (2, 8), (1, 7), (0, 7)],           # A-barre fr7
-        [(5, 0), (4, 2), (3, 2)],                                     # power chord
-    ],
-    # ── E minor ───────────────────────────────────────────────────────────
-    ("E", "m"): [
-        [(5, 0), (4, 2), (3, 2), (2, 0), (1, 0), (0, 0)],           # open Em
-        [(5, 7), (4, 9), (3, 9), (2, 7), (1, 7), (0, 7)],           # A-barre Em fr7
-    ],
-    # ── F major ────────────────────────────────────────────────────────────
-    ("F", "M"): [
-        [(5, 1), (4, 3), (3, 3), (2, 2), (1, 1), (0, 1)],           # E-barre fr1
-        [(4, 8), (3, 10), (2, 10), (1, 10), (0, 8)],                 # A-barre fr8
-        [(5, 1), (4, 3), (3, 3)],                                     # power chord E1
-    ],
-    # ── F minor ───────────────────────────────────────────────────────────
-    ("F", "m"): [
-        [(5, 1), (4, 3), (3, 3), (2, 1), (1, 1), (0, 1)],           # E-barre Fm fr1
-    ],
-    # ── G major ────────────────────────────────────────────────────────────
-    ("G", "M"): [
-        [(5, 3), (4, 2), (3, 0), (2, 0), (1, 0), (0, 3)],           # open G
-        [(4, 10), (3, 12), (2, 12), (1, 12), (0, 10)],               # A-barre fr10
-        [(4, 5), (3, 7), (2, 7)],                                     # power chord A5
-        [(5, 3), (4, 2), (3, 0), (2, 0), (1, 0), (0, 3)],           # (same as open)
-    ],
-    # ── G minor ───────────────────────────────────────────────────────────
-    ("G", "m"): [
-        [(5, 3), (4, 2), (3, 0), (2, 0), (1, 3), (0, 3)],           # open Gm
-        [(4, 10), (3, 12), (2, 12), (1, 11), (0, 10)],               # A-barre Gm
-    ],
-    # ── A major ────────────────────────────────────────────────────────────
-    ("A", "M"): [
-        [(4, 0), (3, 2), (2, 2), (1, 2), (0, 0)],                    # open A
-        [(5, 5), (4, 7), (3, 7), (2, 6), (1, 5), (0, 5)],           # E-barre fr5
-        [(4, 0), (3, 2), (2, 2)],                                     # power chord
-        [(5, 0), (4, 0), (3, 2), (2, 2), (1, 2), (0, 0)],           # A/E
-    ],
-    # ── A minor ───────────────────────────────────────────────────────────
-    ("A", "m"): [
-        [(4, 0), (3, 2), (2, 2), (1, 0), (0, 0)],                    # open Am
-        [(5, 5), (4, 7), (3, 7), (2, 5), (1, 5), (0, 5)],           # E-barre Am fr5
-        [(4, 0), (3, 2), (2, 2)],                                     # power chord
-    ],
-    # ── B major ────────────────────────────────────────────────────────────
-    ("B", "M"): [
-        [(4, 4), (3, 4), (2, 4), (1, 2), (0, 0)],                    # open-ish B
-        [(5, 7), (4, 9), (3, 9), (2, 8), (1, 7), (0, 7)],           # E-barre fr7
-        [(4, 2), (3, 4), (2, 4), (1, 4), (0, 2)],                    # A-barre fr2
-    ],
-    # ── B minor ───────────────────────────────────────────────────────────
-    ("B", "m"): [
-        [(4, 4), (3, 4), (2, 4), (1, 2), (0, 2)],                   # open Bm shape
-        [(5, 7), (4, 9), (3, 9), (2, 7), (1, 7), (0, 7)],           # E-barre Bm fr7
-        [(4, 2), (3, 4), (2, 4), (1, 3), (0, 2)],                    # A-barre Bm fr2
-    ],
-
-    # ── Dominant 7th chords ──────────────────────────────────────────────
-    ("C", "7"):  [
-        [(5, 3), (4, 2), (3, 3), (2, 1), (1, 0), (0, 0)],
-        [(4, 3), (3, 5), (2, 5), (1, 3), (0, 3)],
-    ],
-    ("D", "7"):  [
-        [(4, 0), (3, 2), (2, 1), (1, 2), (0, 0)],
-        [(4, 5), (3, 7), (2, 5), (1, 7), (0, 5)],
-    ],
-    ("E", "7"):  [
-        [(5, 0), (4, 2), (3, 0), (2, 1), (1, 0), (0, 0)],
-        [(5, 7), (4, 9), (3, 7), (2, 8), (1, 7), (0, 7)],
-    ],
-    ("F", "7"):  [
-        [(5, 1), (4, 3), (3, 1), (2, 2), (1, 1), (0, 1)],
-    ],
-    ("G", "7"):  [
-        [(5, 3), (4, 2), (3, 0), (2, 0), (1, 0), (0, 1)],
-        [(4, 10), (3, 12), (2, 10), (1, 12), (0, 10)],
-    ],
-    ("A", "7"):  [
-        [(4, 0), (3, 2), (2, 0), (1, 2), (0, 0)],
-        [(5, 5), (4, 7), (3, 5), (2, 6), (1, 5), (0, 5)],
-    ],
-    ("B", "7"):  [
-        [(4, 4), (3, 4), (2, 2), (1, 2), (0, 2)],
-        [(5, 7), (4, 9), (3, 7), (2, 8), (1, 7), (0, 7)],
-    ],
-
-    # ── Minor 7th ──────────────────────────────────────────────────────────
-    ("C", "m7"): [
-        [(5, 3), (4, 3), (3, 3), (2, 1), (1, 0), (0, 0)],
-        [(4, 3), (3, 5), (2, 5), (1, 3), (0, 3)],
-    ],
-    ("D", "m7"): [
-        [(4, 0), (3, 2), (2, 1), (1, 1), (0, 0)],
-        [(4, 5), (3, 7), (2, 5), (1, 6), (0, 5)],
-    ],
-    ("E", "m7"): [
-        [(5, 0), (4, 2), (3, 0), (2, 0), (1, 0), (0, 0)],
-    ],
-    ("A", "m7"): [
-        [(4, 0), (3, 0), (2, 2), (1, 0), (0, 0)],
-        [(5, 5), (4, 7), (3, 5), (2, 5), (1, 5), (0, 5)],
-    ],
-
-    # ── Major 7th ──────────────────────────────────────────────────────────
-    ("C", "maj7"): [
-        [(5, 3), (4, 2), (3, 0), (2, 0), (1, 0), (0, 0)],
-        [(4, 3), (3, 5), (2, 5), (1, 4), (0, 3)],
-    ],
-    ("F", "maj7"): [
-        [(5, 1), (4, 3), (3, 2), (2, 2), (1, 1), (0, 0)],
-    ],
-    ("A", "maj7"): [
-        [(4, 0), (3, 1), (2, 2), (1, 2), (0, 0)],
-    ],
-
-    # ── Diminished ─────────────────────────────────────────────────────────
-    ("B", "dim"): [
-        [(4, 3), (3, 4), (2, 2), (1, 0)],
-    ],
-    ("C", "dim"): [
-        [(4, 4), (3, 5), (2, 3), (1, 1)],
-    ],
-}
-
-
-def _barre_voicing(root_pc: int, quality: str) -> Optional[List[Tuple[int, int]]]:
-    """
-    Generate a moveable barre chord voicing.
-    String numbering: 0=high_e, 5=low_E. Open pitches: E=4, A=9, D=2, G=7, B=11, e=4.
-    """
-    e_fret = (root_pc - 4) % 12
-    a_fret = (root_pc - 9) % 12
-
-    def e_shape(n):
-        if quality == "M":    return [(5,n),(4,n+2),(3,n+2),(2,n+1),(1,n  ),(0,n)]
-        if quality == "m":    return [(5,n),(4,n+2),(3,n+2),(2,n  ),(1,n  ),(0,n)]
-        if quality == "7":    return [(5,n),(4,n+2),(3,n  ),(2,n+1),(1,n  ),(0,n)]
-        if quality == "m7":   return [(5,n),(4,n+2),(3,n  ),(2,n  ),(1,n  ),(0,n)]
-        if quality == "maj7": return [(5,n),(4,n+2),(3,n+1),(2,n+1),(1,n  ),(0,n)]
-        if quality == "m7b5": return [(5,n),(4,n+1),(3,n  ),(2,n  ),         (0,n)]
-        if quality == "dim":  return [(5,n),(4,n+1),         (2,n  ),         (0,n)]
-        if quality == "dim7": return [(5,n),(4,n+1),         (2,n  ),(1,n+2),(0,n)]
-        if quality == "mmaj7":return [(5,n),(4,n+2),(3,n+1),(2,n  ),(1,n  ),(0,n)]
-
-    def a_shape(n):
-        if quality == "M":    return [(4,n),(3,n+2),(2,n+2),(1,n+2),(0,n)]
-        if quality == "m":    return [(4,n),(3,n+2),(2,n+2),(1,n+1),(0,n)]
-        if quality == "7":    return [(4,n),(3,n+2),(2,n  ),(1,n+2),(0,n)]
-        if quality == "m7":   return [(4,n),(3,n+2),(2,n  ),(1,n+1),(0,n)]
-        if quality == "maj7": return [(4,n),(3,n+2),(2,n+1),(1,n+2),(0,n)]
-        if quality == "m7b5": return [(4,n),(3,n+1),(2,n  ),(1,n+1)]
-        if quality == "dim":  return [(4,n),(3,n+1),         (1,n+1)]
-        if quality == "dim7" and n >= 1:
-                              return [(4,n),(3,n+1),(2,n-1),(1,n+1)]
-        if quality == "mmaj7":return [(4,n),(3,n+2),(2,n+1),(1,n+1),(0,n)]
-
-    use_a = (a_fret < e_fret and a_fret <= 9
-             and not (quality == "dim7" and a_fret == 0))
-    if use_a:
-        v = a_shape(a_fret)
-        if v is not None:
-            return v
-    if e_fret <= 9:
-        v = e_shape(e_fret)
-        if v is not None:
-            return v
-    if a_fret <= 9:
-        v = a_shape(a_fret)
-        if v is not None:
-            return v
-    return None
-
-
-def _generic_voicing(chord_pcs: set) -> Optional[List[Tuple[int, int]]]:
-    open_pc = {5: 4, 4: 9, 3: 2, 2: 7, 1: 11, 0: 4}
-    best: List[Tuple[int, int]] = []
-    for start in range(13):
-        voicing: List[Tuple[int, int]] = []
-        for string in [5, 4, 3, 2, 1, 0]:
-            for fret in range(start, min(start + 5, 13)):
-                if (open_pc[string] + fret) % 12 in chord_pcs:
-                    voicing.append((string, fret))
-                    break
-        if len(voicing) > len(best):
-            best = voicing
-        if len(best) == 6:
-            break
-    return best if len(best) >= 3 else None
+# Runtime chord shapes are loaded and validated in chord_shapes.py.
 
 
 def get_all_voicings(chord: ChordInfo) -> List[List[Tuple[int, int]]]:
     """
-    Return ALL available voicings for a chord as a list of (string, fret) lists.
-    The first in the list is the default/preferred.
+    Return validated, playability-ranked voicings for a chord.
+
+    String indexes are low-to-high: 0=low E, 5=high e.
     """
-    voicings = []
-
-    # 1. Look up hand-written shapes (including multiple per key)
-    key = (chord.root, chord.quality)
-    if key in COMMON_CHORD_SHAPES:
-        voicings.extend(COMMON_CHORD_SHAPES[key])
-
-    # 2. Try enharmonic lookup
-    alt_root = ENHARMONIC.get(chord.root)
-    if alt_root:
-        alt_key = (alt_root, chord.quality)
-        if alt_key in COMMON_CHORD_SHAPES:
-            voicings.extend(COMMON_CHORD_SHAPES[alt_key])
-
-    # 3. Generate barre voicing
-    root_pc = note_to_pc(chord.root)
-    v = _barre_voicing(root_pc, chord.quality)
-    if v is not None and v not in voicings:
-        voicings.append(v)
-
-    # 4. Generate generic voicing (last resort)
-    chord_pcs = {note_to_pc(n) for n in chord.notes}
-    v = _generic_voicing(chord_pcs)
-    if v is not None and v not in voicings:
-        voicings.append(v)
-
-    return voicings if voicings else []
+    shapes = get_ranked_voicings(chord.root, chord.quality, chord.intervals)
+    return [shape_to_diagram(shape) for shape in shapes]
 
 
 def get_guitar_diagram(chord: ChordInfo, voicing_idx: int = 0) -> Optional[List[Tuple[int, int]]]:
@@ -519,9 +280,9 @@ def generate_tab_text(chord: ChordInfo, voicing_idx: int = 0) -> str:
         string_frets[string_idx] = fret
 
     lines = []
-    for si in range(6):
-        sname = STRING_NAMES[5 - si]
-        fret = string_frets[5 - si]
+    for string_idx in range(5, -1, -1):
+        sname = STRING_NAMES[string_idx]
+        fret = string_frets[string_idx]
         if fret is None:
             lines.append(f"{sname}|--X--|")
         else:

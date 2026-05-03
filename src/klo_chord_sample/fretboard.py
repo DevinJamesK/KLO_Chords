@@ -5,12 +5,14 @@ Fretboard rendering: full-size (detail panel) and mini (chord list preview).
 import dearpygui.dearpygui as dpg
 from typing import List, Optional, Tuple
 
-from klo_chord_sample.chords import ChordInfo, get_guitar_diagram
+from klo_chord_sample.chords import ChordInfo, get_guitar_diagram, note_to_pc
 from klo_chord_sample.theme import (
     COLOR_BG_LIGHT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_STRING, COLOR_FRET, COLOR_DOT, COLOR_ROOT_DOT,
     COLOR_MUTED, COLOR_OPEN,
 )
+
+OPEN_STRING_PCS = [4, 9, 2, 7, 11, 4]
 
 # ── Mini fretboard (thumbnail in chord list) ──────────────────────────────────
 
@@ -58,6 +60,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
     for s_idx, fret in diagram:
         string_map[s_idx] = fret
 
+    root_pc = note_to_pc(chord.root)
     for s_idx, fret in string_map.items():
         x = x0 + s_idx * str_gap
         if fret is None:
@@ -69,7 +72,8 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
         else:
             dot_y = y0 + (fret - start_fret) * fret_gap
             circle_cy = dot_y + fret_gap / 2
-            col = COLOR_ROOT_DOT if s_idx == 5 else COLOR_DOT
+            note_pc = (OPEN_STRING_PCS[s_idx] + fret) % 12
+            col = COLOR_ROOT_DOT if note_pc == root_pc else COLOR_DOT
             dpg.draw_circle([x, circle_cy], 6,
                             fill=col, color=[0, 0, 0, 0],
                             parent=canvas_tag)
@@ -128,6 +132,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
     for s_idx, fret in diagram:
         string_map[s_idx] = fret
 
+    root_pc = note_to_pc(chord.root)
     for s_idx, fret in string_map.items():
         x = x_start + s_idx * string_spacing
         if fret is None:
@@ -141,7 +146,8 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
         else:
             dot_y = y_start + (fret - start_fret) * fret_spacing
             circle_cy = dot_y + fret_spacing / 2
-            dot_color = COLOR_ROOT_DOT if s_idx == 5 else COLOR_DOT
+            note_pc = (OPEN_STRING_PCS[s_idx] + fret) % 12
+            dot_color = COLOR_ROOT_DOT if note_pc == root_pc else COLOR_DOT
             dpg.draw_circle([x, circle_cy], 11,
                             fill=dot_color, color=[0, 0, 0, 0],
                             parent="fretboard_canvas")
