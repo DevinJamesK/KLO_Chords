@@ -3,16 +3,33 @@
 ## [Unreleased]
 
 ### Added
-- GitHub Actions build workflow (`.github/workflows/build.yml`) — produces standalone executables for Windows (`.exe`) and macOS (`.app`) on every push to `main`.
-- App icon (`assets/icons/app_icon.ico`) displayed in the OS title bar via `dpg.set_viewport_large_icon` and `dpg.set_viewport_small_icon`.
-- `icon_path()` helper in `theme.py` resolves the icon for both frozen (PyInstaller) and dev-mode runs.
-- Download section in README linking to GitHub Actions artifacts.
+- `.vscode/settings.json` — workspace-level Python interpreter, Conda path, and terminal activation settings.
+- `environment.yml` — Conda environment definition.
+- `chord_degree_dl_N` drawlist for each chord row — renders the Roman numeral degree in a fixed 40 px canvas so all chord boxes align vertically regardless of degree label width.
+- Degree drawlist is clickable (bound to the same click handler as the chord box and mini fretboard).
 
 ### Changed
-- Renamed project from `KLO_Chord_Sample` / `klo_chord_sample` to `KLO_Chords` / `klo_chords` across all source files, config, and documentation.
-- Package name changed from `klo-chord-sample` to `klo-chords` in `pyproject.toml`.
-- Conda environment name updated to `klo-chords` in README setup instructions.
-- Project structure diagram in README updated to reflect new package directory and icons asset.
+- **Font**: Switched from JetBrainsMono-Regular.ttf to Verdana.ttf. The font binary is bundled at `assets/fonts/verdana.ttf`.
+- **Asset path resolution**: `_frozen_base()` now returns `None` when not frozen (instead of an empty `Path()` that was truthy), so `_asset_path()` correctly falls through to `importlib.resources.files()` in dev mode. Both `icon_path()` and `font_path()` now return absolute paths that exist.
+- **Chord box labels**: Root and quality symbol are now separated by a space (e.g. `"A min"` instead of `"Amin"`) to prevent glyph collision in proportional fonts.
+- **Degree column**: Roman numerals (`I`, `ii`, ..., `vii°`) moved from the chord box title into a separate 40 px wide drawlist to the left of each chord box, giving aligned columns.
+- **Package data** in `pyproject.toml`: narrowed from `assets/fonts/*.ttf` to only `assets/fonts/verdana.ttf`.
+- `pyproject.toml` include-sevenths default remains `false`.
+
+### Removed
+- **Dead code** in `chords.py`:
+  - `note_name_with_octave()`, `generate_tab_text()`, `format_chord_summary()` — unused functions.
+  - `TRIAD_PATTERNS`, `SEVENTH_PATTERNS` — duplicate interval data already covered by `TRIAD_QUALITIES`.
+  - `STANDARD_TUNING`, `STRING_NAMES` — only used by the removed functions.
+- **Unused imports**:
+  - `state.py`: `NOTE_NAMES`, `SCALE_TYPES`, `get_guitar_diagram`.
+  - `piano.py`: `COLOR_ACCENT`.
+  - `fretboard.py`: `List`, `Optional`, `Tuple` from `typing`.
+- **Duplicated constant**: `OPEN_STRING_PCS` in `fretboard.py` — now imports from `chord_shapes.py` (single source of truth for `[4, 9, 2, 7, 11, 4]`).
+- `python.conda.enabled` from `.vscode/settings.json` — this is not a real VS Code setting.
+
+### Fixed
+- **Icon / font path bug**: `_frozen_base()` returned `Path()` (empty path, truthy in boolean context) when not frozen, causing `_asset_path()` to always take the frozen code branch and return a relative path like `assets\icons\app_icon.ico` that never resolves. Now returns `None` properly.
 
 ---
 ### Added (prior)

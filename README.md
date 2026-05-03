@@ -6,8 +6,8 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 
 - **Key & Scale selector** - Pick any key (C, C#, D, ...) and scale type (Major, Natural Minor, Harmonic Minor, Melodic Minor, Pentatonic, Blues, Dorian, Phrygian, ...)
 - **Diatonic chord list** - Shows chords built from the selected scale, each with:
-  - Roman numeral degree + chord name (e.g. `I  C`, `ii  Dmin`, `V7  G7`)
-  - Notes in the chord
+  - Roman numeral degree in its own fixed column (left-aligned, `I`–`vii°`)
+  - Chord name and notes in a bordered tile
   - A mini fretboard preview
 - **Chord detail panel** - Click any chord to see:
   - Full name with spelled-out quality
@@ -22,10 +22,8 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 ### Conda / Miniforge Setup
 
 ```powershell
-conda create -n klo-chords python=3.11
-conda activate klo-chords
-pip install -e .
-python -m klo_chords
+conda env create -f environment.yml
+conda activate klo_music
 ```
 
 ### Run
@@ -91,7 +89,7 @@ src/klo_chords/
 |-- piano.py                    Piano keyboard rendering
 `-- assets/
     |-- chords/guitar_standard.json
-    |-- fonts/JetBrainsMono-Regular.ttf
+    |-- fonts/verdana.ttf
     `-- icons/app_icon.ico
 ```
 

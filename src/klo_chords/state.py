@@ -10,8 +10,8 @@ from typing import List, Optional, Set
 import dearpygui.dearpygui as dpg
 
 from klo_chords.chords import (
-    NOTE_NAMES, SCALE_TYPES, ChordInfo,
-    get_diatonic_chords, get_guitar_diagram, get_all_voicings,
+    ChordInfo,
+    get_diatonic_chords, get_all_voicings,
     get_scale_notes, note_to_pc,
 )
 from klo_chords.quality import quality_spelled
@@ -126,7 +126,11 @@ def _rebuild_chord_list():
     with dpg.group(parent="chord_list_scroll", tag="chord_list_group"):
         for i, chord in enumerate(_current_chords):
             with dpg.group(horizontal=True, tag="chord_row_" + str(i)):
-                dpg.add_spacer(width=28)
+                dpg.add_spacer(width=4)
+                with dpg.drawlist(tag="chord_degree_dl_" + str(i),
+                                  width=40, height=90):
+                    dpg.draw_text([0, 12], chord.degree,
+                                  color=COLOR_ACCENT, size=20)
                 with dpg.drawlist(tag="chord_box_" + str(i),
                                   width=155, height=90):
                     pass
@@ -143,6 +147,8 @@ def _rebuild_chord_list():
             dpg.bind_item_handler_registry("chord_box_" + str(i),
                                             "click_hreg_" + str(i))
             dpg.bind_item_handler_registry("tab_canvas_" + str(i),
+                                            "click_hreg_" + str(i))
+            dpg.bind_item_handler_registry("chord_degree_dl_" + str(i),
                                             "click_hreg_" + str(i))
 
     if _current_chords:

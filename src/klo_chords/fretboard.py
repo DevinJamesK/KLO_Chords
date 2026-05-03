@@ -3,21 +3,19 @@ Fretboard rendering: full-size (detail panel) and mini (chord list preview).
 """
 
 import dearpygui.dearpygui as dpg
-from typing import List, Optional, Tuple
 
 from klo_chords.chords import ChordInfo, get_guitar_diagram, note_to_pc
+from klo_chords.chord_shapes import OPEN_STRING_PCS
 from klo_chords.theme import (
     COLOR_BG_LIGHT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_STRING, COLOR_FRET, COLOR_DOT, COLOR_ROOT_DOT,
     COLOR_MUTED, COLOR_OPEN,
 )
 
-OPEN_STRING_PCS = [4, 9, 2, 7, 11, 4]
-
 # ── Mini fretboard (thumbnail in chord list) ──────────────────────────────────
 
 def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
-    """Draw a small 95×90 fretboard preview inside *canvas_tag*."""
+    """Draw a small 95x90 fretboard preview inside *canvas_tag*."""
     if not dpg.does_item_exist(canvas_tag):
         return
     dpg.delete_item(canvas_tag, children_only=True)
@@ -85,7 +83,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
 # ── Large fretboard (detail panel) ─────────────────────────────────────────────
 
 def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
-    """Draw the large 400×220 fretboard on the 'fretboard_canvas' drawlist."""
+    """Draw the large 400x220 fretboard on the 'fretboard_canvas' drawlist."""
     if not dpg.does_item_exist("fretboard_canvas"):
         return
     dpg.delete_item("fretboard_canvas", children_only=True)

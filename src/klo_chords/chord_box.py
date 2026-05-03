@@ -1,6 +1,7 @@
 """
 Chord name box drawn on a Dear PyGui drawlist.
-Shows degree, root + quality, and notes in a compact tile.
+Shows root + quality and notes in a compact tile.
+Degree is rendered in a separate column to the left.
 """
 
 import dearpygui.dearpygui as dpg
@@ -16,10 +17,17 @@ CHORD_BOX_H = 89
 
 def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
                      selected: bool = False):
-    """Redraw the chord name tile inside *canvas_tag*."""
+    """Redraw the chord name tile inside *canvas_tag*.
+    Degree is shown in a separate column outside this drawlist.
+    Selection highlighting is handled externally by state._select_chord()
+    via configure_item on the border/title tags.
+    """
     dpg.delete_item(canvas_tag, children_only=True)
-    q     = quality_symbol(chord.quality)
-    title = chord.degree + "  " + chord.root + q
+    q = quality_symbol(chord.quality).strip()
+    if q:
+        title = chord.root + " " + q
+    else:
+        title = chord.root
     notes = "(" + " ".join(chord.notes) + ")"
     border_col   = COLOR_ACCENT               if selected else COLOR_CHORD_BG
     border_thick = 2                          if selected else 0

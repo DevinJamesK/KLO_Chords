@@ -24,12 +24,13 @@ venv/
 env/
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
 .idea/
 *.suo
 *.user
 
-# Claude Code
 .claude/
 
 # OS

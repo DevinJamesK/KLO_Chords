@@ -1,0 +1,10 @@
+{
+    "python.defaultInterpreterPath": "C:\\Users\\devin\\anaconda3\\envs\\klo_music\\python.exe",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.condaPath": "C:\\Users\\devin\\Anaconda3\\condabin\\conda.bat",
+    "python.terminal.launchArgs": [],
+    "python.conda.enabled": true,
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
+}

@@ -5,10 +5,6 @@ Piano keyboard rendering on a Dear PyGui drawlist.
 import dearpygui.dearpygui as dpg
 from typing import Set
 
-from klo_chords.theme import (
-    COLOR_ACCENT,
-)
-
 # ── Piano key geometry ─────────────────────────────────────────────────────────
 _PWW, _PWH = 48, 120   # white key width / height
 _PBW, _PBH = 30, 72    # black key width / height

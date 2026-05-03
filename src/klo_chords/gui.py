@@ -22,7 +22,6 @@ from klo_chords.state import (
     _refresh_chords,
 )
 
-NOTE_NAMES_DISPLAY = NOTE_NAMES
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
 
@@ -50,7 +49,7 @@ def build_ui():
 
                 with dpg.group(horizontal=True):
                     dpg.add_text("Key  ")
-                    dpg.add_combo(items=NOTE_NAMES_DISPLAY, default_value="C",
+                    dpg.add_combo(items=NOTE_NAMES, default_value="C",
                                   tag="key_combo", width=100,
                                   callback=on_key_change)
                     dpg.add_spacer(width=10)
