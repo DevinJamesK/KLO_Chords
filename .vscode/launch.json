@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run KLO Chords",
+            "type": "python",
+            "request": "launch",
+            "module": "klo_chords.gui",
+            "console": "integratedTerminal",
+            "env": {
+                "CONDA_DEFAULT_ENV": "klo_music"
+            }
+        }
+    ]
+}
