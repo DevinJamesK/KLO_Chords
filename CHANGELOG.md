@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.3.0] - 2026-05-03
+
+### Added
+- **Streaming sound engine** — continuous `sounddevice` callback generates audio with numpy vectorized operations. No file I/O, glitch-free playback.
+- **Playable chords** — selecting a chord automatically plays its notes via the sound engine.
+- **Number key shortcuts (1-8)** — press 1-8 to select and play the corresponding diatonic chord.
+- **Toggle and One-Shot playback modes** — toggle chords on/off or play a ~1s burst.
+- **Legato mode** — notes shared between consecutive chords are held, only differing notes re-strike.
+- **Velocity controls** — random velocity per note with configurable min/max range for natural dynamics.
+- **Waveform selection** — triangle (default), sine, or sawtooth waveform.
+- **Base octave slider** — shift chord voicings up or down.
+- **Sound settings tab** — central panel for all audio configuration (enable, wave, velocity, playback mode, base octave, legato).
+- **Toolbar** — persistent volume slider, wave type combo, and legato toggle visible on every tab.
+- **Piano keyboard highlighting** — chord notes in gold, scale-only notes in blue, bass note in green.
+- **Inversion display** — shows inversion name (Root Position / 1st / 2nd / 3rd) and sounding note names below the piano keyboard.
+- **Speaker indicator dots** — small animated dots next to each chord row that blink when that chord is sounding.
+- **Play bar indicator** — thin colored bar at the bottom of the active chord box for extra visual feedback.
+- **Chord suggestions engine** — `get_chord_suggestions()` in `chords.py` returns parallel chords, borrowed chords, and secondary dominants for progression building.
+- **Green key + inversion update every frame** — bass note and inversion info appear immediately when sound starts and disappear instantly when sound stops.
+
+### Changed
+- **Dependencies** — added `sounddevice` and `numpy` to `pyproject.toml`, `requirements.txt`, and `environment.yml`.
+- **Voice leading** — MIDI note computation with `_voice_chord()`, `_first_voicing()`, `_fix_spacing()`, and `_anti_drift()` ensures smooth transitions between chords.
+- **`update_piano_keys()`** — now accepts `bass_pc` parameter for green bass-note highlighting.
+- **Main loop** — `_refresh_speaker_indicators()` now called directly in the render loop instead of via recursive frame callbacks.
+- **Chord detail panel** — `_update_inversion_display()` moved entirely to the frame callback, removed from `_update_selected_chord()` to avoid race conditions with sound start.
+
+### Fixed
+- **Speaker dots invisible** — added `COLOR_INACTIVE_SPEAKER` (dim gray) so dots are always visible.
+- **Mode switching leaves notes stuck** — `set_playback_mode()` now calls `release_all()` and clears note history.
+- **Green key / inversion lag** — removed `% 5` frame gate so inversion and bass key update every frame.
+- **Stray `c` file** — removed orphan file from project root.
+
 ## [0.2.0] - 2026-05-03
 
 ### Added

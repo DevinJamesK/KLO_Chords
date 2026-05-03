@@ -6,4 +6,6 @@ dependencies:
   - pip
   - pip:
     - dearpygui
+    - sounddevice
+    - numpy
     - -e .

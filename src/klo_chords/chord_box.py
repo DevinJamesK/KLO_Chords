@@ -9,6 +9,7 @@ from klo_chords.chords import ChordInfo
 from klo_chords.quality import quality_symbol
 from klo_chords.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_CHORD_BG, COLOR_CHORD_BORDER,
+    COLOR_ACTIVE_SPEAKER,
 )
 
 CHORD_BOX_W = 154
@@ -37,6 +38,10 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
                        fill=COLOR_CHORD_BG, color=border_col,
                        thickness=border_thick,
                        tag="chord_border_" + str(idx), parent=canvas_tag)
+    dpg.draw_rectangle([2, CHORD_BOX_H - 8], [CHORD_BOX_W - 3, CHORD_BOX_H - 3],
+                       fill=COLOR_ACTIVE_SPEAKER, color=[0, 0, 0, 0],
+                       show=False,
+                       tag="chord_play_bar_" + str(idx), parent=canvas_tag)
     dpg.draw_text([8, 10], title,
                   tag="chord_title_" + str(idx),
                   color=title_col, size=20, parent=canvas_tag)

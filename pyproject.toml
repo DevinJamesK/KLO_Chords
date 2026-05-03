@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "klo-chords"
-version = "0.2.0"
-description = "Chord theory tool - displays diatonic chords and guitar tabs for any key."
+version = "0.3.0"
+description = "Chord theory tool with sound engine, piano keyboard, and progression builder."
 requires-python = ">=3.11"
-dependencies = ["dearpygui"]
+dependencies = ["dearpygui", "sounddevice", "numpy"]
 
 [project.scripts]
 klo-chords = "klo_chords.gui:main"

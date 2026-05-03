@@ -1,1 +1,3 @@
 ﻿dearpygui
+sounddevice
+numpy

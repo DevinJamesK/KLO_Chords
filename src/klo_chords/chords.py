@@ -5,8 +5,9 @@ All note math is done in pitch-class (0-11) space.
 The chromatic layout is: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11
 """
 
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+import copy
 
 from klo_chords.chord_shapes import get_ranked_voicings, shape_to_diagram
 
@@ -222,3 +223,132 @@ def get_guitar_diagram(chord: ChordInfo, voicing_idx: int = 0) -> Optional[List[
         return None
     idx = min(voicing_idx, len(voicings) - 1)
     return voicings[idx]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Chord suggestions & palette (customizable progression)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _parallel_chord(chord: ChordInfo) -> Optional[ChordInfo]:
+    """Return the parallel major/minor version of a chord (same root)."""
+    parallel_map = {
+        "M": "m", "m": "M",
+        "7": "m7", "m7": "7",
+        "maj7": "m7", "m7": "maj7",
+        "dim": "m7b5", "m7b5": "dim",
+    }
+    new_q = parallel_map.get(chord.quality)
+    if new_q is None:
+        return None
+    return _build_chord_variant(chord.root, new_q)
+
+
+def _build_chord_variant(root: str, quality: str) -> ChordInfo:
+    """Build a ChordInfo from root + quality string, inferring intervals."""
+    # Define interval patterns for known qualities
+    quality_intervals = {
+        "M":      [0, 4, 7],
+        "m":      [0, 3, 7],
+        "dim":    [0, 3, 6],
+        "aug":    [0, 4, 8],
+        "7":      [0, 4, 7, 10],
+        "m7":     [0, 3, 7, 10],
+        "maj7":   [0, 4, 7, 11],
+        "dim7":   [0, 3, 6, 9],
+        "m7b5":   [0, 3, 6, 10],
+        "mmaj7":  [0, 3, 7, 11],
+        "aug7":   [0, 4, 8, 10],
+        "sus2":   [0, 2, 7],
+        "sus4":   [0, 5, 7],
+    }
+    intervals = quality_intervals.get(quality, [0, 4, 7])
+    root_pc = note_to_pc(root)
+    style = get_accidental_style(root)
+    notes = _spell_chord(root_pc, intervals, style)
+
+    # Pick a suitable degree symbol (roman numeral)
+    degree_map_major = {0: "I", 1: "ii", 2: "iii", 3: "IV", 4: "V", 5: "vi", 6: "vii°"}
+    # Heuristic: try to find this root in the major scale
+    degree = "?"
+    for idx, name in enumerate(NOTE_NAMES):
+        if note_to_pc(name) == root_pc:
+            degree = degree_map_major.get(idx, f"^{idx+1}")
+            break
+
+    return ChordInfo(root=root, quality=quality, degree=degree,
+                     notes=notes, intervals=intervals)
+
+
+def get_chord_suggestions(key: str, scale_name: str,
+                          chord_list: List[ChordInfo],
+                          position: int) -> List[ChordInfo]:
+    """Return a list of alternate chords that could replace the chord at *position*.
+
+    Suggestions include parallel chords, functional substitutions,
+    common borrowed chords, and secondary dominants.
+    """
+    if position < 0 or position >= len(chord_list):
+        return []
+    original = chord_list[position]
+    suggestions: List[ChordInfo] = [original]
+
+    # 1. Parallel chord (same root, different quality)
+    parallel = _parallel_chord(original)
+    if parallel and parallel != original:
+        suggestions.append(parallel)
+
+    # 2. Borrowed chords from parallel key (bII, bIII, bVI, bVII)
+    root_pc = note_to_pc(original.root)
+    scale = SCALE_TYPES.get(scale_name)
+    is_major = scale_name in ("Major", "Lydian", "Mixolydian")
+    borrowed_pcs = []
+
+    if is_major:
+        # Borrow from parallel minor: bIII, iv, bVI, bVII
+        borrowed_pcs = [
+            (root_pc - 4) % 12,   # bIII
+            (root_pc - 5) % 12,   # IVm borrowed
+            (root_pc - 8) % 12,   # bVI
+            (root_pc - 10) % 12,  # bVII
+        ]
+    else:
+        # Borrow from parallel major
+        borrowed_pcs = [
+            (root_pc + 4) % 12,   # III
+            (root_pc + 5) % 12,   # IV (major)
+            (root_pc + 8) % 12,   # VI
+            (root_pc + 10) % 12,  # VII
+        ]
+
+    style = get_accidental_style(key)
+    for bpc in borrowed_pcs:
+        bname = pc_to_note(bpc, style)
+        if bname == original.root:
+            continue
+        # Determine quality: if borrowed, it's typically Major for flat chords
+        bquality = "M" if is_major else "m"
+        suggested = _build_chord_variant(bname, bquality)
+        if not any(s.root == suggested.root and s.quality == suggested.quality
+                   for s in suggestions):
+            suggestions.append(suggested)
+
+    # 3. Add the diatonic chords from other positions as possible substitutions
+    for i, ch in enumerate(chord_list):
+        if i != position and not any(s.root == ch.root and s.quality == ch.quality
+                                      for s in suggestions):
+            suggestions.append(ch)
+
+    # 4. Secondary dominant (V of the current chord)
+    if len(original.intervals) >= 1:
+        third_pc = (note_to_pc(original.root) + original.intervals[1]) % 12
+        target = pc_to_note(third_pc, style)
+        # Find a chord a 5th above the target
+        if scale is not None:
+            v_pc = (third_pc + 7) % 12  # A perfect 5th above
+            v_name = pc_to_note(v_pc, style)
+            v7 = _build_chord_variant(v_name, "7")
+            if not any(s.root == v7.root and s.quality == v7.quality
+                       for s in suggestions):
+                suggestions.append(v7)
+
+    return suggestions

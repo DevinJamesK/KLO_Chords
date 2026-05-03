@@ -34,6 +34,8 @@ COLOR_MUTED         = [200, 60,  60,  255]
 COLOR_OPEN          = [60,  210, 100, 255]
 COLOR_CHORD_BG      = [28,  28,  36,  255]
 COLOR_CHORD_BORDER  = [59,  59,  64,  255]
+COLOR_ACTIVE_SPEAKER   = [0,   230, 80,  255]
+COLOR_INACTIVE_SPEAKER = [60,  60,  70,  255]
 
 
 def _asset_path(subdir: str, filename: str) -> str:

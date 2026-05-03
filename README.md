@@ -1,21 +1,29 @@
 # KLO Chords
 
-A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/DearPyGui) that shows diatonic chords for any key and scale, with guitar fretboard diagrams and a piano keyboard visualizer.
+A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/DearPyGui) that shows diatonic chords for any key and scale, with guitar fretboard diagrams, a piano keyboard visualizer, and a streaming audio engine.
 
 ## Features
 
-- **Key & Scale selector** - Pick any key (C, C#, D, ...) and scale type (Major, Natural Minor, Harmonic Minor, Melodic Minor, Pentatonic, Blues, Dorian, Phrygian, ...)
-- **Diatonic chord list** - Shows chords built from the selected scale, each with:
+- **Key & Scale selector** — Pick any key (C, C#, D, ...) and scale type (Major, Natural Minor, Harmonic Minor, Melodic Minor, Pentatonic, Blues, Dorian, Phrygian, ...)
+- **Diatonic chord list** — Shows chords built from the selected scale, each with:
   - Roman numeral degree in its own fixed column (left-aligned, `I`–`vii°`)
   - Chord name and notes in a bordered tile
   - A mini fretboard preview
-- **Chord detail panel** - Click any chord to see:
+  - Animated speaker indicator dot and play bar when sounding
+- **Chord detail panel** — Click any chord to see:
   - Full name with spelled-out quality
   - Chord notes and intervals
   - Large interactive fretboard diagram
   - Multiple voicings (navigate with Prev/Next)
-- **Validated guitar voicings** - Loads local guitar chord data, rejects shapes with wrong notes, de-duplicates results, and ranks shapes by playability.
-- **Piano keyboard** - Highlights scale notes (blue) and chord notes (yellow)
+- **Streaming audio engine** — Chords play automatically on selection via `sounddevice` + numpy. Waveforms: triangle (default), sine, sawtooth.
+- **Playback modes** — Toggle (on/off per chord) or One-Shot (~1s burst).
+- **Legato mode** — Notes shared between consecutive chords are held smoothly.
+- **Velocity controls** — Random velocity per note with configurable min/max range.
+- **Base octave slider** — Shift chord voicings up or down.
+- **Piano keyboard** — Highlights chord notes (gold), scale notes (blue), and bass note (green).
+- **Inversion display** — Shows the current inversion name and sounding notes below the keyboard.
+- **Number key shortcuts (1-8)** — Press 1-8 to select and play diatonic chords.
+- **Validated guitar voicings** — Loads local guitar chord data, rejects shapes with wrong notes, de-duplicates results, and ranks shapes by playability.
 
 ## Usage
 
@@ -47,6 +55,11 @@ python src/klo_chords/gui.py
 | Include 7th chords | Toggle triads vs. seventh chords |
 | Click a chord box | Select and view details |
 | < Prev / Next > | Cycle through fretboard voicings |
+| 1-8 keys | Select and play diatonic chords |
+| Volume slider | Adjust master volume |
+| Wave combo | Switch waveform (triangle/sine/sawtooth) |
+| Legato toggle | Enable smooth note transitions |
+| Sound tab | Full audio configuration panel |
 
 ## Chord Shape Data
 
@@ -87,6 +100,7 @@ src/klo_chords/
 |-- chord_box.py                Chord name tile rendering
 |-- fretboard.py                Mini and large fretboard drawing
 |-- piano.py                    Piano keyboard rendering
+|-- sound.py                    Streaming audio engine (sounddevice + numpy)
 `-- assets/
     |-- chords/guitar_standard.json
     |-- fonts/verdana.ttf
