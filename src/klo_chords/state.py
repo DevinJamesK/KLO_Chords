@@ -210,6 +210,7 @@ def on_prog_fill(sender=None, app_data=None):
 def on_prog_clear_all(sender=None, app_data=None):
     """Clear all cells in the progression grid."""
     global _prog_cells
+    stop_current()
     for cell in _prog_cells:
         cell.clear()
     _rebuild_progression_grid()
@@ -221,8 +222,26 @@ def on_prog_clear_all(sender=None, app_data=None):
 def on_prog_cell_click(sender, app_data, user_data):
     idx = user_data
     if 0 <= idx < len(_prog_cells):
-        _select_prog_cell(idx)
-        _play_prog_cell(idx)
+        from klo_chords import dpg_keyboard
+        shift = dpg_keyboard.shift_is_down()
+        ctrl  = dpg_keyboard.ctrl_is_down()
+        if shift and ctrl:
+            # Ctrl+Shift+click: add range to existing selection (union)
+            on_prog_cell_shift_click(sender, app_data, user_data, union=True)
+        elif shift:
+            on_prog_cell_shift_click(sender, app_data, user_data)
+        elif ctrl:
+            # Ctrl+click: toggle individual cell in/out of multi-select set
+            if idx in _prog_selected_set or idx == _prog_selected_idx:
+                _prog_selected_set.discard(idx)
+                if _prog_selected_idx == idx:
+                    _prog_selected_idx = None
+            else:
+                _prog_selected_set.add(idx)
+            _rebuild_progression_grid()
+        else:
+            _select_prog_cell(idx)
+            _play_prog_cell(idx)
 
 
 # ── Arrow button callbacks ─────────────────────────────────────────────────────
@@ -578,7 +597,7 @@ def _rebuild_chord_list():
                     pass
                 dpg.add_spacer(width=6)
                 with dpg.drawlist(tag="tab_canvas_" + str(i),
-                                  width=95, height=90):
+                                  width=115, height=90):
                     pass
 
             draw_chord_label("chord_box_" + str(i), chord, i)
@@ -604,8 +623,10 @@ def _refresh_prog_cell(idx: int):
     tag = f"prog_cell_{idx}"
     if dpg.does_item_exist(tag):
         cell = _prog_cells[idx] if idx < len(_prog_cells) else ProgCell()
-        selected = (idx == _prog_selected_idx)
-        draw_prog_cell(tag, cell, row, col, selected=selected)
+        # A cell is highlighted if it's the primary selection OR in the multi-select set
+        selected = (idx == _prog_selected_idx) or (idx in _prog_selected_set)
+        draw_prog_cell(tag, cell, row, col, selected=selected,
+                       key=_prog_key, scale=_prog_scale)
 
 
 def _update_prog_piano(cell: ProgCell):
@@ -685,8 +706,9 @@ def _update_prog_detail(idx: int):
     cell = _prog_cells[idx] if idx < len(_prog_cells) else ProgCell()
     row = idx // PROG_COLS + 1
     col = idx % PROG_COLS + 1
-    degree = _get_degree_for_col(idx % PROG_COLS)
-    dpg.set_value("prog_detail_pos", f"R{row}, C{col} ({degree})")
+    from klo_chords.chords import get_degree_for_root
+    real_degree = get_degree_for_root(cell.root, _prog_key, _prog_scale) if cell.root and not cell.is_empty() else "?"
+    dpg.set_value("prog_detail_pos", f"R{row}, C{col} ({real_degree})")
 
     if cell.is_empty():
         dpg.set_value("prog_detail_root", "C")
@@ -721,11 +743,10 @@ def _rebuild_progression_grid():
 
 def _select_prog_cell(idx: int):
     global _prog_selected_idx
-    old_idx = _prog_selected_idx
+    # Clear multi-selection on normal (non-shift) click
+    _prog_selected_set.clear()
     _prog_selected_idx = idx
-    if old_idx is not None and old_idx != idx:
-        _refresh_prog_cell(old_idx)
-    _refresh_prog_cell(idx)
+    _rebuild_progression_grid()
     _update_prog_detail(idx)
 
 
@@ -861,3 +882,593 @@ def _refresh_speaker_indicators():
             update_piano_keys(_current_chord_pcs, _current_scale_pcs, bass_pc=bass_pc)
     elif not playing:
         update_piano_keys(_current_chord_pcs, _current_scale_pcs, bass_pc=-1)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Multi-select, clipboard, drag/drop & undo/redo integration
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import copy
+
+# ── Multi-select state ─────────────────────────────────────────────────────────
+_prog_selected_set: Set[int] = set()
+"""Set of indices selected (in addition to the primary _prog_selected_idx)."""
+
+
+def _cell_to_row_col(idx: int):
+    """Convert flat cell index to (row, col)."""
+    return (idx // PROG_COLS, idx % PROG_COLS)
+
+
+def _range_between(idx1: int, idx2: int) -> Set[int]:
+    """Return set of all cell indices in the rectangular range between two cells.
+    
+    The range includes all cells in the rows and columns spanned by idx1 and idx2.
+    """
+    r1, c1 = _cell_to_row_col(idx1)
+    r2, c2 = _cell_to_row_col(idx2)
+    r_min, r_max = min(r1, r2), max(r1, r2)
+    c_min, c_max = min(c1, c2), max(c1, c2)
+    result = set()
+    for r in range(r_min, r_max + 1):
+        for c in range(c_min, c_max + 1):
+            idx = r * PROG_COLS + c
+            if 0 <= idx < PROG_CELLS_TOTAL:
+                result.add(idx)
+    return result
+
+
+def on_prog_cell_shift_click(sender, app_data, user_data, union=False):
+    """Shift+click handler — select contiguous range from primary selection to *idx*.
+    
+    If union=True (Ctrl+Shift+click), adds range to existing selection instead of replacing.
+    """
+    idx = user_data
+    if idx < 0 or idx >= len(_prog_cells):
+        return
+    # If there's a primary selection, select the range from it to the clicked cell
+    if _prog_selected_idx is not None:
+        if not union:
+            _prog_selected_set.clear()
+        _prog_selected_set.update(_range_between(_prog_selected_idx, idx))
+    else:
+        # No primary selection — just select this cell as primary
+        _select_prog_cell(idx)
+    _rebuild_progression_grid()
+
+
+# ── Persistent paste-shape setting ──────────────────────────────────────────────
+
+_paste_shape = "shape"
+"""Default paste shape: 'linear' or 'shape'."""
+
+
+def on_paste_shape_change(sender, app_data):
+    """Callback when the paste-shape dropdown changes."""
+    global _paste_shape
+    mode_map = {
+        "Linear": "linear",
+        "Preserve Shape": "shape",
+    }
+    _paste_shape = mode_map.get(app_data, "shape")
+
+
+def get_paste_shape() -> str:
+    """Return the current paste shape setting."""
+    return _paste_shape
+
+
+def _get_selection() -> Set[int]:
+    """Return the full set of selected indices (primary + multi)."""
+    s = set(_prog_selected_set)
+    if _prog_selected_idx is not None:
+        s.add(_prog_selected_idx)
+    return s
+
+
+def _clear_selection():
+    """Clear all multi-selection highlights."""
+    _prog_selected_set.clear()
+
+
+def stop_prog_sound_for_idx(idx: int):
+    """Stop sound if a specific cell is currently playing."""
+    global _prog_sounding_idx
+    if _prog_sounding_idx == idx:
+        stop_current()
+        _prog_sounding_idx = None
+
+
+# ── Clipboard ──────────────────────────────────────────────────────────────────
+
+_prog_clipboard: List[dict] = []
+
+
+def on_prog_copy(sender=None, app_data=None):
+    """Copy selected cell(s) to clipboard."""
+    global _prog_clipboard
+    sel = _get_selection()
+    if not sel:
+        return
+    sorted_sel = sorted(sel)
+    _prog_clipboard = []
+    for idx in sorted_sel:
+        cell = _prog_cells[idx]
+        _prog_clipboard.append({
+            "root": cell.root,
+            "quality": cell.quality,
+            "inversion": cell.inversion,
+            "octave": cell.octave,
+            "voicing_idx": cell.voicing_idx,
+            "_idx": idx,  # store original index for shape-aware paste
+        })
+    # Show a brief indicator if available
+    if dpg.does_item_exist("prog_detail_pos"):
+        current = dpg.get_value("prog_detail_pos")
+        dpg.set_value("prog_detail_pos", f"Copied {len(_prog_clipboard)} cell(s)")
+        dpg.split_frame(delay=30)
+        dpg.set_value("prog_detail_pos", current)
+
+
+def on_prog_paste(sender=None, app_data=None):
+    """Paste clipboard contents with Insert/Replace/Swap options."""
+    global _prog_clipboard
+    if not _prog_clipboard:
+        return
+    from klo_chords.drag_drop import show_paste_menu
+    show_paste_menu(_prog_clipboard)
+
+
+def on_prog_delete_selection(sender=None, app_data=None):
+    """Delete all selected cells (with undo)."""
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+    sel = _get_selection()
+    if not sel:
+        return
+    old_cells = {}
+    for idx in sel:
+        old_cells[idx] = copy.deepcopy(_prog_cells[idx])
+        stop_prog_sound_for_idx(idx)
+
+    def do_delete():
+        for idx in sel:
+            _prog_cells[idx].clear()
+
+    def undo_delete():
+        for idx, cell in old_cells.items():
+            _prog_cells[idx] = cell
+
+    um.do(do_delete, undo_delete, description="delete cells")
+    _rebuild_progression_grid()
+
+
+# ── Grid mutation helpers (also used by drag_drop) ────────────────────────────
+
+def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
+    """Insert cell at src_idx into tgt_idx.
+    
+    If target is empty, just fill it (no shift). Otherwise push cells down.
+    """
+    if src_idx == tgt_idx:
+        return
+    stop_prog_sound_for_idx(src_idx)
+    src_data = copy.deepcopy(_prog_cells[src_idx])
+
+    if _prog_cells[tgt_idx].is_empty():
+        # Target empty — just fill it (no shift needed)
+        old_tgt = copy.deepcopy(_prog_cells[tgt_idx])
+        if with_undo:
+            from klo_chords.undo_manager import get_undo_manager
+            um = get_undo_manager()
+            def do_fill():
+                _prog_cells[tgt_idx].root = src_data.root
+                _prog_cells[tgt_idx].quality = src_data.quality
+                _prog_cells[tgt_idx].inversion = src_data.inversion
+                _prog_cells[tgt_idx].octave = src_data.octave
+                _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
+                _prog_cells[src_idx].clear()
+            def undo_fill():
+                _prog_cells[tgt_idx] = old_tgt
+                _prog_cells[src_idx] = src_data
+            um.do(do_fill, undo_fill, description="insert into empty cell")
+        else:
+            _prog_cells[tgt_idx].root = src_data.root
+            _prog_cells[tgt_idx].quality = src_data.quality
+            _prog_cells[tgt_idx].inversion = src_data.inversion
+            _prog_cells[tgt_idx].octave = src_data.octave
+            _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
+            _prog_cells[src_idx].clear()
+        return
+
+    # Target is non-empty — push cells down
+    old_tail = [copy.deepcopy(_prog_cells[i]) for i in
+                range(tgt_idx, PROG_CELLS_TOTAL)]
+
+    if with_undo:
+        from klo_chords.undo_manager import get_undo_manager
+        um = get_undo_manager()
+
+        def do_insert():
+            for i in range(PROG_CELLS_TOTAL - 1, tgt_idx, -1):
+                _prog_cells[i].root = _prog_cells[i - 1].root
+                _prog_cells[i].quality = _prog_cells[i - 1].quality
+                _prog_cells[i].inversion = _prog_cells[i - 1].inversion
+                _prog_cells[i].octave = _prog_cells[i - 1].octave
+                _prog_cells[i].voicing_idx = _prog_cells[i - 1].voicing_idx
+            _prog_cells[tgt_idx].root = src_data.root
+            _prog_cells[tgt_idx].quality = src_data.quality
+            _prog_cells[tgt_idx].inversion = src_data.inversion
+            _prog_cells[tgt_idx].octave = src_data.octave
+            _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
+            _prog_cells[src_idx].clear()
+
+        def undo_insert():
+            for i, c in enumerate(old_tail):
+                idx = tgt_idx + i
+                if idx >= PROG_CELLS_TOTAL:
+                    break
+                _prog_cells[idx] = c
+
+        um.do(do_insert, undo_insert, description="insert cell")
+    else:
+        for i in range(PROG_CELLS_TOTAL - 1, tgt_idx, -1):
+            _prog_cells[i].root = _prog_cells[i - 1].root
+            _prog_cells[i].quality = _prog_cells[i - 1].quality
+            _prog_cells[i].inversion = _prog_cells[i - 1].inversion
+            _prog_cells[i].octave = _prog_cells[i - 1].octave
+            _prog_cells[i].voicing_idx = _prog_cells[i - 1].voicing_idx
+        _prog_cells[tgt_idx].root = src_data.root
+        _prog_cells[tgt_idx].quality = src_data.quality
+        _prog_cells[tgt_idx].inversion = src_data.inversion
+        _prog_cells[tgt_idx].octave = src_data.octave
+        _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
+        _prog_cells[src_idx].clear()
+
+
+def _do_replace(src_idx: int, tgt_idx: int, with_undo: bool = False):
+    """Replace target cell with source cell contents."""
+    if src_idx == tgt_idx:
+        return
+    stop_prog_sound_for_idx(src_idx)
+    stop_prog_sound_for_idx(tgt_idx)
+    old_src = copy.deepcopy(_prog_cells[src_idx])
+    old_tgt = copy.deepcopy(_prog_cells[tgt_idx])
+
+    if with_undo:
+        from klo_chords.undo_manager import get_undo_manager
+        um = get_undo_manager()
+
+        def do_replace():
+            _prog_cells[tgt_idx].root = old_src.root
+            _prog_cells[tgt_idx].quality = old_src.quality
+            _prog_cells[tgt_idx].inversion = old_src.inversion
+            _prog_cells[tgt_idx].octave = old_src.octave
+            _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
+            _prog_cells[src_idx].clear()
+
+        def undo_replace():
+            _prog_cells[src_idx] = old_src
+            _prog_cells[tgt_idx] = old_tgt
+
+        um.do(do_replace, undo_replace, description="replace cell")
+    else:
+        _prog_cells[tgt_idx].root = old_src.root
+        _prog_cells[tgt_idx].quality = old_src.quality
+        _prog_cells[tgt_idx].inversion = old_src.inversion
+        _prog_cells[tgt_idx].octave = old_src.octave
+        _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
+        _prog_cells[src_idx].clear()
+
+
+def _do_swap(src_idx: int, tgt_idx: int, with_undo: bool = False):
+    """Swap contents of source and target cells."""
+    if src_idx == tgt_idx:
+        return
+    stop_prog_sound_for_idx(src_idx)
+    stop_prog_sound_for_idx(tgt_idx)
+    old_src = copy.deepcopy(_prog_cells[src_idx])
+    old_tgt = copy.deepcopy(_prog_cells[tgt_idx])
+
+    if with_undo:
+        from klo_chords.undo_manager import get_undo_manager
+        um = get_undo_manager()
+
+        def do_swap():
+            _prog_cells[tgt_idx].root = old_src.root
+            _prog_cells[tgt_idx].quality = old_src.quality
+            _prog_cells[tgt_idx].inversion = old_src.inversion
+            _prog_cells[tgt_idx].octave = old_src.octave
+            _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
+            _prog_cells[src_idx].root = old_tgt.root
+            _prog_cells[src_idx].quality = old_tgt.quality
+            _prog_cells[src_idx].inversion = old_tgt.inversion
+            _prog_cells[src_idx].octave = old_tgt.octave
+            _prog_cells[src_idx].voicing_idx = old_tgt.voicing_idx
+
+        def undo_swap():
+            _prog_cells[src_idx] = old_src
+            _prog_cells[tgt_idx] = old_tgt
+
+        um.do(do_swap, undo_swap, description="swap cells")
+    else:
+        _prog_cells[tgt_idx].root = old_src.root
+        _prog_cells[tgt_idx].quality = old_src.quality
+        _prog_cells[tgt_idx].inversion = old_src.inversion
+        _prog_cells[tgt_idx].octave = old_src.octave
+        _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
+        _prog_cells[src_idx].root = old_tgt.root
+        _prog_cells[src_idx].quality = old_tgt.quality
+        _prog_cells[src_idx].inversion = old_tgt.inversion
+        _prog_cells[src_idx].octave = old_tgt.octave
+        _prog_cells[src_idx].voicing_idx = old_tgt.voicing_idx
+
+
+# ── Multi-cell move up/down ────────────────────────────────────────────────────
+
+def on_prog_move_up(sender=None, app_data=None):
+    """Move selection up one row."""
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+    sel = sorted(_get_selection())
+    if not sel or sel[0] < PROG_COLS:
+        return
+
+    # Save old state
+    old_states = {i: copy.deepcopy(_prog_cells[i]) for i in sel}
+    target_indices = [i - PROG_COLS for i in sel]
+    target_states = {i: copy.deepcopy(_prog_cells[i]) for i in target_indices}
+
+    um.begin_batch("move up")
+    for idx, tgt in zip(sel, target_indices):
+        stop_prog_sound_for_idx(idx)
+        swap = copy.deepcopy(_prog_cells[tgt])
+        _prog_cells[tgt] = copy.deepcopy(_prog_cells[idx])
+        _prog_cells[idx] = swap
+    um.commit_batch()
+
+    _rebuild_progression_grid()
+
+
+def on_prog_move_down(sender=None, app_data=None):
+    """Move selection down one row."""
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+    sel = sorted(_get_selection(), reverse=True)
+    if not sel or sel[-1] >= PROG_CELLS_TOTAL - PROG_COLS:
+        return
+
+    um.begin_batch("move down")
+    for idx in sel:
+        tgt = idx + PROG_COLS
+        if tgt < PROG_CELLS_TOTAL:
+            stop_prog_sound_for_idx(idx)
+            swap = copy.deepcopy(_prog_cells[tgt])
+            _prog_cells[tgt] = copy.deepcopy(_prog_cells[idx])
+            _prog_cells[idx] = swap
+    um.commit_batch()
+
+    _rebuild_progression_grid()
+
+
+# ── Persistent paste-mode setting ───────────────────────────────────────────────
+
+_paste_mode = "replace"
+"""Default paste mode: 'insert', 'replace', or 'swap'."""
+
+
+def on_paste_mode_change(sender, app_data):
+    """Callback when the paste-mode dropdown changes."""
+    global _paste_mode
+    mode_map = {
+        "Insert (push down)": "insert",
+        "Replace": "replace",
+        "Swap": "swap",
+    }
+    _paste_mode = mode_map.get(app_data, "insert")
+
+
+def get_paste_mode() -> str:
+    """Return the current paste mode setting."""
+    return _paste_mode
+
+
+# ── Undo/redo callbacks ────────────────────────────────────────────────────────
+
+def on_undo(sender=None, app_data=None):
+    """Ctrl+Z handler."""
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+    um.undo()
+    _rebuild_progression_grid()
+
+
+def on_redo(sender=None, app_data=None):
+    """Ctrl+Y handler."""
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+    um.redo()
+    _rebuild_progression_grid()
+
+
+# ── Suggestion panel integration ───────────────────────────────────────────────
+
+_last_suggestions_showing = False
+
+
+def on_prog_show_suggestions(sender=None, app_data=None):
+    """Show chord suggestions for the selected empty cell."""
+    global _last_suggestions_showing
+    if _prog_selected_idx is None:
+        return
+
+    from klo_chords.chord_suggestions import get_suggestions
+    suggestions = get_suggestions(
+        _prog_cells, _prog_selected_idx, _prog_key, _prog_scale,
+        include_sevenths=_prog_sevenths
+    )
+
+    if not dpg.does_item_exist("suggestion_panel"):
+        dpg.add_child_window(tag="suggestion_panel", width=-1, height=180,
+                              parent="prog_cell_detail_group",
+                              before="prog_detail_pos",
+                              border=True)
+    else:
+        dpg.delete_item("suggestion_panel", children_only=True)
+        dpg.configure_item("suggestion_panel", show=True)
+
+    with dpg.group(parent="suggestion_panel", tag="suggestion_group"):
+        dpg.add_text("Chord Suggestions", color=COLOR_ACCENT)
+        dpg.add_separator()
+        dpg.add_spacer(height=4)
+
+        cat_colors = {
+            "safe": [80, 200, 120, 255],       # green
+            "borrowed": [220, 200, 60, 255],    # amber
+            "secondary_dominant": [240, 160, 40, 255],  # orange
+            "chromatic_mediant": [160, 100, 220, 255],  # purple
+            "advanced": [120, 120, 120, 255],   # gray
+        }
+
+        current_cat = None
+        for s in suggestions:
+            if s.category != current_cat:
+                current_cat = s.category
+                color = cat_colors.get(current_cat, [200, 200, 200, 255])
+                cat_name = current_cat.replace("_", " ").title()
+                dpg.add_text(f"  {cat_name}", color=color)
+
+            if s.hidden:
+                # Advanced chords hidden by default
+                continue
+
+            tag = f"sugg_btn_{s.root}_{s.quality}"
+            with dpg.group(horizontal=True, tag=tag + "_group"):
+                dpg.add_spacer(width=12)
+                dpg.add_button(
+                    label=s.display_name(),
+                    width=200, height=22,
+                    tag=tag,
+                    callback=_make_suggestion_callback(s),
+                )
+                if s.resolution_target:
+                    dpg.add_text(f"→ {s.resolution_target}",
+                                 color=[180, 200, 220, 255])
+
+        # Toggle for advanced chords
+        dpg.add_spacer(height=4)
+        dpg.add_button(label="Show Advanced...",
+                       tag="show_advanced_btn",
+                       callback=lambda: _toggle_advanced(),
+                       width=160)
+
+
+def _make_suggestion_callback(sug):
+    """Create a safe callback that captures the suggestion object."""
+    def callback(sender=None, app_data=None):
+        _apply_suggestion(sug)
+    return callback
+
+
+def _apply_suggestion(sug):
+    """Apply a suggestion to the currently selected cell."""
+    if _prog_selected_idx is None:
+        return
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+    old_cell = copy.deepcopy(_prog_cells[_prog_selected_idx])
+
+    def do_apply():
+        cell = _prog_cells[_prog_selected_idx]
+        cell.root = sug.root
+        cell.quality = sug.quality
+        cell.inversion = 0
+        cell.octave = 3
+        cell.voicing_idx = 0
+
+    def undo_apply():
+        _prog_cells[_prog_selected_idx] = old_cell
+
+    um.do(do_apply, undo_apply, description=f"apply {sug.display_name()}")
+    _rebuild_progression_grid()
+    _update_prog_detail(_prog_selected_idx)
+    # Hide suggestion panel
+    if dpg.does_item_exist("suggestion_panel"):
+        dpg.configure_item("suggestion_panel", show=False)
+
+
+def _toggle_advanced():
+    """Toggle visibility of advanced chord suggestions."""
+    if not dpg.does_item_exist("suggestion_group"):
+        return
+    # Simple toggle: show/hide all advanced items
+    # We just rebuild the suggestions with hidden=False
+    # This is a quick approach
+    if dpg.does_item_exist("show_advanced_btn"):
+        label = dpg.get_item_label("show_advanced_btn")
+        if label == "Show Advanced...":
+            dpg.set_item_label("show_advanced_btn", "Hide Advanced")
+            # Show all hidden suggestions — rebuild is simplest
+            _rebuild_suggestions_with_advanced(True)
+        else:
+            dpg.set_item_label("show_advanced_btn", "Show Advanced...")
+            _rebuild_suggestions_with_advanced(False)
+
+
+def _rebuild_suggestions_with_advanced(show_advanced: bool):
+    """Rebuild the suggestion panel, optionally showing advanced chords."""
+    if _prog_selected_idx is None:
+        return
+
+    from klo_chords.chord_suggestions import get_suggestions
+    suggestions = get_suggestions(
+        _prog_cells, _prog_selected_idx, _prog_key, _prog_scale,
+        include_sevenths=_prog_sevenths
+    )
+
+    if not dpg.does_item_exist("suggestion_panel"):
+        return
+    dpg.delete_item("suggestion_panel", children_only=True)
+    dpg.configure_item("suggestion_panel", show=True)
+
+    with dpg.group(parent="suggestion_panel", tag="suggestion_group"):
+        dpg.add_text("Chord Suggestions", color=COLOR_ACCENT)
+        dpg.add_separator()
+        dpg.add_spacer(height=4)
+
+        cat_colors = {
+            "safe": [80, 200, 120, 255],
+            "borrowed": [220, 200, 60, 255],
+            "secondary_dominant": [240, 160, 40, 255],
+            "chromatic_mediant": [160, 100, 220, 255],
+            "advanced": [120, 120, 120, 255],
+        }
+
+        current_cat = None
+        for s in suggestions:
+            if s.category != current_cat:
+                current_cat = s.category
+                color = cat_colors.get(current_cat, [200, 200, 200, 255])
+                cat_name = current_cat.replace("_", " ").title()
+                dpg.add_text(f"  {cat_name}", color=color)
+
+            if s.hidden and not show_advanced:
+                continue
+
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=12)
+                dpg.add_button(
+                    label=s.display_name(),
+                    width=200, height=22,
+                    callback=_make_suggestion_callback(s),
+                )
+                if s.resolution_target:
+                    dpg.add_text(f"→ {s.resolution_target}",
+                                 color=[180, 200, 220, 255])
+
+        dpg.add_spacer(height=4)
+        lbl = "Hide Advanced" if show_advanced else "Show Advanced..."
+        dpg.add_button(label=lbl,
+                       tag="show_advanced_btn",
+                       callback=lambda: _toggle_advanced(),
+                       width=160)

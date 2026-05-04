@@ -177,8 +177,69 @@ def _spell_chord(root_pc: int, intervals: List[int], style: str = "sharp") -> Li
 
 def _heptatonic_degree_names(scale_name: str) -> List[str]:
     if scale_name == "Major":
-        return ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°']
+        return ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii\u00b0']
     return ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii']
+
+
+def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
+    """Return the roman numeral for *root* relative to *key*/*scale_name*.
+
+    Uses the note's letter name to determine the correct degree and
+    accidental (flat/sharp). For example, in C Major:
+        C -> I, D -> ii, E -> iii, F -> IV, G -> V, A -> vi, B -> vii\u00b0
+        Bb -> \u266dvii, F# -> \u266fIV, Db -> \u266dII
+    """
+    root_pc = note_to_pc(root)
+    key_pc = note_to_pc(key)
+    scale = SCALE_TYPES.get(scale_name)
+    if not scale:
+        return ""
+    scale_pitches = scale.pitches(key_pc)
+    degree_names = _heptatonic_degree_names(scale_name)
+    # Also support pentatonic scales: build a lookup from degree name
+    # For non-heptatonic scales, generate I/II/III/IV/V/... names
+    if len(scale_pitches) != len(degree_names):
+        degree_names = [f"{' I II III IV V VI VII'[i]}" for i in range(len(scale_pitches))]
+
+    # Extract letter and accidental from the root note name
+    # e.g. "Bb" -> letter='B', accidental='b'
+    #      "F#" -> letter='F', accidental='#'
+    root_clean = root.strip().upper()
+    letter = root_clean[0]
+    # Determine accidental from the root's written name
+    has_flat = 'B' in root_clean[1:]  # 'b' in the note name
+    has_sharp = '#' in root_clean[1:]
+
+    # Try to find the matching letter in the scale
+    for i, pc in enumerate(scale_pitches):
+        natural_name = pc_to_note(pc, get_accidental_style(key))
+        if natural_name[0].upper() == letter:
+            degree = degree_names[i] if i < len(degree_names) else f"^{i+1}"
+            if has_flat:
+                return "\u266d" + degree
+            elif has_sharp:
+                return "\u266f" + degree
+            else:
+                return degree
+
+    # Letter not found in scale (e.g. pentatonic) -- fall back to
+    # distance-based approach
+    best_dist = 12
+    best_i = 0
+    for i, pc in enumerate(scale_pitches):
+        dist = min((root_pc - pc) % 12, (pc - root_pc) % 12)
+        if dist < best_dist:
+            best_dist = dist
+            best_i = i
+    if best_dist >= 12:
+        return ""
+
+    degree = degree_names[best_i] if best_i < len(degree_names) else f"^{best_i+1}"
+    scale_pc = scale_pitches[best_i]
+    if (root_pc - scale_pc) % 12 <= 6:
+        return "\u266f" + degree
+    else:
+        return "\u266d" + degree
 
 
 def _seventh_quality_from_intervals(intervals: List[int]) -> str:
@@ -254,7 +315,7 @@ def get_scale_notes(root_note: str, scale_name: str = "Major") -> List[str]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Guitar chord diagrams — multiple voicings per chord
+# Guitar chord diagrams -- multiple voicings per chord
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def get_all_voicings(chord: ChordInfo) -> List[List[Tuple[int, int]]]:
@@ -317,7 +378,7 @@ def _build_chord_variant(root: str, quality: str) -> ChordInfo:
     notes = _spell_chord(root_pc, intervals, style)
 
     # Pick a suitable degree symbol (roman numeral)
-    degree_map_major = {0: "I", 1: "ii", 2: "iii", 3: "IV", 4: "V", 5: "vi", 6: "vii°"}
+    degree_map_major = {0: "I", 1: "ii", 2: "iii", 3: "IV", 4: "V", 5: "vi", 6: "vii\u00b0"}
     # Heuristic: try to find this root in the major scale
     degree = "?"
     for idx, name in enumerate(NOTE_NAMES):
@@ -402,3 +463,32 @@ def get_chord_suggestions(key: str, scale_name: str,
                 suggestions.append(v7)
 
     return suggestions
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Entry point for quick testing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    print("=== get_degree_for_root tests ===")
+    cases = [
+        ("C", "C", "Major", "I"),
+        ("D", "C", "Major", "ii"),
+        ("E", "C", "Major", "iii"),
+        ("F", "C", "Major", "IV"),
+        ("G", "C", "Major", "V"),
+        ("A", "C", "Major", "vi"),
+        ("B", "C", "Major", "vii\u00b0"),
+        ("Bb", "C", "Major", "\u266dvii"),
+        ("F#", "C", "Major", "\u266fIV"),
+        ("Db", "C", "Major", "\u266dII"),
+        ("G#", "C", "Major", "\u266fV"),
+        ("C#", "C", "Major", "\u266fI"),
+        ("Eb", "C", "Major", "\u266dIII"),
+        ("Ab", "C", "Major", "\u266dVI"),
+    ]
+    for root, key, scale, expected in cases:
+        result = get_degree_for_root(root, key, scale)
+        status = "OK" if result == expected else f"FAIL (expected {expected!r})"
+        print(f"  {root} in {key} {scale}: {result!r}  {status}")

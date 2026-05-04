@@ -6,7 +6,7 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 
 - **Key & Scale selector** — Pick any key (C, C#, D, ...) and scale type (Major, Natural Minor, Harmonic Minor, Melodic Minor, Pentatonic, Blues, Dorian, Phrygian, ...)
 - **Diatonic chord list** — Shows chords built from the selected scale, each with:
-  - Roman numeral degree in its own fixed column (left-aligned, `I`–`vii°`)
+  - Roman numeral degree (dynamically computed from the chord's actual root vs the key/scale)
   - Chord name and notes in a bordered tile
   - A mini fretboard preview
   - Animated speaker indicator dot and play bar when sounding
@@ -24,6 +24,15 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 - **Inversion display** — Shows the current inversion name and sounding notes below the keyboard.
 - **Number key shortcuts (1-8)** — Press 1-8 to select and play diatonic chords.
 - **Validated guitar voicings** — Loads local guitar chord data, rejects shapes with wrong notes, de-duplicates results, and ranks shapes by playability.
+- **Progression grid** — 8-column × 4-row grid for building chord progressions. Click any cell to edit root, quality, and inversion. Each cell shows the chord name, notes, and a roman numeral dynamically computed against the current key/scale.
+- **Multi-select in progression** — Shift+click to select a range of cells, Ctrl+click to toggle individual cell selection. Copy (Ctrl+C) selected cells, then Paste (Ctrl+V) them to another location with your choice of paste mode:
+  - **Replace mode** — overwrites cells starting at the paste position
+  - **Insert mode** — shifts existing cells right to make room
+  - **Linear paste** — pastes in a flat row
+  - **Preserve Shape paste** — keeps the original 2D row/column layout
+- **Delete selected cells** — Press Delete to clear all multi-selected cells at once.
+- **Chord suggestions** — Select any cell (empty or non-empty) to see categorized chord suggestions: safe (diatonic), borrowed, secondary dominants, chromatic mediants, and advanced chords. Click a suggestion to instantly apply it to the cell.
+- **Clear All** — Red "Clear All" button resets all progression grid cells, with automatic sound stop.
 
 ## Usage
 

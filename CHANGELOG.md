@@ -1,39 +1,25 @@
 # Changelog
 
-## [0.4.0] - 2026-05-04
+## [0.5.0] - 2026-05-04
 
 ### Added
-- **Mute/Unmute** — press `ESC` to toggle mute on/off. Volume slider turns red when muted; slider interaction auto-unmutes.
-- **Stop playback** — press `Spacebar` to stop any currently playing chord.
-- **Fretboard note-name mode** — new "Show Note Names" checkbox on the Chord Detail panel toggles between fret numbers (default) and actual note names inside the fretboard dots. Root notes are green in note-name mode.
-- **Multi-octave piano for progression tab** — 2-octave piano keyboard in the progression cell detail panel, dynamically centered on the selected cell's octave.
-- **Wave preview canvas** — small waveform preview in the toolbar that updates when the wave type changes (Triangle / Sine / Sawtooth).
-- **Progression fill from selected cell** — "Fill Chords" now starts from the currently selected cell (or column 0) and fills right→down like reading.
-- **Clear All button** — red "Clear All" button on the progression tab to reset all grid cells at once.
-- **`ProgCell` dataclass** — moved from `state.py` to `chords.py` with `get_notes()` method that accounts for inversion, and `clear()` convenience method.
-- **`QUALITY_INTERVALS` dict** — centralized interval definitions for all supported chord qualities (`M`, `m`, `dim`, `aug`, `7`, `m7`, `maj7`, `dim7`, `m7b5`, `mmaj7`, `aug7`, `sus2`, `sus4`).
-- **`font_path_fallback()`** — returns path to JetBrains Mono for potential use as a fallback font.
+- **Multi-select in progression grid** — Shift+click to select a range of cells, Ctrl+click to toggle individual cell selection. Copy (Ctrl+C) and Paste (Ctrl+V) with multiple paste modes:
+  - **Replace mode** — overwrites cells starting at the paste position
+  - **Insert mode** — shifts existing cells right to make room
+  - **Linear paste** — pastes in a flat row
+  - **Preserve Shape** — keeps the original 2D row/column layout
+- **Delete selected cells** — press Delete to clear all multi-selected cells at once.
+- **Chord suggestions panel** — select any progression cell (empty or non-empty) to see categorized suggestions: safe (diatonic), borrowed chords, secondary dominants, chromatic mediants, and advanced chords. Click any suggestion to instantly apply it.
+- **Dynamic roman numerals** — each progression cell now computes its roman numeral from the cell's actual root vs the current key/scale (letter-name-based). Non-diatonic chords get ♭/♯ prefixes (e.g. ♭VII, ♯IV).
 
 ### Changed
-- **Viewport height** — reduced from 1080 to 960 for a more compact default window.
-- **Chord box dimensions** — narrowed from 154→140 px, height 89→90 px for a tighter chord list layout.
-- **Chord tab layout** — key/scale/7th toggle moved into a single top row above the two-panel layout (left: chord list, right: detail panel). Removed inner "Key & Scale" and "Scale Notes" child window sections.
-- **Fretboard centering** — both mini and large fretboards now center horizontally using dynamic string spacing. Start-fret labels rendered in yellow (`[255, 230, 80]`) instead of dim text.
-- **Voicing label** — padded to constant 8-character width to prevent layout shifts (e.g. `"1/3"` vs `"1/10"`).
-- **Volume slider** — changed from float 0.0-1.0 to integer 0-100 with percentage-based internal conversion.
-- **Wave type combo** — now displays user-friendly names ("Triangle", "Sine", "Sawtooth") instead of internal keys; both toolbar and Sound Settings combos stay in sync.
-- **Speaker indicators** — removed blinking speaker dots from both chord list and progression cells. Play bars remain as the sole visual playback indicator.
-- **Progression tab toolbar** — labels simplified ("Key" instead of "Key  ", "Include 7th" instead of "7th Chords"), combos resized to match chord tab (50px key, 150px scale).
-- **Sound Settings tab** — removed auto-play help text, simplified checkbox labels, added separator pipes for visual grouping.
-- **Toolbar layout** — volume label text no longer accent-colored, legato label simplified, visual separators (`|`) between control groups.
-
-### Removed
-- **Speaker indicator dots** — `spkr_dot_*` and `prog_spkr_dot_*` draw calls removed from `chord_box.py` and `state.py`. Related `_refresh_speaker_indicators()` logic simplified to only handle play bars.
-- **`on_sound_mode_change` callback** — consolidated into `on_wave_type_change` which handles both display and internal names.
+- **Progression tab layout** — added suggestions panel below the grid; cell detail panel relocated to a popup-style section directly below the grid row.
+- **Roman numeral display** — degree is now computed per-cell rather than derived from column position, accurately reflecting non-diatonic chords.
+- **`get_degree_for_root()`** — completely rewritten to use letter-name matching instead of pitch-distance tie-breaking. Bb in C Major now correctly shows ♭vii° instead of ♯vi.
 
 ### Fixed
-- **Progression fill only filled first row** — `on_prog_fill()` now fills from the selected cell across all 32 cells (8 cols × 4 rows) instead of only the first 8.
-- **Progression piano centered on wrong octave** — `_update_prog_piano()` now dynamically rebuilds the canvas centered on the cell's octave, so chords play and display in the middle of the keyboard.
+- **Normal click now deselects multi-selection** — clicking a single cell without modifiers clears any existing multi-selection before selecting the clicked cell.
+- **Roman numeral for Bb in C Major** — now correctly shows ♭vii° (was showing ♯vi due to ambiguous distance tie-breaking).
 
 ---
 

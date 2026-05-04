@@ -67,10 +67,12 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
 
 
 def draw_prog_cell(canvas_tag: str, cell: ProgCell,
-                   row: int, col: int, selected: bool = False):
+                   row: int, col: int, selected: bool = False,
+                   key: str = "C", scale: str = "Major"):
     """Draw a compact progression grid cell inside *canvas_tag*.
 
-    Shows degree symbol, chord name, notes, speaker dot, and play bar.
+    Shows degree symbol (computed from cell's root vs key/scale),
+    chord name, notes, speaker dot, and play bar.
     """
     dpg.delete_item(canvas_tag, children_only=True)
 
@@ -97,8 +99,12 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                       color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
         return
 
-    # Degree symbol (top line)
-    degree = _get_degree_symbol(col)
+    # Degree symbol — compute from actual cell root vs key/scale
+    from klo_chords.chords import get_degree_for_root
+    if cell.root is not None:
+        degree = get_degree_for_root(cell.root, key, scale)
+    else:
+        degree = "?"
     dpg.draw_text([5, 3], degree,
                   tag=f"prog_degree_{idx}",
                   color=COLOR_ACCENT, size=14, parent=canvas_tag)

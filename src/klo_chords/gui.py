@@ -1,4 +1,4 @@
-﻿"""
+"""
 KLO Chords - Application entry point.
 
 Builds the Dear PyGui window layout and runs the event loop.
@@ -36,8 +36,12 @@ from klo_chords.state import (
     on_legato_toggle, on_volume_change,
     on_wave_type_change, on_tab_change,
     on_fretboard_mode_change, on_mute_toggle, on_stop,
+    on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
+    on_prog_show_suggestions, on_prog_cell_shift_click,
+    on_paste_mode_change, on_paste_shape_change,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
+
 from klo_chords.sound import get_settings as get_sound_settings
 from klo_chords.quality import quality_symbol
 
@@ -231,6 +235,7 @@ def _build_chord_tab():
 
             dpg.add_text("Fretboard", color=COLOR_ACCENT)
             with dpg.group(horizontal=True):
+                dpg.add_spacer(width=20)
                 with dpg.drawlist(width=360, height=220,
                                   tag="fretboard_canvas"):
                     dpg.draw_rectangle([0, 0], [360, 220],
@@ -321,8 +326,33 @@ def _build_progression_tab():
                         dpg.add_spacer(width=6)
         dpg.add_spacer(height=6)
 
-    # ── Cell detail panel (below the grid) ──────────────────────────────────
+    # ── Paste controls (between grid and cell detail) ────────────────────────
+    dpg.add_spacer(height=2)
+    dpg.add_text(" Paste Settings", color=COLOR_ACCENT)
+    dpg.add_separator()
     dpg.add_spacer(height=4)
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=24)
+        dpg.add_text("Paste Mode:", color=COLOR_TEXT_DIM)
+        dpg.add_combo(items=["Insert (push down)", "Replace", "Swap"],
+                      default_value="Replace",
+                      tag="paste_mode_combo", width=170,
+                      callback=on_paste_mode_change)
+        dpg.add_spacer(width=20)
+        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
+        dpg.add_combo(items=["Linear", "Preserve Shape"],
+                      default_value="Preserve Shape",
+                      tag="paste_shape_combo", width=150,
+                      callback=on_paste_shape_change)
+    dpg.add_spacer(height=2)
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=24)
+        dpg.add_text("Shift+click range, Ctrl+click toggle, Ctrl+C/V, Delete to clear.",
+                     color=COLOR_TEXT_DIM)
+    dpg.add_spacer(height=6)
+
+    # ── Cell detail panel (below the grid + paste settings) ──────────────────
+    dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
     dpg.add_spacer(height=4)
@@ -381,6 +411,9 @@ def _build_progression_tab():
                            tag="prog_octave_next_btn",
                            callback=on_prog_cell_octave_next)
 
+        dpg.add_spacer(height=4)
+        dpg.add_button(label="Show Suggestions", tag="prog_suggest_btn",
+                        width=180, height=24, callback=on_prog_show_suggestions)
         dpg.add_spacer(height=4)
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=24)
@@ -587,7 +620,7 @@ def build_ui():
     _refresh_progression()
 
     # ── Keyboard handlers ──────────────────────────────────────────────────────
-    with dpg.handler_registry():
+    with dpg.handler_registry(tag="main_handler_registry"):
         dpg.add_key_press_handler(key=dpg.mvKey_1, callback=on_key_press, user_data=0)
         dpg.add_key_press_handler(key=dpg.mvKey_2, callback=on_key_press, user_data=1)
         dpg.add_key_press_handler(key=dpg.mvKey_3, callback=on_key_press, user_data=2)
@@ -598,13 +631,44 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_8, callback=on_key_press, user_data=7)
         dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
         dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)
+        # Ctrl+Z/Y = Undo/Redo; Ctrl+C/V = Copy/Paste
+        dpg.add_key_press_handler(key=dpg.mvKey_Z, callback=_on_key_with_ctrl, user_data="undo")
+        dpg.add_key_press_handler(key=dpg.mvKey_Y, callback=_on_key_with_ctrl, user_data="redo")
+        dpg.add_key_press_handler(key=dpg.mvKey_C, callback=_on_key_with_ctrl, user_data="copy")
+        dpg.add_key_press_handler(key=dpg.mvKey_V, callback=_on_key_with_ctrl, user_data="paste")
+        # Delete key
+        dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
+        # Shift+click for multi-select is handled in the click handler
+
+    from klo_chords import dpg_keyboard
+    dpg_keyboard.setup()
 
     # ── Main loop ──────────────────────────────────────────────────────────────
     while dpg.is_dearpygui_running():
+        dpg_keyboard.poll()
         _refresh_speaker_indicators()
         dpg.render_dearpygui_frame()
 
     dpg.destroy_context()
+
+
+# ── Keyboard shortcut helpers ────────────────────────────────────────────────────
+
+
+def _on_key_with_ctrl(sender, app_data, user_data):
+    """Handle key presses that require Ctrl modifier (tracked by dpg_keyboard)."""
+    from klo_chords import dpg_keyboard
+    if not dpg_keyboard.ctrl_is_down():
+        return
+    action = user_data
+    if action == "undo":
+        on_undo()
+    elif action == "redo":
+        on_redo()
+    elif action == "copy":
+        on_prog_copy()
+    elif action == "paste":
+        on_prog_paste()
 
 
 def main():

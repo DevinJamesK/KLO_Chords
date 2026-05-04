@@ -53,7 +53,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
         return
     dpg.delete_item(canvas_tag, children_only=True)
 
-    W, H = 95, 90
+    W, H = 115, 90
     diagram = get_guitar_diagram(chord)
 
     if diagram is None:
