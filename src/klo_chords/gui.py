@@ -47,8 +47,8 @@ from klo_chords.quality import quality_symbol
 
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
-VIEWPORT_WIDTH  = 780
-VIEWPORT_HEIGHT = 960
+VIEWPORT_WIDTH  = 860
+VIEWPORT_HEIGHT = 1040
 
 WAVE_INTERNAL_TO_DISPLAY = {
     "triangle": "Triangle",
@@ -175,12 +175,14 @@ def _build_chord_tab():
                 dpg.add_spacer(height=10)
 
             # Hint about number keys — centered in left panel
-            dpg.add_spacer(height=4)
+            dpg.add_spacer(height=20)
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=24)
+                dpg.add_spacer(width=60)
                 with dpg.group():
-                    dpg.add_text("Press 1-8 to select chords.", color=COLOR_TEXT_DIM)
-                    dpg.add_text("Same chord again = stop sound.", color=COLOR_TEXT_DIM)
+                    dpg.add_text("Press 1-7 to play chords.", color=COLOR_TEXT_DIM)
+                    dpg.add_text("Press same chord again to stop sound.", color=COLOR_TEXT_DIM)
+                    dpg.add_text("Spacebar will stop the current sound.", color=COLOR_TEXT_DIM)
+                    dpg.add_text("ESC will toggle mute.", color=COLOR_TEXT_DIM)
 
         # ── Right panel ──────────────────────────────────────────────────────
         with dpg.child_window(tag="right_panel", width=-1,
