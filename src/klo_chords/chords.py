@@ -97,6 +97,56 @@ class ChordInfo:
     intervals: List[int]
 
 
+@dataclass
+class ProgCell:
+    """A single cell in the chord progression grid."""
+    root: Optional[str] = None
+    quality: str = "M"
+    inversion: int = 0
+    octave: int = 3
+    voicing_idx: int = 0
+
+    def is_empty(self) -> bool:
+        return self.root is None
+
+    def get_notes(self) -> List[str]:
+        """Return the spelled note names for this cell, accounting for inversion."""
+        if self.root is None:
+            return []
+        intervals = QUALITY_INTERVALS.get(self.quality, [0, 4, 7])
+        root_pc = note_to_pc(self.root)
+        raw_pcs = [(root_pc + i) % 12 for i in intervals]
+        # Apply inversion: rotate the chord
+        inv = self.inversion % max(1, len(raw_pcs))
+        pcs = raw_pcs[inv:] + raw_pcs[:inv]
+        style = get_accidental_style(self.root)
+        return [pc_to_note(pc, style) for pc in pcs]
+
+    def clear(self):
+        self.root = None
+        self.quality = "M"
+        self.inversion = 0
+        self.octave = 3
+        self.voicing_idx = 0
+
+
+QUALITY_INTERVALS = {
+    "M":      [0, 4, 7],
+    "m":      [0, 3, 7],
+    "dim":    [0, 3, 6],
+    "aug":    [0, 4, 8],
+    "7":      [0, 4, 7, 10],
+    "m7":     [0, 3, 7, 10],
+    "maj7":   [0, 4, 7, 11],
+    "dim7":   [0, 3, 6, 9],
+    "m7b5":   [0, 3, 6, 10],
+    "mmaj7":  [0, 3, 7, 11],
+    "aug7":   [0, 4, 8, 10],
+    "sus2":   [0, 2, 7],
+    "sus4":   [0, 5, 7],
+}
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def get_accidental_style(root_note: str) -> str:

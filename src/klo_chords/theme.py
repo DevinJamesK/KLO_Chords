@@ -51,6 +51,11 @@ def font_path() -> str:
     return _asset_path("fonts", "verdana.ttf")
 
 
+def font_path_fallback() -> str:
+    """Return the path to the JetBrains Mono fallback font."""
+    return _asset_path("fonts", "JetBrainsMono-Regular.ttf")
+
+
 def icon_path() -> str:
     """Return the path to the app icon."""
     return _asset_path("icons", "app_icon.ico")

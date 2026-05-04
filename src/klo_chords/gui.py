@@ -5,6 +5,7 @@ Builds the Dear PyGui window layout and runs the event loop.
 All logic (rendering, callbacks, state) lives in sibling modules.
 """
 
+import math
 import dearpygui.dearpygui as dpg
 import os
 
@@ -24,16 +25,17 @@ from klo_chords.state import (
     on_key_change, on_scale_change, on_sevenths_toggle,
     on_next_voicing, on_prev_voicing, on_key_press,
     on_prog_key_change, on_prog_scale_change, on_prog_sevenths_toggle,
-    on_prog_fill, on_prog_cell_click,
+    on_prog_fill, on_prog_clear_all, on_prog_cell_click,
     on_prog_cell_root_prev, on_prog_cell_root_next,
     on_prog_cell_quality_prev, on_prog_cell_quality_next,
     on_prog_cell_inversion_prev, on_prog_cell_inversion_next,
     on_prog_cell_octave_prev, on_prog_cell_octave_next,
-    on_sound_enable_toggle, on_sound_mode_change,
+    on_sound_enable_toggle,
     on_random_velocity_toggle, on_vel_min_change, on_vel_max_change,
     on_base_octave_change, on_playback_mode_change,
     on_legato_toggle, on_volume_change,
     on_wave_type_change, on_tab_change,
+    on_fretboard_mode_change, on_mute_toggle, on_stop,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
 from klo_chords.sound import get_settings as get_sound_settings
@@ -42,75 +44,128 @@ from klo_chords.quality import quality_symbol
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
 VIEWPORT_WIDTH  = 780
-VIEWPORT_HEIGHT = 1080
+VIEWPORT_HEIGHT = 960
+
+WAVE_INTERNAL_TO_DISPLAY = {
+    "triangle": "Triangle",
+    "sine": "Sine",
+    "sawtooth": "Sawtooth",
+}
+WAVE_DISPLAY_NAMES = ["Triangle", "Sine", "Sawtooth"]
+
+
+def _draw_wave_preview(internal_mode: str = "triangle"):
+    """Redraw the wave preview canvas showing ~2 periods centered."""
+    if not dpg.does_item_exist("wave_preview"):
+        return
+    dpg.delete_item("wave_preview", children_only=True)
+
+    cw, ch = 80, 28
+    mid_y = ch / 2
+    amp = ch / 2 - 3  # leave 3px margin top/bottom
+
+    # Generate 2 periods of the waveform at a nice viewing frequency
+    n_samples = 200
+    periods = 2.0
+    step = (2.0 * math.pi * periods) / n_samples
+
+    phases = [i * step for i in range(n_samples)]
+
+    if internal_mode == "sine":
+        wave = [math.sin(p) for p in phases]
+    elif internal_mode == "sawtooth":
+        wave = []
+        for p in phases:
+            t = (p % (2.0 * math.pi)) / (2.0 * math.pi)
+            wave.append(2.0 * t - 1.0)
+    else:  # triangle
+        wave = []
+        for p in phases:
+            t = (p % (2.0 * math.pi)) / (2.0 * math.pi)
+            wave.append(2.0 * abs(2.0 * t - 1.0) - 1.0)
+
+    # Normalize to canvas height with margin
+    ys = [mid_y - amp * v for v in wave]
+    xs = [i * cw / (n_samples - 1) for i in range(n_samples)]
+
+    # Draw the waveform as a polyline
+    points = []
+    for x, y in zip(xs, ys):
+        points.append(x)
+        points.append(y)
+    if len(points) >= 4:
+        dpg.draw_polyline(points, color=COLOR_ACCENT, thickness=1.5,
+                          parent="wave_preview")
 
 
 def _build_toolbar():
     """Shared toolbar — called once, at the top of the window."""
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=8)
-        dpg.add_text("Volume", color=COLOR_ACCENT)
+        dpg.add_spacer(width=6)
+        dpg.add_text("Volume")
         snd = get_sound_settings()
-        dpg.add_slider_float(tag="volume_slider",
-                              default_value=snd["volume"],
-                              min_value=0.0, max_value=1.0,
-                              width=120, callback=on_volume_change)
+        dpg.add_slider_int(tag="volume_slider",
+                           default_value=int(round(snd["volume"] * 100)),
+                           min_value=0, max_value=100,
+                           width=120, callback=on_volume_change)
         dpg.add_spacer(width=20)
-        dpg.add_text("Wave:", color=COLOR_ACCENT)
-        dpg.add_combo(items=["triangle", "sine", "sawtooth"],
-                      default_value=snd["mode"],
-                      tag="toolbar_wave_combo", width=110,
-                      callback=on_wave_type_change)
+        dpg.add_text("|", color=COLOR_TEXT_DIM)
         dpg.add_spacer(width=20)
-        dpg.add_text("Legato", color=COLOR_ACCENT)
+        dpg.add_text("Legato")
         snd2 = get_sound_settings()
         dpg.add_checkbox(label="", tag="toolbar_legato_toggle",
                           default_value=True,
                           callback=on_legato_toggle)
+        dpg.add_spacer(width=20)
+        dpg.add_text("|", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=20)
+        dpg.add_text("Wave:")
+        dpg.add_combo(items=WAVE_DISPLAY_NAMES,
+                      default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
+                      tag="toolbar_wave_combo", width=110,
+                      callback=on_wave_type_change)
+        dpg.add_spacer(width=6)
+        with dpg.drawlist(tag="wave_preview", width=80, height=28):
+            dpg.draw_rectangle([0, 0], [80, 28],
+                               fill=[0, 0, 0, 0],
+                               color=COLOR_TEXT_DIM)
+        _draw_wave_preview(snd["mode"])
+
 
 
 def _build_chord_tab():
     """Main chord theory view."""
+    # ── Key & Scale — one row across the top ────────────────────────────
+    dpg.add_spacer(height=6)
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=2)
+        dpg.add_text("Key")
+        dpg.add_spacer(width=4)
+        dpg.add_combo(items=NOTE_NAMES, default_value="C",
+                        tag="key_combo", width=50,
+                        callback=on_key_change)
+        dpg.add_spacer(width=10)
+        dpg.add_text("Scale")
+        dpg.add_combo(items=SCALE_NAMES, default_value="Major",
+                        tag="scale_combo", width=150,
+                        callback=on_scale_change)
+        dpg.add_spacer(width=6)
+        dpg.add_checkbox(label="Include 7th",
+                            tag="sevenths_toggle", default_value=False,
+                            callback=on_sevenths_toggle)
+        dpg.add_spacer(width=20)
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=10)
+            dpg.add_text("C  |  D  |  E  |  F  |  G  |  A  |  B",
+                            tag="scale_notes_text", color=COLOR_TEXT_DIM)
+    dpg.add_spacer(height=6)
+
     with dpg.group(horizontal=True):
 
-        # ── Left panel ────────────────────────────────────────────────────────
-        with dpg.child_window(tag="left_panel", width=340,
+        # ── Left panel (just the chord list) ──────────────────────────────────
+        with dpg.child_window(tag="left_panel", width=380,
                               height=-1, border=True):
-            dpg.add_text("Key & Scale", color=COLOR_ACCENT)
-            dpg.add_separator()
-            dpg.add_spacer(height=4)
-
-            with dpg.group(horizontal=True):
-                dpg.add_text("Key  ")
-                dpg.add_combo(items=NOTE_NAMES, default_value="C",
-                              tag="key_combo", width=100,
-                              callback=on_key_change)
-                dpg.add_spacer(width=10)
-                dpg.add_text("Scale")
-                dpg.add_combo(items=SCALE_NAMES, default_value="Major",
-                              tag="scale_combo", width=130,
-                              callback=on_scale_change)
-
-            dpg.add_spacer(height=4)
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(width=0)
-                dpg.add_checkbox(label="Include 7th chords",
-                                 tag="sevenths_toggle", default_value=False,
-                                 callback=on_sevenths_toggle)
-
-            dpg.add_spacer(height=8)
-            dpg.add_text("Scale Notes", color=COLOR_ACCENT)
-            dpg.add_separator()
-            dpg.add_spacer(height=2)
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(width=22)
-                dpg.add_text("C  |  D  |  E  |  F  |  G  |  A  |  B",
-                             tag="scale_notes_text", color=COLOR_TEXT_DIM)
-
-            dpg.add_spacer(height=7)
             dpg.add_text("Diatonic Chords", color=COLOR_ACCENT)
-            dpg.add_separator()
-            dpg.add_spacer(height=4)
 
             with dpg.group(tag="chord_list_scroll"):
                 dpg.add_spacer(height=10)
@@ -127,7 +182,6 @@ def _build_chord_tab():
         with dpg.child_window(tag="right_panel", width=-1,
                               height=-1, border=True):
             dpg.add_text("Chord Detail", color=COLOR_ACCENT)
-            dpg.add_separator()
             dpg.add_spacer(height=6)
 
             with dpg.group(horizontal=True):
@@ -154,37 +208,12 @@ def _build_chord_tab():
                         dpg.add_text("--", tag="detail_intervals",
                                      color=COLOR_TEXT_DIM)
                     dpg.add_spacer(height=10)
-
-            dpg.add_text("Fretboard", color=COLOR_ACCENT)
-            dpg.add_separator()
-            dpg.add_spacer(height=2)
-            dpg.add_spacer(height=4)
-
-            with dpg.drawlist(width=400, height=220,
-                              tag="fretboard_canvas"):
-                dpg.draw_rectangle([0, 0], [400, 220],
-                                   fill=COLOR_BG_LIGHT,
-                                   color=COLOR_BG_LIGHT,
-                                   tag="fretboard_bg")
-
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(width=24)
-                with dpg.group():
-                    with dpg.group(horizontal=True):
-                        dpg.add_button(label="<  Prev", width=80,
-                                       callback=on_prev_voicing)
-                        dpg.add_text("", tag="voicing_label",
-                                     color=COLOR_TEXT_DIM)
-                        dpg.add_button(label="Next  >", width=80,
-                                       callback=on_next_voicing)
-
-            dpg.add_spacer(height=10)
+            
             dpg.add_text("Keyboard", color=COLOR_ACCENT)
-            dpg.add_separator()
             dpg.add_spacer(height=6)
 
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=24)
+                dpg.add_spacer(width=20)
                 with dpg.drawlist(tag="piano_canvas",
                                   width=PIANO_CANVAS_W,
                                   height=PIANO_CANVAS_H):
@@ -193,12 +222,42 @@ def _build_chord_tab():
             # Inversion display — shows which notes are sounding
             dpg.add_spacer(height=6)
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=24)
+                dpg.add_spacer(width=20)
                 dpg.add_text("", tag="detail_inversion",
                              color=COLOR_TEXT)
                 dpg.add_spacer(width=10)
                 dpg.add_text("", tag="detail_sounding_notes",
                              color=COLOR_TEXT_DIM)
+
+            dpg.add_text("Fretboard", color=COLOR_ACCENT)
+            with dpg.group(horizontal=True):
+                with dpg.drawlist(width=360, height=220,
+                                  tag="fretboard_canvas"):
+                    dpg.draw_rectangle([0, 0], [360, 220],
+                                       fill=COLOR_BG_LIGHT,
+                                       color=COLOR_BG_LIGHT,
+                                       tag="fretboard_bg")
+
+
+            dpg.add_spacer(height=4)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=20)
+                with dpg.group():
+                    with dpg.group(horizontal=True):
+                        dpg.add_button(label="<  Prev", width=80,
+                                       callback=on_prev_voicing)
+                        dpg.add_text("", tag="voicing_label",
+                                     color=COLOR_ACCENT)
+                        dpg.add_button(label="Next  >", width=80,
+                                       callback=on_next_voicing)
+            dpg.add_spacer(height=10)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=20)
+                dpg.add_checkbox(label="Show Note Names",
+                                tag="fretboard_mode_toggle",
+                                default_value=False,
+                                callback=on_fretboard_mode_change)
+
 
 
 def _build_progression_tab():
@@ -207,33 +266,33 @@ def _build_progression_tab():
     PROG_ROWS = 4
 
     # ── Scale chooser — centered row ───────────────────────────────────────
-    # Estimate total chooser width: text + combo(100) + spacer + text + combo(130) + ... + button(100)
-    _CHOOSER_W = 560
-    _CHOOSER_PAD = 20
-
     dpg.add_spacer(height=6)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=_CHOOSER_PAD)
-        dpg.add_text("Key  ")
+        dpg.add_spacer(width=2)
+        dpg.add_text("Key")
+        dpg.add_spacer(width=4)
         dpg.add_combo(items=NOTE_NAMES, default_value="C",
-                      tag="prog_key_combo", width=100,
+                      tag="prog_key_combo", width=50,
                       callback=on_prog_key_change)
         dpg.add_spacer(width=10)
         dpg.add_text("Scale")
         dpg.add_combo(items=SCALE_NAMES, default_value="Major",
-                      tag="prog_scale_combo", width=130,
+                      tag="prog_scale_combo", width=150,
                       callback=on_prog_scale_change)
-        dpg.add_spacer(width=16)
-        dpg.add_checkbox(label="7th Chords",
+        dpg.add_spacer(width=6)
+        dpg.add_checkbox(label="Include 7th",
                          tag="prog_sevenths_toggle",
                          default_value=False,
                          callback=on_prog_sevenths_toggle)
         dpg.add_spacer(width=20)
         dpg.add_button(label="Fill Chords", width=100,
                        tag="prog_fill_btn", callback=on_prog_fill)
+        dpg.add_spacer(width=10)
+        dpg.add_button(label="Clear All", width=100,
+                       tag="prog_clear_btn", callback=on_prog_clear_all)
         
     dpg.add_spacer(height=2)
-    dpg.add_text("Chord Grid (click to edit/play)", color=COLOR_ACCENT)
+    dpg.add_text(" Chord Grid (click to edit/play)", color=COLOR_ACCENT)
     dpg.add_separator()
     dpg.add_spacer(height=8)
 
@@ -264,7 +323,7 @@ def _build_progression_tab():
 
     # ── Cell detail panel (below the grid) ──────────────────────────────────
     dpg.add_spacer(height=4)
-    dpg.add_text("Cell Detail", color=COLOR_ACCENT)
+    dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
     dpg.add_spacer(height=4)
 
@@ -352,32 +411,35 @@ def _build_sound_tab():
                           height=-1, border=True):
         dpg.add_text("Sound Settings", color=COLOR_ACCENT)
         dpg.add_separator()
-        dpg.add_spacer(height=8)
+        dpg.add_spacer(height=6)
 
         with dpg.group(horizontal=True):
+            dpg.add_spacer(width=20)
             dpg.add_checkbox(label="Enable sound",
                              tag="sound_enable", default_value=True,
                              callback=on_sound_enable_toggle)
-            dpg.add_spacer(width=16)
-            dpg.add_text("Wave type:", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=20)
+            dpg.add_text("|", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=20)
+            dpg.add_text("Wave type:")
             snd = get_sound_settings()
-            dpg.add_combo(items=["triangle", "sine", "sawtooth"],
-                          default_value=snd["mode"],
+            dpg.add_combo(items=WAVE_DISPLAY_NAMES,
+                          default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
                           tag="sound_mode_combo", width=120,
-                          callback=on_sound_mode_change)
+                          callback=on_wave_type_change)
 
         dpg.add_spacer(height=12)
         dpg.add_text("Velocity", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=16)
+            dpg.add_spacer(width=20)
             dpg.add_checkbox(label="Random velocity per note",
                              tag="random_vel", default_value=True,
                              callback=on_random_velocity_toggle)
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=40)
+            dpg.add_spacer(width=20)
             dpg.add_text("Min:", color=COLOR_TEXT_DIM)
             dpg.add_slider_int(tag="vel_min_slider",
                                default_value=60,
@@ -427,16 +489,12 @@ def _build_sound_tab():
             dpg.add_checkbox(label="Hold shared notes when switching chords",
                               tag="sound_legato_toggle", default_value=True,
                               callback=on_legato_toggle)
-        dpg.add_spacer(height=4)
+        dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=32)
+            dpg.add_spacer(width=20)
             dpg.add_text("When enabled, notes common to both chords stay held,"
                          " only the differing notes change. Smoother transitions.",
                           color=COLOR_TEXT_DIM, wrap=480)
-
-        dpg.add_spacer(height=16)
-        dpg.add_text("Sound plays automatically when you select a chord.",
-                     color=COLOR_TEXT_DIM)
 
 
 def build_ui():
@@ -455,14 +513,13 @@ def build_ui():
                     no_scrollbar=True, width=-1, height=-1):
 
         # ── Shared toolbar (visible on every page) ──────────────────────────
+        dpg.add_spacer(height=4)
         _build_toolbar()
-        dpg.add_spacer(height=4)
         dpg.add_separator()
-        dpg.add_spacer(height=4)
+        dpg.add_spacer(height=6)
 
         with dpg.tab_bar(tag="main_tab_bar",
                          callback=on_tab_change):
-
             with dpg.tab(label="Chords", tag="tab_chords"):
                 _build_chord_tab()
 
@@ -508,13 +565,28 @@ def build_ui():
                 dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
         dpg.bind_item_theme("prog_fill_btn", fill_theme)
 
+    # "Clear All" button styling (slightly different shade)
+    if dpg.does_item_exist("prog_clear_btn"):
+        with dpg.theme() as clear_theme:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(dpg.mvThemeCol_Button,
+                                    [180, 50, 50, 255])    # red bg
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,
+                                    [220, 60, 60, 255])    # lighter on hover
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,
+                                    [140, 30, 30, 255])    # darker when pressed
+                dpg.add_theme_color(dpg.mvThemeCol_Text,
+                                    [255, 255, 255, 255])   # white text
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
+        dpg.bind_item_theme("prog_clear_btn", clear_theme)
+
     # ── Initialize ──────────────────────────────────────────────────────────────
     build_piano_keys("piano_canvas")
     build_multi_octave_piano("prog_piano_canvas")
     _refresh_chords()
     _refresh_progression()
 
-    # ── Keyboard handler (number keys 1-8) ────────────────────────────────────
+    # ── Keyboard handlers ──────────────────────────────────────────────────────
     with dpg.handler_registry():
         dpg.add_key_press_handler(key=dpg.mvKey_1, callback=on_key_press, user_data=0)
         dpg.add_key_press_handler(key=dpg.mvKey_2, callback=on_key_press, user_data=1)
@@ -524,6 +596,8 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_6, callback=on_key_press, user_data=5)
         dpg.add_key_press_handler(key=dpg.mvKey_7, callback=on_key_press, user_data=6)
         dpg.add_key_press_handler(key=dpg.mvKey_8, callback=on_key_press, user_data=7)
+        dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
+        dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)
 
     # ── Main loop ──────────────────────────────────────────────────────────────
     while dpg.is_dearpygui_running():

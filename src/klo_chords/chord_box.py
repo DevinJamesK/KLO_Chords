@@ -13,8 +13,8 @@ from klo_chords.theme import (
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_BG_LIGHT,
 )
 
-CHORD_BOX_W = 154
-CHORD_BOX_H = 89
+CHORD_BOX_W = 140
+CHORD_BOX_H = 90
 
 # ── Progression grid cell dimensions ──────────────────────────────────────────
 PROG_CELL_W = 88
@@ -93,7 +93,7 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                        tag=f"prog_play_bar_{idx}", parent=canvas_tag)
 
     if cell.is_empty():
-        dpg.draw_text([PROG_CELL_W // 2 - 16, PROG_CELL_H // 2 - 6], "Empty",
+        dpg.draw_text([PROG_CELL_W // 2 - 22, PROG_CELL_H // 2 - 8], "Empty",
                       color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
         return
 
@@ -115,11 +115,6 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     dpg.draw_text([5, 44], notes_str,
                   color=COLOR_TEXT_DIM, size=13, parent=canvas_tag)
 
-    # Speaker indicator dot
-    dpg.draw_circle([PROG_CELL_W - 14, PROG_CELL_H - 12], 4,
-                    fill=COLOR_INACTIVE_SPEAKER,
-                    color=COLOR_INACTIVE_SPEAKER,
-                    tag=f"prog_spkr_dot_{idx}", parent=canvas_tag)
 
 
 def _get_degree_symbol(col: int) -> str:

@@ -22,11 +22,14 @@ from klo_chords.chord_box import (
 )
 from klo_chords.piano import (
     update_piano_keys, update_multi_octave_piano, clear_multi_octave_piano,
+    build_multi_octave_piano,
     PROG_PIANO_OCTAVES,
 )
+
 from klo_chords.sound import (
     play_chord_notes, play_progression_notes, stop_current, reset_voice_leading,
     set_base_octave, set_playback_mode, set_legato, set_volume,
+    set_mute, is_muted,
     set_mode as set_sound_mode,
     is_playing, get_current_midi_notes,
     get_settings as get_sound_settings,
@@ -182,22 +185,36 @@ def on_prog_sevenths_toggle(sender, app_data):
 
 
 def on_prog_fill(sender=None, app_data=None):
+    """Fill chords starting from the selected cell, right→down like reading."""
     global _prog_cells
     chords = get_diatonic_chords(
         _prog_key, _prog_scale, include_sevenths=_prog_sevenths
     )
-    for i in range(PROG_COLS):
-        if i < len(chords):
-            cell = _prog_cells[i]
-            cell.root = chords[i].root
-            cell.quality = chords[i].quality
-            cell.inversion = 0
-            cell.voicing_idx = 0
-        else:
-            _prog_cells[i].clear()
+    # Start filling from the selected cell, or column 0 row 0 if none selected
+    start_idx = _prog_selected_idx if _prog_selected_idx is not None else 0
+    for i, chord in enumerate(chords):
+        idx = start_idx + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        cell = _prog_cells[idx]
+        cell.root = chord.root
+        cell.quality = chord.quality
+        cell.inversion = 0
+        cell.voicing_idx = 0
     _rebuild_progression_grid()
-    # Auto-select the first cell so arrow buttons work immediately
+    # Auto-select the starting cell so arrow buttons work immediately
+    if 0 <= start_idx < PROG_CELLS_TOTAL:
+        _select_prog_cell(start_idx)
+
+
+def on_prog_clear_all(sender=None, app_data=None):
+    """Clear all cells in the progression grid."""
+    global _prog_cells
+    for cell in _prog_cells:
+        cell.clear()
+    _rebuild_progression_grid()
     _select_prog_cell(0)
+
 
 
 
@@ -372,16 +389,20 @@ def on_sound_enable_toggle(sender, app_data):
     set_enabled(app_data)
 
 
-def on_sound_mode_change(sender, app_data):
-    set_sound_mode(app_data)
-    if dpg.does_item_exist("toolbar_wave_combo"):
-        dpg.set_value("toolbar_wave_combo", app_data)
-
-
 def on_wave_type_change(sender, app_data):
-    set_sound_mode(app_data)
+    """app_data may be display name (Triangle) or internal name (triangle)."""
+    internal = app_data.lower() if app_data in ("Triangle", "Sine", "Sawtooth") else app_data
+    set_sound_mode(internal)
+    # Update both combos if they exist
+    from klo_chords.gui import WAVE_INTERNAL_TO_DISPLAY
+    display = WAVE_INTERNAL_TO_DISPLAY.get(internal, "Triangle")
     if dpg.does_item_exist("sound_mode_combo"):
-        dpg.set_value("sound_mode_combo", app_data)
+        dpg.set_value("sound_mode_combo", display)
+    if dpg.does_item_exist("toolbar_wave_combo"):
+        dpg.set_value("toolbar_wave_combo", display)
+    # Redraw wave preview
+    from klo_chords.gui import _draw_wave_preview
+    _draw_wave_preview(internal)
 
 
 def on_random_velocity_toggle(sender, app_data):
@@ -418,7 +439,65 @@ def on_legato_toggle(sender, app_data):
 
 
 def on_volume_change(sender, app_data):
-    set_volume(app_data)
+    """Volume slider changed. app_data is 0-100 percentage."""
+    # Convert percentage (0-100) to internal 0.0-1.0
+    set_volume(app_data / 100.0)
+    # Update slider color based on mute state
+    if dpg.does_item_exist("volume_slider"):
+        if app_data <= 0:
+            dpg.configure_item("volume_slider", default_value=0)
+        # Update the mute theme
+        if is_muted() and app_data > 0:
+            # Unmute was triggered by slider movement
+            set_mute(False)
+            _update_volume_theme(False)
+
+
+def on_mute_toggle(sender=None, app_data=None):
+    """Toggle mute on/off. ESC key triggers this."""
+    currently_muted = is_muted()
+    set_mute(not currently_muted)
+    if dpg.does_item_exist("volume_slider"):
+        if is_muted():
+            dpg.set_value("volume_slider", 0)
+        else:
+            # Restore to stored volume percentage
+            from klo_chords.sound import get_settings
+            vol = get_settings()["volume"]
+            dpg.set_value("volume_slider", int(round(vol * 100)))
+    _update_volume_theme(is_muted())
+
+
+def on_fretboard_mode_change(sender, app_data):
+    """Toggle fretboard between fret numbers and note names."""
+    from klo_chords.fretboard import set_fretboard_mode, get_fretboard_mode
+    mode = get_fretboard_mode()
+    new_mode = "note" if mode == "fret" else "fret"
+    set_fretboard_mode(new_mode)
+    if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
+        chord = _current_chords[_selected_chord_idx]
+        draw_fretboard(chord, _current_voicing_idx)
+    _rebuild_chord_list()
+
+
+def on_stop(sender=None, app_data=None):
+    """Stop any currently playing chord (spacebar handler)."""
+    stop_current()
+
+
+def _update_volume_theme(muted: bool):
+    """Update the volume slider theme to red when muted."""
+    if not dpg.does_item_exist("volume_slider"):
+        return
+    if muted:
+        with dpg.theme() as mute_theme:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_color(dpg.mvThemeCol_FrameBg, [80, 20, 20, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_SliderGrab, [200, 40, 40, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_SliderGrabActive, [255, 60, 60, 255])
+        dpg.bind_item_theme("volume_slider", mute_theme)
+    else:
+        dpg.bind_item_theme("volume_slider", None)
 
 
 def _get_vel_min() -> int:
@@ -436,9 +515,11 @@ def _update_voicing_label(chord):
     num_v = len(voicings)
     v_idx_display = min(_current_voicing_idx, num_v - 1) if num_v > 0 else 0
     if num_v > 1:
-        label = f"  {v_idx_display + 1}/{num_v}  "
+        label = f"  {v_idx_display + 1}/{num_v}"
     else:
-        label = "  1/1  " if num_v == 1 else "  ---  "
+        label = "  1/1" if num_v == 1 else "  ---"
+    # Pad to constant width so layout doesn't shift (e.g. "1/3" vs "1/10")
+    label = label.ljust(8)
     if dpg.does_item_exist("voicing_label"):
         dpg.set_value("voicing_label", label)
 
@@ -486,18 +567,16 @@ def _rebuild_chord_list():
     with dpg.group(parent="chord_list_scroll", tag="chord_list_group"):
         for i, chord in enumerate(_current_chords):
             with dpg.group(horizontal=True, tag="chord_row_" + str(i)):
-                dpg.add_spacer(width=4)
+                dpg.add_spacer(width=6)
                 with dpg.drawlist(tag="chord_degree_dl_" + str(i),
                                   width=40, height=90):
-                    dpg.draw_text([0, 12], chord.degree,
-                                  color=COLOR_ACCENT, size=24)
-                    dpg.draw_circle([30, 78], 4,
-                                    fill=COLOR_INACTIVE_SPEAKER,
-                                    color=COLOR_INACTIVE_SPEAKER,
-                                    tag="spkr_dot_" + str(i))
+                    dpg.draw_text([0, 8], chord.degree,
+                                  color=COLOR_ACCENT, size=18)
+                dpg.add_spacer(width=6)
                 with dpg.drawlist(tag="chord_box_" + str(i),
-                                  width=155, height=90):
+                                  width=140, height=90):
                     pass
+                dpg.add_spacer(width=6)
                 with dpg.drawlist(tag="tab_canvas_" + str(i),
                                   width=95, height=90):
                     pass
@@ -530,16 +609,28 @@ def _refresh_prog_cell(idx: int):
 
 
 def _update_prog_piano(cell: ProgCell):
-    """Update the multi-octave piano with root-position voicing matching play_progression_notes."""
+    """Update the multi-octave piano with root-position voicing matching play_progression_notes.
+    
+    The piano canvas is rebuilt to center around the cell's octave so the chord
+    appears in the middle of the keyboard.
+    """
     notes = cell.get_notes()
     if not notes:
-        clear_multi_octave_piano("prog_piano_canvas")
+        clear_multi_octave_piano("prog_piano_canvas", start_octave=3)
         if dpg.does_item_exist("prog_detail_inv_name"):
             dpg.set_value("prog_detail_inv_name", "")
         return
 
     base_oct = cell.octave
     centre = base_oct * 12 + 21
+
+    # Show 2 octaves with the chord's octave on the left, one octave of context on the right
+    # e.g. chord octave 3 → shows octaves 3 & 4
+    start_octave = max(3, base_oct + 1)
+
+    if dpg.does_item_exist("prog_piano_canvas"):
+        dpg.delete_item("prog_piano_canvas", children_only=True)
+        build_multi_octave_piano("prog_piano_canvas", start_octave=start_octave)
 
     pcs = [note_to_pc(n) for n in notes]
 
@@ -577,13 +668,15 @@ def _update_prog_piano(cell: ProgCell):
 
     bass_midi = min(midi_notes) if midi_notes else -1
 
-    update_multi_octave_piano("prog_piano_canvas", midi_notes, bass_midi)
+    update_multi_octave_piano("prog_piano_canvas", midi_notes, bass_midi,
+                              start_octave=start_octave)
 
     root_pc = note_to_pc(cell.root) if cell.root else -1
     inv_name = _get_inversion_name(root_pc, bass_midi % 12)
     if dpg.does_item_exist("prog_detail_inv_name"):
         notes_str = "  ".join(_midi_to_note_name(m) for m in midi_notes)
         dpg.set_value("prog_detail_inv_name", f"{inv_name}  ({notes_str})")
+
 
 
 def _update_prog_detail(idx: int):
@@ -740,16 +833,7 @@ def _refresh_speaker_indicators():
     playing = is_playing()
 
     for i in range(len(_current_chords)):
-        dot_tag = "spkr_dot_" + str(i)
-        if not dpg.does_item_exist(dot_tag):
-            continue
         is_sounding = playing and _selected_chord_idx == i
-        if is_sounding:
-            blink_on = (_speaker_frame_count % 6) < 4
-            fill = COLOR_ACTIVE_SPEAKER if blink_on else COLOR_INACTIVE_SPEAKER
-        else:
-            fill = COLOR_INACTIVE_SPEAKER
-        dpg.configure_item(dot_tag, fill=fill, color=fill)
         bar_tag = "chord_play_bar_" + str(i)
         if dpg.does_item_exist(bar_tag):
             try:
@@ -758,16 +842,7 @@ def _refresh_speaker_indicators():
                 pass
 
     for i in range(PROG_CELLS_TOTAL):
-        dot_tag = "prog_spkr_dot_" + str(i)
-        if not dpg.does_item_exist(dot_tag):
-            continue
         is_sounding = playing and _prog_sounding_idx == i
-        if is_sounding:
-            blink_on = (_speaker_frame_count % 6) < 4
-            fill = COLOR_ACTIVE_SPEAKER if blink_on else COLOR_INACTIVE_SPEAKER
-        else:
-            fill = COLOR_INACTIVE_SPEAKER
-        dpg.configure_item(dot_tag, fill=fill, color=fill)
         bar_tag = "prog_play_bar_" + str(i)
         if dpg.does_item_exist(bar_tag):
             try:

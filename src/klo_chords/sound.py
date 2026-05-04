@@ -227,7 +227,25 @@ _random_velocity = True          # ON by default
 _velocity_min    = 60
 _velocity_max    = 100
 _base_octave     = 3
-_volume          = 0.75           # global volume 0-1, scales the master amp
+_volume               = 0.75           # global volume 0-1, scales the master amp
+_volume_before_mute   = 75             # volume percentage before muting (0-100)
+
+
+def set_mute(val: bool):
+    """Mute/unmute audio. Saves current volume before muting, restores on unmute."""
+    global _volume, _volume_before_mute
+    if val:
+        # Muting — save current volume
+        _volume_before_mute = int(round(_volume * 100))
+        _volume = 0.0
+    else:
+        # Unmuting — restore saved volume
+        _volume = max(0.0, min(1.0, _volume_before_mute / 100.0))
+
+
+def is_muted() -> bool:
+    """Return True if volume is effectively zero (muted)."""
+    return _volume <= 0.0
 
 
 def _get_wave_fn():
@@ -442,6 +460,60 @@ def play_chord_notes(notes: List[str]):
     if not _sound_enabled or not notes:
         return
     freqs, amps = _get_freqs_and_amps(notes)
+    _current_notes = list(notes)
+    _engine.start()
+    _engine.play_notes(freqs, amps, notes)
+
+
+def play_progression_notes(notes: List[str], base_octave: int = 3):
+    """Play chord notes for the progression tab with root-position voicing."""
+    global _current_notes
+    if not _sound_enabled or not notes:
+        return
+    # Use root-position stacking based on base_octave
+    centre = base_octave * 12 + 21
+    pcs = [note_to_pc(n) for n in notes]
+    midi_notes = []
+    for i, pc in enumerate(pcs):
+        if i == 0:
+            best = pc + 12
+            best_dist = abs(best - centre)
+            for octave in range(0, 9):
+                midi = pc + 12 * octave
+                dist = abs(midi - centre)
+                if dist < best_dist:
+                    best_dist = dist
+                    best = midi
+        else:
+            best = midi_notes[i - 1] + 3
+            best_dist = abs(best - (midi_notes[i - 1] + 5))
+            for octave in range(0, 9):
+                midi = pc + 12 * octave
+                if midi >= midi_notes[i - 1] + 3 and midi <= midi_notes[i - 1] + 8:
+                    best_dist = 0
+                    best = midi
+                    break
+                elif midi > midi_notes[i - 1] + 3 and midi - (midi_notes[i - 1] + 5) < best_dist:
+                    best_dist = abs(midi - (midi_notes[i - 1] + 5))
+                    best = midi
+        midi_notes.append(best)
+
+    if midi_notes:
+        avg = sum(midi_notes) // len(midi_notes)
+        drift = avg - centre
+        if abs(drift) > 6:
+            midi_notes = [m + (-12 if drift > 6 else 12) for m in midi_notes]
+
+    freqs = [_midi_to_frequency(m) for m in midi_notes]
+    amps = []
+    for freq in freqs:
+        if _random_velocity:
+            vel = random.randint(_velocity_min, _velocity_max) / 127.0
+        else:
+            vel = 0.7
+        amp = vel * _equal_loudness_gain(freq)
+        amps.append(amp)
+
     _current_notes = list(notes)
     _engine.start()
     _engine.play_notes(freqs, amps, notes)
