@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.2] - 2026-05-03
+
+### Changed
+- **Base font size** — increased from 16 to 20 for improved readability across the entire app
+- **All `draw_text` font sizes** — increased proportionally in `chord_box.py`, `fretboard.py`, and `state.py` (title: 20→24, notes: 16→18, grid cell text: 11-14→13-16, fretboard text: 12→14+)
+
+### Fixed
+- **Progression tab key/scale chooser off-center** — added proper centering calculation with `_CHOOSER_PAD`
+- **Progression grid slightly right** — removed arbitrary `-14` fudge factor from `GRID_PAD` calculation, removed trailing spacer after last cell in each row
+- **Cell details too close to left wall** — added `24px` left padding to all detail controls (Selected, Root, Quality, Inversion, Octave, Notes)
+- **Piano slightly left on progression tab** — removed arbitrary `-60` fudge factor from `_piano_pad` calculation
+
+## [0.3.1] - 2026-05-03
+
+### Added
+- **8×4 progression grid** — clickable cells with degree, name, and notes display
+- **ProgCell dataclass** — stores root, quality, and inversion per progression cell
+- **Cell detail panel** — root/quality/inversion combos for editing any progression cell
+- **draw_prog_cell()** — compact grid cell renderer in `chord_box.py` with speaker dot and play bar
+- **Progression tab keyboard support** — keys 1-8 select/play cells from the first row
+- **Tab-aware keyboard routing** — number keys only work on the active tab
+- **Tab-switch sound stop** — sound stops when switching between tabs
+
+### Changed
+- **Progression tab** — redesigned from horizontal slot list to 8×4 grid with edit controls
+- **Sound playback for progression cells** — uses cell's stored notes directly (no auto voice-leading)
+- **"Press 1-8" text** — centered in left panel of chord tab
+- **"Include 7th chords" checkbox** — aligned with combo boxes above using spacer
+- **Sound settings layout** — consistent margins and indentation throughout
+- **Speaker indicators** — now also handle progression cell dots and play bars
+
 ## [0.3.0] - 2026-05-03
 
 ### Added

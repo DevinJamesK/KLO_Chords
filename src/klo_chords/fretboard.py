@@ -25,7 +25,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
 
     if diagram is None:
         dpg.draw_text([W // 2 - 28, H // 2 - 5], "no diagram",
-                      color=COLOR_TEXT_DIM, size=12, parent=canvas_tag)
+                      color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
         return
 
     x0, y0 = 6, 14
@@ -46,7 +46,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
                       parent=canvas_tag)
         if f == 0 and start_fret > 0:
             dpg.draw_text([x0 + 5 * str_gap + 2, y0 + 2],
-                          str(start_fret), color=COLOR_TEXT_DIM, size=11,
+                          str(start_fret), color=COLOR_TEXT_DIM, size=13,
                           parent=canvas_tag)
 
     for s in range(6):
@@ -63,10 +63,10 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
         x = x0 + s_idx * str_gap
         if fret is None:
             dpg.draw_text([x - 4, y0 - 10], "X",
-                          color=COLOR_MUTED, size=12, parent=canvas_tag)
+                          color=COLOR_MUTED, size=14, parent=canvas_tag)
         elif fret == 0:
             dpg.draw_text([x - 4, y0 - 10], "O",
-                          color=COLOR_OPEN, size=12, parent=canvas_tag)
+                          color=COLOR_OPEN, size=14, parent=canvas_tag)
         else:
             dot_y = y0 + (fret - max(start_fret, 1)) * fret_gap
             circle_cy = dot_y + fret_gap / 2
@@ -76,7 +76,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
                             fill=col, color=[0, 0, 0, 0],
                             parent=canvas_tag)
             dpg.draw_text([x - 4, circle_cy - 5],
-                          str(fret), color=[20, 20, 30, 255], size=12,
+                          str(fret), color=[20, 20, 30, 255], size=14,
                           parent=canvas_tag)
 
 
@@ -93,7 +93,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
 
     if diagram is None:
         dpg.draw_text([cw // 2 - 60, ch // 2 - 8], "No diagram available",
-                      color=COLOR_TEXT_DIM, size=16, parent="fretboard_canvas")
+                      color=COLOR_TEXT_DIM, size=18, parent="fretboard_canvas")
         return
 
     string_spacing = cw / 9
@@ -116,7 +116,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
         if f == 0 and start_fret > 0:
             dpg.draw_text([x_start + 5 * string_spacing + 4,
                            y_start + fret_spacing / 3],
-                          str(start_fret), color=COLOR_TEXT_DIM, size=16,
+                          str(start_fret), color=COLOR_TEXT_DIM, size=18,
                           parent="fretboard_canvas")
 
     for s in range(6):
@@ -135,11 +135,11 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
         x = x_start + s_idx * string_spacing
         if fret is None:
             dpg.draw_text([x - 5, y_start - 18], "X",
-                          color=COLOR_MUTED, size=14,
+                          color=COLOR_MUTED, size=16,
                           parent="fretboard_canvas")
         elif fret == 0:
             dpg.draw_text([x - 5, y_start - 18], "O",
-                          color=COLOR_OPEN, size=14,
+                          color=COLOR_OPEN, size=16,
                           parent="fretboard_canvas")
         else:
             dot_y = y_start + (fret - max(start_fret, 1)) * fret_spacing
@@ -150,11 +150,11 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
                             fill=dot_color, color=[0, 0, 0, 0],
                             parent="fretboard_canvas")
             dpg.draw_text([x - 6, circle_cy - 8],
-                          str(fret), color=[20, 20, 30, 255], size=18,
+                          str(fret), color=[20, 20, 30, 255], size=20,
                           parent="fretboard_canvas")
 
     for s_idx, sname in enumerate(["E", "A", "D", "G", "B", "e"]):
         x = x_start + s_idx * string_spacing
         dpg.draw_text([x - 4, y_start + fret_count * fret_spacing + 6],
-                      sname, color=COLOR_TEXT, size=12,
+                      sname, color=COLOR_TEXT, size=14,
                       parent="fretboard_canvas")

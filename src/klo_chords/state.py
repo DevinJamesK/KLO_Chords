@@ -10,16 +10,22 @@ from typing import List, Optional, Set
 import dearpygui.dearpygui as dpg
 
 from klo_chords.chords import (
-    ChordInfo,
+    ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS,
     get_diatonic_chords, get_all_voicings,
     get_scale_notes, note_to_pc, pc_to_note,
 )
 from klo_chords.quality import quality_spelled, quality_symbol
 from klo_chords.fretboard import draw_fretboard, draw_mini_fretboard
-from klo_chords.chord_box import draw_chord_label
-from klo_chords.piano import update_piano_keys
+from klo_chords.chord_box import (
+    draw_chord_label, draw_prog_cell,
+    PROG_QUALITY_MAP, PROG_QUALITY_REVERSE_MAP, PROG_QUALITY_NAMES,
+)
+from klo_chords.piano import (
+    update_piano_keys, update_multi_octave_piano, clear_multi_octave_piano,
+    PROG_PIANO_OCTAVES,
+)
 from klo_chords.sound import (
-    play_chord_notes, stop_current, reset_voice_leading,
+    play_chord_notes, play_progression_notes, stop_current, reset_voice_leading,
     set_base_octave, set_playback_mode, set_legato, set_volume,
     set_mode as set_sound_mode,
     is_playing, get_current_midi_notes,
@@ -31,21 +37,21 @@ from klo_chords.theme import (
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER,
 )
 
-_NOTE_NAMES_OCTAVE = {
-    12: "C", 13: "C#", 14: "D", 15: "D#", 16: "E", 17: "F",
-    18: "F#", 19: "G", 20: "G#", 21: "A", 22: "A#", 23: "B",
-}
+# ── Constants ──────────────────────────────────────────────────────────────────
+PROG_COLS = 7
+PROG_ROWS = 4
+PROG_CELLS_TOTAL = PROG_COLS * PROG_ROWS  # 28
 
 
 def _midi_to_note_name(midi: int) -> str:
-    """Convert MIDI note number to name+octave, e.g. 60 → 'C4'."""
+    """Convert MIDI note number to name+octave, e.g. 60 -> 'C4'."""
     pc = midi % 12
     octave = midi // 12 - 1
     name = pc_to_note(pc)
     return f"{name}{octave}"
 
 
-# ── Global state ─────────────────────────────────────────────────────────────────
+# ── Global state ────────────────────────────────────────────────────────────────
 _current_key          = "C"
 _current_scale        = "Major"
 _current_chords:      List[ChordInfo] = []
@@ -55,38 +61,54 @@ _current_voicing_idx: int = 0
 _current_scale_pcs:   Set[int] = set()
 _current_chord_pcs:   Set[int] = set()
 
-# ── Progression state ────────────────────────────────────────────────────────────
+# ── Progression state ───────────────────────────────────────────────────────────
 _prog_key       = "C"
 _prog_scale     = "Major"
 _prog_sevenths  = False
-_prog_chords:   List[Optional[ChordInfo]] = [None] * 8
+_prog_cells:    List[ProgCell] = [ProgCell() for _ in range(PROG_CELLS_TOTAL)]
+_prog_selected_idx: Optional[int] = None
 
-# Speaker indicator frame counter
-_speaker_frame_count = 0
+_current_tab          = "tab_chords"
+_speaker_frame_count  = 0
+_prog_sounding_idx: Optional[int] = None
 
 
 def state() -> dict:
-    """Return a snapshot of the current state (for introspection)."""
     return dict(
-        key=_current_key,
-        scale=_current_scale,
-        chords=_current_chords,
-        sevenths=_include_sevenths,
-        selected=_selected_chord_idx,
-        voicing=_current_voicing_idx,
-        scale_pcs=_current_scale_pcs,
-        chord_pcs=_current_chord_pcs,
+        key=_current_key, scale=_current_scale,
+        chords=_current_chords, sevenths=_include_sevenths,
+        selected=_selected_chord_idx, voicing=_current_voicing_idx,
+        scale_pcs=_current_scale_pcs, chord_pcs=_current_chord_pcs,
     )
 
 
+# ── Play helpers ─────────────────────────────────────────────────────────────────
+
 def _play_current_chord():
-    """Play the notes of the currently selected chord via sound module."""
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
-        chord = _current_chords[_selected_chord_idx]
-        play_chord_notes(chord.notes)
+        play_chord_notes(_current_chords[_selected_chord_idx].notes)
 
 
-# ── Chord tab callbacks ──────────────────────────────────────────────────────────
+def _play_prog_cell(idx: int):
+    global _prog_sounding_idx
+    if 0 <= idx < len(_prog_cells):
+        cell = _prog_cells[idx]
+        if not cell.is_empty():
+            notes = cell.get_notes()
+            if notes:
+                play_progression_notes(notes, base_octave=cell.octave)
+                _prog_sounding_idx = idx
+
+
+# ── Tab switching ────────────────────────────────────────────────────────────────
+
+def on_tab_change(sender, app_data):
+    global _current_tab
+    stop_current()
+    _current_tab = app_data
+
+
+# ── Chord tab callbacks ─────────────────────────────────────────────────────────
 
 def on_key_change(sender, app_data):
     global _current_key, _current_voicing_idx
@@ -142,61 +164,205 @@ def on_prev_voicing(sender=None, app_data=None):
     _update_voicing_label(chord)
 
 
-# ── Progression tab callbacks ────────────────────────────────────────────────────
+# ── Progression tab callbacks ───────────────────────────────────────────────────
 
 def on_prog_key_change(sender, app_data):
     global _prog_key
     _prog_key = app_data
-    _rebuild_progression_palette()
 
 
 def on_prog_scale_change(sender, app_data):
     global _prog_scale
     _prog_scale = app_data
-    _rebuild_progression_palette()
 
 
 def on_prog_sevenths_toggle(sender, app_data):
     global _prog_sevenths
     _prog_sevenths = app_data
-    _rebuild_progression_palette()
 
 
 def on_prog_fill(sender=None, app_data=None):
-    """Fill the progression slots from the current diatonic scale."""
-    global _prog_chords
+    global _prog_cells
     chords = get_diatonic_chords(
         _prog_key, _prog_scale, include_sevenths=_prog_sevenths
     )
-    _prog_chords = [None] * 8
-    for i, c in enumerate(chords[:8]):
-        _prog_chords[i] = c
-    _rebuild_progression_palette()
+    for i in range(PROG_COLS):
+        if i < len(chords):
+            cell = _prog_cells[i]
+            cell.root = chords[i].root
+            cell.quality = chords[i].quality
+            cell.inversion = 0
+            cell.voicing_idx = 0
+        else:
+            _prog_cells[i].clear()
+    _rebuild_progression_grid()
+    # Auto-select the first cell so arrow buttons work immediately
+    _select_prog_cell(0)
 
 
-def on_prog_slot_click(sender, app_data, user_data):
-    """Handle click on a progression chord slot."""
+
+def on_prog_cell_click(sender, app_data, user_data):
     idx = user_data
-    if 0 <= idx < len(_prog_chords) and _prog_chords[idx] is not None:
-        play_chord_notes(_prog_chords[idx].notes)
+    if 0 <= idx < len(_prog_cells):
+        _select_prog_cell(idx)
+        _play_prog_cell(idx)
 
 
-_prog_last_clicked = -1
+# ── Arrow button callbacks ─────────────────────────────────────────────────────
+
+def on_prog_cell_root_prev(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    else:
+        idx = NOTE_NAMES.index(cell.root) if cell.root in NOTE_NAMES else 0
+        cell.root = NOTE_NAMES[(idx - 1) % 12]
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
 
 
-# ── Keyboard callback (number keys 1-8) ──────────────────────────────────────────
+def on_prog_cell_root_next(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    else:
+        idx = NOTE_NAMES.index(cell.root) if cell.root in NOTE_NAMES else 0
+        cell.root = NOTE_NAMES[(idx + 1) % 12]
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+def on_prog_cell_quality_prev(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    else:
+        current_display = PROG_QUALITY_REVERSE_MAP.get(cell.quality, "Major")
+        idx = PROG_QUALITY_NAMES.index(current_display) if current_display in PROG_QUALITY_NAMES else 0
+        new_display = PROG_QUALITY_NAMES[(idx - 1) % len(PROG_QUALITY_NAMES)]
+        cell.quality = PROG_QUALITY_MAP.get(new_display, "M")
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+def on_prog_cell_quality_next(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    else:
+        current_display = PROG_QUALITY_REVERSE_MAP.get(cell.quality, "Major")
+        idx = PROG_QUALITY_NAMES.index(current_display) if current_display in PROG_QUALITY_NAMES else 0
+        new_display = PROG_QUALITY_NAMES[(idx + 1) % len(PROG_QUALITY_NAMES)]
+        cell.quality = PROG_QUALITY_MAP.get(new_display, "M")
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+def on_prog_cell_inversion_prev(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    intervals = QUALITY_INTERVALS.get(cell.quality, [0, 4, 7])
+    max_inv = max(0, len(intervals) - 1)
+    if max_inv > 0:
+        if cell.inversion == 0:
+            cell.inversion = max_inv
+            cell.octave -= 1  # wrap down → go down an octave
+        else:
+            cell.inversion -= 1
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+def on_prog_cell_inversion_next(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    intervals = QUALITY_INTERVALS.get(cell.quality, [0, 4, 7])
+    max_inv = max(0, len(intervals) - 1)
+    if max_inv > 0:
+        if cell.inversion == max_inv:
+            cell.inversion = 0
+            cell.octave += 1  # wrap around → go up an octave
+        else:
+            cell.inversion += 1
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+def on_prog_cell_octave_prev(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    cell.octave = max(0, cell.octave - 1)
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+def on_prog_cell_octave_next(sender=None, app_data=None):
+    if _prog_selected_idx is None:
+        return
+    cell = _prog_cells[_prog_selected_idx]
+    if cell.is_empty():
+        cell.root = "C"
+        cell.quality = "M"
+    cell.octave = min(8, cell.octave + 1)
+    _refresh_prog_cell(_prog_selected_idx)
+    _update_prog_detail(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx)
+
+
+# ── Degree helper ────────────────────────────────────────────────────────────────
+
+def _get_degree_for_col(col: int) -> str:
+    degrees = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°']
+    return degrees[col] if 0 <= col < len(degrees) else '?'
+
+
+# ── Keyboard callback ────────────────────────────────────────────────────────────
 
 def on_key_press(sender, app_data, user_data):
-    """Handle number key presses (1-8) to select chords.
-
-    user_data contains the chord index (0-7).
-    """
-    idx = user_data
-    if 0 <= idx < len(_current_chords):
-        global _current_voicing_idx
-        _current_voicing_idx = 0
-        _select_chord(idx)
-        _play_current_chord()
+    global _current_tab
+    if _current_tab == "tab_chords":
+        idx = user_data
+        if 0 <= idx < len(_current_chords):
+            global _current_voicing_idx
+            _current_voicing_idx = 0
+            _select_chord(idx)
+            _play_current_chord()
+    elif _current_tab == "tab_progression":
+        idx = user_data
+        if idx < PROG_COLS and idx < len(_prog_cells):
+            _select_prog_cell(idx)
+            _play_prog_cell(idx)
 
 
 # ── Sound setting callbacks ──────────────────────────────────────────────────────
@@ -208,15 +374,12 @@ def on_sound_enable_toggle(sender, app_data):
 
 def on_sound_mode_change(sender, app_data):
     set_sound_mode(app_data)
-    # Keep toolbar in sync
     if dpg.does_item_exist("toolbar_wave_combo"):
         dpg.set_value("toolbar_wave_combo", app_data)
 
 
 def on_wave_type_change(sender, app_data):
-    """Change wave type from toolbar combo."""
     set_sound_mode(app_data)
-    # Keep sound tab in sync
     if dpg.does_item_exist("sound_mode_combo"):
         dpg.set_value("sound_mode_combo", app_data)
 
@@ -228,40 +391,26 @@ def on_random_velocity_toggle(sender, app_data):
 
 def on_vel_min_change(sender, app_data):
     from klo_chords.sound import set_velocity_range
-    vmax = _get_vel_max()
-    set_velocity_range(app_data, vmax)
+    set_velocity_range(app_data, _get_vel_max())
 
 
 def on_vel_max_change(sender, app_data):
     from klo_chords.sound import set_velocity_range
-    vmin = _get_vel_min()
-    set_velocity_range(vmin, app_data)
+    set_velocity_range(_get_vel_min(), app_data)
 
 
 def on_base_octave_change(sender, app_data):
-    """Change the base octave for chord voicing."""
     set_base_octave(app_data)
 
 
 def on_playback_mode_change(sender, app_data):
-    """Change playback mode: Toggle/Latch, One-Shot.
-    
-    Releases all currently playing notes and resets voice leading
-    so the next chord uses fresh voicing.
-    """
-    mode_map = {
-        "Toggle/Latch": "toggle",
-        "One-Shot": "oneshot",
-    }
-    internal = mode_map.get(app_data, "toggle")
-    set_playback_mode(internal)
+    mode_map = {"Toggle/Latch": "toggle", "One-Shot": "oneshot"}
+    set_playback_mode(mode_map.get(app_data, "toggle"))
     reset_voice_leading()
 
 
 def on_legato_toggle(sender, app_data):
-    """Toggle legato mode (hold shared notes)."""
     set_legato(app_data)
-    # Sync toolbar and sound tab checkboxes
     if dpg.does_item_exist("toolbar_legato_toggle"):
         dpg.set_value("toolbar_legato_toggle", app_data)
     if dpg.does_item_exist("sound_legato_toggle"):
@@ -269,18 +418,15 @@ def on_legato_toggle(sender, app_data):
 
 
 def on_volume_change(sender, app_data):
-    """Change global volume."""
     set_volume(app_data)
 
 
 def _get_vel_min() -> int:
-    s = get_sound_settings()
-    return s["vel_min"]
+    return get_sound_settings()["vel_min"]
 
 
 def _get_vel_max() -> int:
-    s = get_sound_settings()
-    return s["vel_max"]
+    return get_sound_settings()["vel_max"]
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────────
@@ -297,56 +443,17 @@ def _update_voicing_label(chord):
         dpg.set_value("voicing_label", label)
 
 
-def _compute_midi_for_chord() -> List[int]:
-    """Compute the expected MIDI note numbers for the selected chord
-    using the same voice-leading logic as the sound engine,
-    so the inversion display works even when sound is off."""
-    from klo_chords.sound import get_settings as _gs
-    if _selected_chord_idx is None or _selected_chord_idx >= len(_current_chords):
-        return []
-    chord = _current_chords[_selected_chord_idx]
-    s = _gs()
-    base_oct = s["base_octave"]
-    anchor = base_oct * 12 + 21  # C in that octave
-    pcs = [note_to_pc(n) for n in chord.notes]
-    result = []
-    for i, pc in enumerate(pcs):
-        target = anchor
-        if len(pcs) > 1:
-            target = anchor - 12 + (i * 24 // (len(pcs) - 1))
-        # Find closest MIDI to target
-        candidates = [pc + 12 * o for o in range(1, 8)]
-        best = min(candidates, key=lambda m: abs(m - target))
-        result.append(best)
-    result.sort()
-    return result
-
-
 def _get_inversion_name(root_pc: int, bass_pc: int) -> str:
-    """Return the inversion name based on root pitch-class and bass pitch-class.
-    
-    Handles both triads and 7th chords:
-      Root = bass is root (0)
-      1st  = bass is 3rd (3 or 4 semitones from root)
-      2nd  = bass is 5th (7 semitones from root)
-      3rd  = bass is 7th (10 or 11 semitones from root)
-    """
     for offset, name in [
-        (0, "Root Position"),
-        (3, "1st Inversion"),
-        (4, "1st Inversion"),
-        (7, "2nd Inversion"),
-        (10, "3rd Inversion"),
-        (11, "3rd Inversion"),
+        (0, "Root Position"), (3, "1st Inversion"), (4, "1st Inversion"),
+        (7, "2nd Inversion"), (10, "3rd Inversion"), (11, "3rd Inversion"),
     ]:
         if bass_pc == (root_pc + offset) % 12:
             return name
-    return "?"  # shouldn't happen for valid chords
+    return "?"
 
 
 def _update_inversion_display():
-    """Update the inversion name and sounding notes below the keyboard.
-     on shows when sound is actually playing (determined by is_playing())."""
     midi_notes = get_current_midi_notes() if is_playing() else []
     if not midi_notes or not dpg.does_item_exist("detail_inversion"):
         if dpg.does_item_exist("detail_inversion"):
@@ -355,19 +462,13 @@ def _update_inversion_display():
             dpg.set_value("detail_sounding_notes", "")
         return
 
-    # Get note names
     note_names = [_midi_to_note_name(m) for m in midi_notes]
-
-    # Determine inversion from actual bass note vs chord root
     chord = _current_chords[_selected_chord_idx] if (_selected_chord_idx is not None and _selected_chord_idx < len(_current_chords)) else None
     if chord:
         root_pc = note_to_pc(chord.root)
         bass_pc = midi_notes[0] % 12
-        inv_name = _get_inversion_name(root_pc, bass_pc)
-
-        notes_str = "  ".join(note_names)
-        dpg.set_value("detail_inversion", inv_name)
-        dpg.set_value("detail_sounding_notes", f"({notes_str})")
+        dpg.set_value("detail_inversion", _get_inversion_name(root_pc, bass_pc))
+        dpg.set_value("detail_sounding_notes", "  ".join(note_names))
     else:
         dpg.set_value("detail_inversion", "")
         dpg.set_value("detail_sounding_notes", "")
@@ -389,8 +490,7 @@ def _rebuild_chord_list():
                 with dpg.drawlist(tag="chord_degree_dl_" + str(i),
                                   width=40, height=90):
                     dpg.draw_text([0, 12], chord.degree,
-                                  color=COLOR_ACCENT, size=20)
-                    # Speaker indicator dot — visible even when inactive
+                                  color=COLOR_ACCENT, size=24)
                     dpg.draw_circle([30, 78], 4,
                                     fill=COLOR_INACTIVE_SPEAKER,
                                     color=COLOR_INACTIVE_SPEAKER,
@@ -419,42 +519,124 @@ def _rebuild_chord_list():
         _select_chord(0)
 
 
-def _rebuild_progression_palette():
-    """Build/rebuild the 8 large chord slots in the Progression tab."""
-    # Clear old palette items
-    i = 0
-    while dpg.does_item_exist("prog_slot_" + str(i)):
-        dpg.delete_item("prog_slot_" + str(i))
-        i += 1
+def _refresh_prog_cell(idx: int):
+    row = idx // PROG_COLS
+    col = idx % PROG_COLS
+    tag = f"prog_cell_{idx}"
+    if dpg.does_item_exist(tag):
+        cell = _prog_cells[idx] if idx < len(_prog_cells) else ProgCell()
+        selected = (idx == _prog_selected_idx)
+        draw_prog_cell(tag, cell, row, col, selected=selected)
 
-    if not dpg.does_item_exist("prog_palette"):
+
+def _update_prog_piano(cell: ProgCell):
+    """Update the multi-octave piano with root-position voicing matching play_progression_notes."""
+    notes = cell.get_notes()
+    if not notes:
+        clear_multi_octave_piano("prog_piano_canvas")
+        if dpg.does_item_exist("prog_detail_inv_name"):
+            dpg.set_value("prog_detail_inv_name", "")
         return
 
-    # Build 8 slots
-    for idx in range(8):
-        tag = f"prog_slot_{idx}"
-        chord = _prog_chords[idx] if idx < len(_prog_chords) else None
+    base_oct = cell.octave
+    centre = base_oct * 12 + 21
 
-        with dpg.group(tag=tag, parent="prog_palette", horizontal=True):
-            if chord is not None:
-                q = quality_symbol(chord.quality).strip()
-                label = f"{chord.degree} {chord.root}"
-                label2 = f"{q}" if q else ""
-                notes_str = "  ".join(chord.notes)
-                with dpg.group():
-                    dpg.add_text(label, color=COLOR_ACCENT)
-                    dpg.add_text(label2, color=COLOR_TEXT)
-                    dpg.add_text(notes_str, color=COLOR_TEXT_DIM)
-                    dpg.add_button(label="Play", width=60, height=24,
-                                   callback=on_prog_slot_click,
-                                   user_data=idx)
-            else:
-                with dpg.group():
-                    dpg.add_text("Empty", color=COLOR_TEXT_DIM)
-                    dpg.add_spacer(height=4)
-                    dpg.add_spacer(width=60, height=8)
-            dpg.add_spacer(width=6)
+    pcs = [note_to_pc(n) for n in notes]
 
+    # Root-position stacking (same as play_progression_notes)
+    midi_notes = []
+    for i, pc in enumerate(pcs):
+        if i == 0:
+            best = pc + 12
+            best_dist = abs(best - centre)
+            for octave in range(0, 9):
+                midi = pc + 12 * octave
+                dist = abs(midi - centre)
+                if dist < best_dist:
+                    best_dist = dist
+                    best = midi
+        else:
+            best = midi_notes[i - 1] + 3
+            best_dist = abs(best - (midi_notes[i - 1] + 5))
+            for octave in range(0, 9):
+                midi = pc + 12 * octave
+                if midi >= midi_notes[i - 1] + 3 and midi <= midi_notes[i - 1] + 8:
+                    best_dist = 0
+                    best = midi
+                    break
+                elif midi > midi_notes[i - 1] + 3 and midi - (midi_notes[i - 1] + 5) < best_dist:
+                    best_dist = abs(midi - (midi_notes[i - 1] + 5))
+                    best = midi
+        midi_notes.append(best)
+
+    if midi_notes:
+        avg = sum(midi_notes) // len(midi_notes)
+        drift = avg - centre
+        if abs(drift) > 6:
+            midi_notes = [m + (-12 if drift > 6 else 12) for m in midi_notes]
+
+    bass_midi = min(midi_notes) if midi_notes else -1
+
+    update_multi_octave_piano("prog_piano_canvas", midi_notes, bass_midi)
+
+    root_pc = note_to_pc(cell.root) if cell.root else -1
+    inv_name = _get_inversion_name(root_pc, bass_midi % 12)
+    if dpg.does_item_exist("prog_detail_inv_name"):
+        notes_str = "  ".join(_midi_to_note_name(m) for m in midi_notes)
+        dpg.set_value("prog_detail_inv_name", f"{inv_name}  ({notes_str})")
+
+
+def _update_prog_detail(idx: int):
+    if not dpg.does_item_exist("prog_detail_pos"):
+        return
+    cell = _prog_cells[idx] if idx < len(_prog_cells) else ProgCell()
+    row = idx // PROG_COLS + 1
+    col = idx % PROG_COLS + 1
+    degree = _get_degree_for_col(idx % PROG_COLS)
+    dpg.set_value("prog_detail_pos", f"R{row}, C{col} ({degree})")
+
+    if cell.is_empty():
+        dpg.set_value("prog_detail_root", "C")
+        dpg.set_value("prog_detail_quality", "Major")
+        dpg.set_value("prog_detail_inversion", "Root")
+        dpg.set_value("prog_detail_notes", "--")
+        if dpg.does_item_exist("prog_detail_octave"):
+            dpg.set_value("prog_detail_octave", "3")
+        clear_multi_octave_piano("prog_piano_canvas")
+        if dpg.does_item_exist("prog_detail_inv_name"):
+            dpg.set_value("prog_detail_inv_name", "")
+    else:
+        dpg.set_value("prog_detail_root", cell.root)
+        display_q = PROG_QUALITY_REVERSE_MAP.get(cell.quality, "Major")
+        dpg.set_value("prog_detail_quality", display_q)
+        inv_labels = {0: "Root", 1: "1st", 2: "2nd", 3: "3rd"}
+        inv_name = inv_labels.get(cell.inversion, "Root")
+        dpg.set_value("prog_detail_inversion", inv_name)
+        notes_str = " ".join(cell.get_notes()) if cell.get_notes() else "--"
+        dpg.set_value("prog_detail_notes", notes_str)
+        if dpg.does_item_exist("prog_detail_octave"):
+            dpg.set_value("prog_detail_octave", str(cell.octave))
+        _update_prog_piano(cell)
+
+
+def _rebuild_progression_grid():
+    for idx in range(PROG_CELLS_TOTAL):
+        _refresh_prog_cell(idx)
+    if _prog_selected_idx is not None and _prog_selected_idx < len(_prog_cells):
+        _update_prog_detail(_prog_selected_idx)
+
+
+def _select_prog_cell(idx: int):
+    global _prog_selected_idx
+    old_idx = _prog_selected_idx
+    _prog_selected_idx = idx
+    if old_idx is not None and old_idx != idx:
+        _refresh_prog_cell(old_idx)
+    _refresh_prog_cell(idx)
+    _update_prog_detail(idx)
+
+
+# ── Chord tab detail ─────────────────────────────────────────────────────────────
 
 def _select_chord(idx: int):
     global _selected_chord_idx
@@ -465,13 +647,11 @@ def _select_chord(idx: int):
         title  = "chord_title_"  + str(i)
         if dpg.does_item_exist(border):
             dpg.configure_item(border,
-                               color=COLOR_ACCENT if selected
-                                      else COLOR_CHORD_BORDER,
+                               color=COLOR_ACCENT if selected else COLOR_CHORD_BORDER,
                                thickness=2 if selected else 0)
         if dpg.does_item_exist(title):
             dpg.configure_item(title,
-                               color=COLOR_ACCENT if selected
-                                      else COLOR_TEXT)
+                               color=COLOR_ACCENT if selected else COLOR_TEXT)
     _update_selected_chord()
 
 
@@ -523,62 +703,81 @@ def _refresh_chords():
         dpg.set_value("scale_notes_text", "  |  ".join(notes))
         _current_scale_pcs = {note_to_pc(n) for n in notes}
 
-    # Reset voice leading since the chord progression changed
     reset_voice_leading()
-
     _rebuild_chord_list()
 
 
 def _refresh_progression():
-    """Called at startup to build the progression palette."""
-    global _prog_key, _prog_scale, _prog_chords
+    global _prog_key, _prog_scale, _prog_cells
     if dpg.does_item_exist("prog_key_combo"):
         _prog_key = dpg.get_value("prog_key_combo")
     if dpg.does_item_exist("prog_scale_combo"):
         _prog_scale = dpg.get_value("prog_scale_combo")
-    # Fill chords from scale first
     chords = get_diatonic_chords(
         _prog_key, _prog_scale, include_sevenths=_prog_sevenths
     )
-    _prog_chords = [None] * 8
-    for i, c in enumerate(chords[:8]):
-        _prog_chords[i] = c
-    _rebuild_progression_palette()
+    for i in range(PROG_COLS):
+        if i < len(chords):
+            cell = _prog_cells[i]
+            cell.root = chords[i].root
+            cell.quality = chords[i].quality
+            cell.inversion = 0
+            cell.voicing_idx = 0
+        else:
+            _prog_cells[i].clear()
+    for i in range(PROG_COLS, PROG_CELLS_TOTAL):
+        if _prog_cells[i].root is not None:
+            _prog_cells[i].clear()
+    _rebuild_progression_grid()
+    # Auto-select the first cell so arrow buttons work immediately
+    if _prog_cells and not _prog_cells[0].is_empty():
+        _select_prog_cell(0)
 
 
 def _refresh_speaker_indicators():
-    """Periodic callback to animate speaker indicator dots and inversion display.
-    
-    Updates inversion/piano bass key on EVERY frame so the green key + inversion
-    info appear immediately when sound starts.
-    """
-    global _speaker_frame_count
+    global _speaker_frame_count, _prog_sounding_idx
     _speaker_frame_count += 1
     playing = is_playing()
 
-    # Update speaker dots for each chord in the left panel
     for i in range(len(_current_chords)):
         dot_tag = "spkr_dot_" + str(i)
         if not dpg.does_item_exist(dot_tag):
             continue
-
-        is_sounding = False
-        if playing and _selected_chord_idx == i:
-            is_sounding = True
-
+        is_sounding = playing and _selected_chord_idx == i
         if is_sounding:
             blink_on = (_speaker_frame_count % 6) < 4
             fill = COLOR_ACTIVE_SPEAKER if blink_on else COLOR_INACTIVE_SPEAKER
         else:
             fill = COLOR_INACTIVE_SPEAKER
-
         dpg.configure_item(dot_tag, fill=fill, color=fill)
-
         bar_tag = "chord_play_bar_" + str(i)
         if dpg.does_item_exist(bar_tag):
-            dpg.configure_item(bar_tag, show=is_sounding)
+            try:
+                dpg.configure_item(bar_tag, show=is_sounding)
+            except SystemError:
+                pass
 
-    # Update inversion display and piano bass note on EVERY frame
+    for i in range(PROG_CELLS_TOTAL):
+        dot_tag = "prog_spkr_dot_" + str(i)
+        if not dpg.does_item_exist(dot_tag):
+            continue
+        is_sounding = playing and _prog_sounding_idx == i
+        if is_sounding:
+            blink_on = (_speaker_frame_count % 6) < 4
+            fill = COLOR_ACTIVE_SPEAKER if blink_on else COLOR_INACTIVE_SPEAKER
+        else:
+            fill = COLOR_INACTIVE_SPEAKER
+        dpg.configure_item(dot_tag, fill=fill, color=fill)
+        bar_tag = "prog_play_bar_" + str(i)
+        if dpg.does_item_exist(bar_tag):
+            try:
+                dpg.configure_item(bar_tag, show=is_sounding)
+            except SystemError:
+                pass
+
+    if not playing:
+        _prog_sounding_idx = None
+
     _update_inversion_display()
     if playing and _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         midi_notes = get_current_midi_notes()
