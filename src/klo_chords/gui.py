@@ -614,6 +614,7 @@ def build_ui():
 
     # ── Keyboard handlers ──────────────────────────────────────────────────────
     with dpg.handler_registry(tag="main_handler_registry"):
+        # Row 0 (cells 0-6): 1-7
         dpg.add_key_press_handler(key=dpg.mvKey_1, callback=on_key_press, user_data=0)
         dpg.add_key_press_handler(key=dpg.mvKey_2, callback=on_key_press, user_data=1)
         dpg.add_key_press_handler(key=dpg.mvKey_3, callback=on_key_press, user_data=2)
@@ -621,7 +622,30 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_5, callback=on_key_press, user_data=4)
         dpg.add_key_press_handler(key=dpg.mvKey_6, callback=on_key_press, user_data=5)
         dpg.add_key_press_handler(key=dpg.mvKey_7, callback=on_key_press, user_data=6)
-        dpg.add_key_press_handler(key=dpg.mvKey_8, callback=on_key_press, user_data=7)
+        # Row 1 (cells 7-13): Q W E R T Y U
+        dpg.add_key_press_handler(key=dpg.mvKey_Q, callback=on_key_press, user_data=7)
+        dpg.add_key_press_handler(key=dpg.mvKey_W, callback=on_key_press, user_data=8)
+        dpg.add_key_press_handler(key=dpg.mvKey_E, callback=on_key_press, user_data=9)
+        dpg.add_key_press_handler(key=dpg.mvKey_R, callback=on_key_press, user_data=10)
+        dpg.add_key_press_handler(key=dpg.mvKey_T, callback=on_key_press, user_data=11)
+        dpg.add_key_press_handler(key=dpg.mvKey_Y, callback=on_key_press, user_data=12)
+        dpg.add_key_press_handler(key=dpg.mvKey_U, callback=on_key_press, user_data=13)
+        # Row 2 (cells 14-20): A S D F G H J
+        dpg.add_key_press_handler(key=dpg.mvKey_A, callback=on_key_press, user_data=14)
+        dpg.add_key_press_handler(key=dpg.mvKey_S, callback=on_key_press, user_data=15)
+        dpg.add_key_press_handler(key=dpg.mvKey_D, callback=on_key_press, user_data=16)
+        dpg.add_key_press_handler(key=dpg.mvKey_F, callback=on_key_press, user_data=17)
+        dpg.add_key_press_handler(key=dpg.mvKey_G, callback=on_key_press, user_data=18)
+        dpg.add_key_press_handler(key=dpg.mvKey_H, callback=on_key_press, user_data=19)
+        dpg.add_key_press_handler(key=dpg.mvKey_J, callback=on_key_press, user_data=20)
+        # Row 3 (cells 21-27): Z X C V B N M
+        dpg.add_key_press_handler(key=dpg.mvKey_Z, callback=on_key_press, user_data=21)
+        dpg.add_key_press_handler(key=dpg.mvKey_X, callback=on_key_press, user_data=22)
+        dpg.add_key_press_handler(key=dpg.mvKey_C, callback=on_key_press, user_data=23)
+        dpg.add_key_press_handler(key=dpg.mvKey_V, callback=on_key_press, user_data=24)
+        dpg.add_key_press_handler(key=dpg.mvKey_B, callback=on_key_press, user_data=25)
+        dpg.add_key_press_handler(key=dpg.mvKey_N, callback=on_key_press, user_data=26)
+        dpg.add_key_press_handler(key=dpg.mvKey_M, callback=on_key_press, user_data=27)
         dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
         dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)
         # Ctrl+Z/Y = Undo/Redo; Ctrl+C/V = Copy/Paste

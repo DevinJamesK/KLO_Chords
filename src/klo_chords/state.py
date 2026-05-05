@@ -387,6 +387,10 @@ def _get_degree_for_col(col: int) -> str:
 
 def on_key_press(sender, app_data, user_data):
     global _current_tab
+    # Don't fire if Ctrl is held (conflicts with Ctrl+Z/C/V shortcuts)
+    from klo_chords import dpg_keyboard
+    if dpg_keyboard.ctrl_is_down():
+        return
     if _current_tab == "tab_chords":
         idx = user_data
         if 0 <= idx < len(_current_chords):
@@ -396,7 +400,7 @@ def on_key_press(sender, app_data, user_data):
             _play_current_chord()
     elif _current_tab == "tab_progression":
         idx = user_data
-        if idx < PROG_COLS and idx < len(_prog_cells):
+        if idx < PROG_CELLS_TOTAL and idx < len(_prog_cells):
             _select_prog_cell(idx)
             _play_prog_cell(idx)
 
