@@ -125,12 +125,12 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
 # ── Large fretboard (detail panel) ─────────────────────────────────────────────
 
 def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
-    """Draw the large 360x220 fretboard on the 'fretboard_canvas' drawlist."""
+    """Draw the large 390x220 fretboard on the 'fretboard_canvas' drawlist."""
     if not dpg.does_item_exist("fretboard_canvas"):
         return
     dpg.delete_item("fretboard_canvas", children_only=True)
 
-    cw, ch = 360, 220
+    cw, ch = 390, 220
     diagram = get_guitar_diagram(chord, voicing_idx)
 
     if diagram is None:
@@ -138,9 +138,9 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
                       color=COLOR_TEXT_DIM, size=18, parent="fretboard_canvas")
         return
 
-    string_spacing = cw / 8.5   # tighter spacing to fit 6 strings in ~360px
+    string_spacing = cw / 8.5   # tighter spacing to fit 6 strings in ~390px
     fret_spacing   = ch / 6.5
-    x_start = 8                 # leftmost string (low E) ~8px from canvas edge
+    x_start = 12                # leftmost string (low E) ~12px from edge → circle at 12-11=1 (not clipped)
     y_start = 18
 
     min_fret  = min(f for _, f in diagram)

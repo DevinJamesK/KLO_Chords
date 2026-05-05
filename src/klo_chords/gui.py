@@ -239,9 +239,9 @@ def _build_chord_tab():
             dpg.add_spacer(height=6)
             with dpg.group(horizontal=True):
                 dpg.add_spacer(width=20)
-                with dpg.drawlist(width=360, height=220,
+                with dpg.drawlist(width=390, height=220,
                                   tag="fretboard_canvas"):
-                    dpg.draw_rectangle([0, 0], [360, 220],
+                    dpg.draw_rectangle([0, 0], [390, 220],
                                        fill=COLOR_BG_LIGHT,
                                        color=COLOR_BG_LIGHT,
                                        tag="fretboard_bg")
