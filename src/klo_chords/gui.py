@@ -30,6 +30,7 @@ from klo_chords.state import (
     on_prog_cell_quality_prev, on_prog_cell_quality_next,
     on_prog_cell_inversion_prev, on_prog_cell_inversion_next,
     on_prog_cell_octave_prev, on_prog_cell_octave_next,
+    on_prog_cell_arrow_press,
     on_sound_enable_toggle,
     on_random_velocity_toggle, on_vel_min_change, on_vel_max_change,
     on_base_octave_change, on_playback_mode_change,
@@ -648,6 +649,11 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_M, callback=on_key_press, user_data=27)
         dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
         dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)
+        # Arrow keys: Left/Right = inversion, Up/Down = quality (progression tab)
+        dpg.add_key_press_handler(key=dpg.mvKey_Left,  callback=on_prog_cell_arrow_press, user_data="inv_prev")
+        dpg.add_key_press_handler(key=dpg.mvKey_Right, callback=on_prog_cell_arrow_press, user_data="inv_next")
+        dpg.add_key_press_handler(key=dpg.mvKey_Up,    callback=on_prog_cell_arrow_press, user_data="quality_prev")
+        dpg.add_key_press_handler(key=dpg.mvKey_Down,  callback=on_prog_cell_arrow_press, user_data="quality_next")
         # Ctrl+Z/Y = Undo/Redo; Ctrl+C/V = Copy/Paste
         dpg.add_key_press_handler(key=dpg.mvKey_Z, callback=_on_key_with_ctrl, user_data="undo")
         dpg.add_key_press_handler(key=dpg.mvKey_Y, callback=_on_key_with_ctrl, user_data="redo")

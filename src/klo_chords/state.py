@@ -376,6 +376,26 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
     _play_prog_cell(_prog_selected_idx)
 
 
+# ── Arrow key callback (progression tab) ─────────────────────────────────────────
+
+def on_prog_cell_arrow_press(sender, app_data, user_data):
+    """Arrow keys for the progression tab: Left/Right = inversion, Up/Down = quality."""
+    global _current_tab
+    if _current_tab != "tab_progression":
+        return
+    if _prog_selected_idx is None:
+        return
+    action = str(user_data)
+    if action == "inv_prev":
+        on_prog_cell_inversion_prev()
+    elif action == "inv_next":
+        on_prog_cell_inversion_next()
+    elif action == "quality_prev":
+        on_prog_cell_quality_prev()
+    elif action == "quality_next":
+        on_prog_cell_quality_next()
+
+
 # ── Degree helper ────────────────────────────────────────────────────────────────
 
 def _get_degree_for_col(col: int) -> str:
