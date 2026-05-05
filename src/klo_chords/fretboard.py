@@ -48,7 +48,7 @@ def _centered_text(x: float, y: float, text: str, size: int, color, parent: str)
 # ── Mini fretboard (thumbnail in chord list) ──────────────────────────────────
 
 def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
-    """Draw a small 95x90 fretboard preview inside *canvas_tag*."""
+    """Draw a small 115x90 fretboard preview inside *canvas_tag*."""
     if not dpg.does_item_exist(canvas_tag):
         return
     dpg.delete_item(canvas_tag, children_only=True)
@@ -61,8 +61,8 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
                       color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
         return
 
-    str_gap = (W - 16) / 5.5
-    x0 = (W - 5 * str_gap) / 2
+    str_gap = 12                        # tighter spacing for natural proportion
+    x0 = (W - 5 * str_gap) // 2         # centered; ~27px → leaves room for fret labels
 
     y0 = 14
     min_fret = min((f for _, f in diagram if f is not None and f > 0), default=0)
