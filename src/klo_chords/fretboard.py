@@ -97,10 +97,10 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
     for s_idx, fret in string_map.items():
         x = x0 + s_idx * str_gap
         if fret is None:
-            dpg.draw_text([x - 5, y0 - 18], "X",
+            dpg.draw_text([x - 5, y0 - 10], "X",
                           color=COLOR_MUTED, size=14, parent=canvas_tag)
         elif fret == 0:
-            dpg.draw_text([x - 5, y0 - 18], "O",
+            dpg.draw_text([x - 5, y0 - 10], "O",
                           color=COLOR_OPEN, size=14, parent=canvas_tag)
         else:
             dot_y = y0 + (fret - max(start_fret, 1)) * fret_gap
@@ -179,11 +179,11 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
     for s_idx, fret in string_map.items():
         x = x_start + s_idx * string_spacing
         if fret is None:
-            dpg.draw_text([x - 5, y_start - 24], "X",
+            dpg.draw_text([x - 5, y_start - 18], "X",
                           color=COLOR_MUTED, size=16,
                           parent="fretboard_canvas")
         elif fret == 0:
-            dpg.draw_text([x - 5, y_start - 24], "O",
+            dpg.draw_text([x - 5, y_start - 18], "O",
                           color=COLOR_OPEN, size=16,
                           parent="fretboard_canvas")
         else:
