@@ -297,7 +297,22 @@ def _build_progression_tab():
         dpg.add_spacer(width=10)
         dpg.add_button(label="Clear All", width=100,
                        tag="prog_clear_btn", callback=on_prog_clear_all)
-        
+
+    dpg.add_spacer(height=4)
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=24)
+        dpg.add_text("Paste Mode:", color=COLOR_TEXT_DIM)
+        dpg.add_combo(items=["Insert (push down)", "Replace", "Swap"],
+                      default_value="Replace",
+                      tag="paste_mode_combo", width=170,
+                      callback=on_paste_mode_change)
+        dpg.add_spacer(width=20)
+        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
+        dpg.add_combo(items=["Linear", "Preserve Shape"],
+                      default_value="Preserve Shape",
+                      tag="paste_shape_combo", width=150,
+                      callback=on_paste_shape_change)
+
     dpg.add_spacer(height=2)
     dpg.add_text(" Chord Grid (click to edit/play)", color=COLOR_ACCENT)
     dpg.add_separator()
@@ -328,32 +343,7 @@ def _build_progression_tab():
                         dpg.add_spacer(width=6)
         dpg.add_spacer(height=6)
 
-    # ── Paste controls (between grid and cell detail) ────────────────────────
-    dpg.add_spacer(height=2)
-    dpg.add_text(" Paste Settings", color=COLOR_ACCENT)
-    dpg.add_separator()
-    dpg.add_spacer(height=4)
-    with dpg.group(horizontal=True):
-        dpg.add_spacer(width=24)
-        dpg.add_text("Paste Mode:", color=COLOR_TEXT_DIM)
-        dpg.add_combo(items=["Insert (push down)", "Replace", "Swap"],
-                      default_value="Replace",
-                      tag="paste_mode_combo", width=170,
-                      callback=on_paste_mode_change)
-        dpg.add_spacer(width=20)
-        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
-        dpg.add_combo(items=["Linear", "Preserve Shape"],
-                      default_value="Preserve Shape",
-                      tag="paste_shape_combo", width=150,
-                      callback=on_paste_shape_change)
-    dpg.add_spacer(height=2)
-    with dpg.group(horizontal=True):
-        dpg.add_spacer(width=24)
-        dpg.add_text("Shift+click range, Ctrl+click toggle, Ctrl+C/V, Delete to clear.",
-                     color=COLOR_TEXT_DIM)
-    dpg.add_spacer(height=6)
-
-    # ── Cell detail panel (below the grid + paste settings) ──────────────────
+    # ── Cell detail panel (below the grid) ──────────────────────────────────
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()

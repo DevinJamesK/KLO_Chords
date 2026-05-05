@@ -1,9 +1,10 @@
 """
-Win32-based modifier key polling helper for Dear PyGui.
+Cross-platform modifier key polling helper for Dear PyGui.
 
 Dear PyGui's key press handlers fire per-key and do not provide reliable
-modifier key state. This module uses the Win32 API to poll the Ctrl and Shift
-keys on each frame, providing simple ctrl_is_down() and shift_is_down() checks.
+modifier key state. This module uses DPG's built-in is_key_down() to poll
+the Ctrl and Shift keys on each frame, providing simple ctrl_is_down()
+and shift_is_down() checks that work on Windows, macOS, and Linux.
 
 Usage in build_ui():
     from klo_chords import dpg_keyboard
@@ -14,14 +15,7 @@ Usage in build_ui():
         ...
 """
 
-import ctypes
-
-# Win32 virtual-key codes
-VK_SHIFT     = 0x10
-VK_LCONTROL  = 0xA2
-VK_RCONTROL  = 0xA3
-
-user32 = ctypes.windll.user32
+import dearpygui.dearpygui as dpg
 
 _ctrl_held  = False
 _shift_held = False
@@ -38,15 +32,12 @@ def shift_is_down() -> bool:
 
 
 def setup():
-    """Initialize the keyboard state tracker (no-op on Windows)."""
+    """Initialize the keyboard state tracker."""
     pass
 
 
 def poll():
-    """Call once per frame to update modifier key state via Win32."""
+    """Call once per frame to update modifier key state via DPG's is_key_down()."""
     global _ctrl_held, _shift_held
-    # GetAsyncKeyState — high bit (0x8000) = currently down
-    lctrl = user32.GetAsyncKeyState(VK_LCONTROL) & 0x8000
-    rctrl = user32.GetAsyncKeyState(VK_RCONTROL) & 0x8000
-    _ctrl_held  = bool(lctrl or rctrl)
-    _shift_held = bool(user32.GetAsyncKeyState(VK_SHIFT) & 0x8000)
+    _ctrl_held  = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
+    _shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)

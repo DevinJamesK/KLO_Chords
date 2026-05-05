@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.1] - 2026-05-04
+
+### Changed
+- **Paste settings layout** — "Paste Mode" and "Paste Shape" combos moved to their own row below the Key/Scale row in the progression tab, removing the separate header and info text.
+
+### Fixed
+- **macOS transparent window crash** — `dpg_keyboard.py` was using `ctypes.windll.user32` (Win32 API) which does not exist on macOS. Replaced with cross-platform `dpg.is_key_down()` calls.
+- **Progression piano range** — The multi-octave piano now dynamically shifts its displayed range so all sounding notes are always visible, regardless of the chord's octave.
+
+---
+
 ## [0.5.0] - 2026-05-04
 
 ### Added

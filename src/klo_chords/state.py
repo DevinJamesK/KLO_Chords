@@ -632,8 +632,8 @@ def _refresh_prog_cell(idx: int):
 def _update_prog_piano(cell: ProgCell):
     """Update the multi-octave piano with root-position voicing matching play_progression_notes.
     
-    The piano canvas is rebuilt to center around the cell's octave so the chord
-    appears in the middle of the keyboard.
+    The piano canvas is rebuilt so that all sounding notes are visible
+    within the 2-octave display.
     """
     notes = cell.get_notes()
     if not notes:
@@ -644,14 +644,6 @@ def _update_prog_piano(cell: ProgCell):
 
     base_oct = cell.octave
     centre = base_oct * 12 + 21
-
-    # Show 2 octaves with the chord's octave on the left, one octave of context on the right
-    # e.g. chord octave 3 → shows octaves 3 & 4
-    start_octave = max(3, base_oct + 1)
-
-    if dpg.does_item_exist("prog_piano_canvas"):
-        dpg.delete_item("prog_piano_canvas", children_only=True)
-        build_multi_octave_piano("prog_piano_canvas", start_octave=start_octave)
 
     pcs = [note_to_pc(n) for n in notes]
 
@@ -688,6 +680,17 @@ def _update_prog_piano(cell: ProgCell):
             midi_notes = [m + (-12 if drift > 6 else 12) for m in midi_notes]
 
     bass_midi = min(midi_notes) if midi_notes else -1
+
+    # Calculate the octave range so all notes fit in the 2-octave display
+    if midi_notes:
+        lowest_midi = min(midi_notes)
+        start_octave = (lowest_midi // 12) + 1
+    else:
+        start_octave = 3
+
+    if dpg.does_item_exist("prog_piano_canvas"):
+        dpg.delete_item("prog_piano_canvas", children_only=True)
+        build_multi_octave_piano("prog_piano_canvas", start_octave=start_octave)
 
     update_multi_octave_piano("prog_piano_canvas", midi_notes, bass_midi,
                               start_octave=start_octave)

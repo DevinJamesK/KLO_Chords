@@ -110,6 +110,7 @@ src/klo_chords/
 |-- fretboard.py                Mini and large fretboard drawing
 |-- piano.py                    Piano keyboard rendering
 |-- sound.py                    Streaming audio engine (sounddevice + numpy)
+|-- dpg_keyboard.py             Cross-platform modifier key polling
 `-- assets/
     |-- chords/guitar_standard.json
     |-- fonts/verdana.ttf
