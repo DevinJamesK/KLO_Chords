@@ -220,7 +220,6 @@ def on_prog_clear_all(sender=None, app_data=None):
 
 
 def on_prog_cell_click(sender, app_data, user_data):
-    global _prog_selected_idx
     idx = user_data
     if 0 <= idx < len(_prog_cells):
         from klo_chords import dpg_keyboard
@@ -233,10 +232,10 @@ def on_prog_cell_click(sender, app_data, user_data):
             on_prog_cell_shift_click(sender, app_data, user_data)
         elif toggle:
             # Ctrl/Cmd+click: toggle individual cell in/out of multi-select set
-            if idx in _prog_selected_set or idx == _prog_selected_idx:
+            if idx in _prog_selected_set or idx == _get_prog_selected_idx():
                 _prog_selected_set.discard(idx)
-                if _prog_selected_idx == idx:
-                    _prog_selected_idx = None
+                if _get_prog_selected_idx() == idx:
+                    _clear_prog_selected_idx()
             else:
                 _prog_selected_set.add(idx)
             _rebuild_progression_grid()
@@ -776,6 +775,17 @@ def _select_prog_cell(idx: int):
     _prog_selected_idx = idx
     _rebuild_progression_grid()
     _update_prog_detail(idx)
+
+
+def _get_prog_selected_idx():
+    """Return the current primary selected cell index, or None."""
+    return _prog_selected_idx
+
+
+def _clear_prog_selected_idx():
+    """Set the primary selected cell index to None."""
+    global _prog_selected_idx
+    _prog_selected_idx = None
 
 
 # ── Chord tab detail ─────────────────────────────────────────────────────────────
