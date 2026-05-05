@@ -75,13 +75,13 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
     for f in range(fret_count + 1):
         y = y0 + f * fret_gap
         thickness = 3 if f == 0 else 1
-        line_color = [255, 230, 80, 255] if (f == 0 and start_fret == 0) else COLOR_FRET
+        line_color = [80, 160, 255, 255] if (f == 0 and start_fret == 0) else COLOR_FRET
         dpg.draw_line([x0, y], [x0 + 5 * str_gap, y],
                       color=line_color, thickness=thickness,
                       parent=canvas_tag)
         if f == 0 and start_fret > 0:
             dpg.draw_text([x0 - 18, y0 - 2],
-                          str(start_fret), color=[255, 230, 80, 255], size=16,
+                          str(start_fret), color=[80, 160, 255, 255], size=16,
                           parent=canvas_tag)
 
     for s in range(6):
@@ -148,7 +148,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
     for f in range(fret_count + 1):
         y = y_start + f * fret_spacing
         thickness = 4 if f == 0 else 1
-        line_color = [255, 230, 80, 255] if (f == 0 and start_fret == 0) else COLOR_FRET
+        line_color = [80, 160, 255, 255] if (f == 0 and start_fret == 0) else COLOR_FRET
         dpg.draw_line([x_start, y],
                       [x_start + 5 * string_spacing, y],
                       color=line_color, thickness=thickness,
@@ -156,7 +156,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
         if f == 0 and start_fret > 0:
             dpg.draw_text([x_start + 5 * string_spacing + 12,
                            y_start + fret_spacing / 3 - 2],
-                          str(start_fret), color=[255, 230, 80, 255], size=22,
+                          str(start_fret), color=[80, 160, 255, 255], size=22,
                           parent="fretboard_canvas")
 
     for s in range(6):
