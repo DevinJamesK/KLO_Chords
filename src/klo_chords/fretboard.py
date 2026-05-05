@@ -118,7 +118,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
             dpg.draw_circle([x, circle_cy], 6,
                             fill=dot_color, color=[0, 0, 0, 0],
                             parent=canvas_tag)
-            text_col = [20, 20, 30, 255] if not is_root else [255, 255, 255, 255]
+            text_col = [20, 20, 30, 255]
             _centered_text(x, circle_cy, label, 11, text_col, canvas_tag)
 
 
@@ -201,7 +201,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
             dpg.draw_circle([x, circle_cy], 11,
                             fill=dot_color, color=[0, 0, 0, 0],
                             parent="fretboard_canvas")
-            text_col = [20, 20, 30, 255] if not is_root else [255, 255, 255, 255]
+            text_col = [20, 20, 30, 255]
             _centered_text(x, circle_cy, label, 18, text_col, "fretboard_canvas")
 
     for s_idx, sname in enumerate(["E", "A", "D", "G", "B", "e"]):
