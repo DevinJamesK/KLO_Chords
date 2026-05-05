@@ -109,18 +109,13 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
             is_root = (note_pc == root_pc)
 
             if _fretboard_mode == "note":
-                # Show note name, root in green
                 dot_color = [60, 210, 100, 255] if is_root else COLOR_DOT
-                label = pc_to_note(note_pc)
             else:
                 dot_color = COLOR_ROOT_DOT if is_root else COLOR_DOT
-                label = str(fret)
 
-            dpg.draw_circle([x, circle_cy], 6,
+            dpg.draw_circle([x, circle_cy], 4,
                             fill=dot_color, color=[0, 0, 0, 0],
                             parent=canvas_tag)
-            text_col = [20, 20, 30, 255]
-            _centered_text(x, circle_cy, label, 11, text_col, canvas_tag)
 
 
 # ── Large fretboard (detail panel) ─────────────────────────────────────────────
