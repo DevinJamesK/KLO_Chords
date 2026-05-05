@@ -172,7 +172,7 @@ def _build_chord_tab():
             dpg.add_text("Diatonic Chords", color=COLOR_ACCENT)
 
             with dpg.group(tag="chord_list_scroll"):
-                dpg.add_spacer(height=10)
+                dpg.add_spacer(height=6)
 
             # Hint about number keys — centered in left panel
             dpg.add_spacer(height=20)
@@ -188,32 +188,32 @@ def _build_chord_tab():
         with dpg.child_window(tag="right_panel", width=-1,
                               height=-1, border=True):
             dpg.add_text("Chord Detail", color=COLOR_ACCENT)
-            dpg.add_spacer(height=6)
+            dpg.add_spacer(height=2)
 
             with dpg.group(horizontal=True):
-                dpg.add_spacer(width=24)
+                dpg.add_spacer(width=20)
                 with dpg.group():
                     with dpg.group(horizontal=True):
                         dpg.add_text("Degree / Root:", color=COLOR_TEXT_DIM)
                         dpg.add_text("--", tag="detail_root", color=COLOR_ACCENT)
-                    dpg.add_spacer(height=4)
+                    dpg.add_spacer(height=2)
 
                     with dpg.group(horizontal=True):
                         dpg.add_text("Quality:", color=COLOR_TEXT_DIM)
                         dpg.add_text("--", tag="detail_quality",
                                      color=COLOR_ACCENT)
-                    dpg.add_spacer(height=4)
+                    dpg.add_spacer(height=2)
 
                     with dpg.group(horizontal=True):
                         dpg.add_text("Notes:", color=COLOR_TEXT_DIM)
                         dpg.add_text("--", tag="detail_notes", color=COLOR_ACCENT)
-                    dpg.add_spacer(height=4)
+                    dpg.add_spacer(height=2)
 
                     with dpg.group(horizontal=True):
                         dpg.add_text("Intervals:", color=COLOR_TEXT_DIM)
                         dpg.add_text("--", tag="detail_intervals",
                                      color=COLOR_TEXT_DIM)
-                    dpg.add_spacer(height=10)
+                    dpg.add_spacer(height=6)
             
             dpg.add_text("Keyboard", color=COLOR_ACCENT)
             dpg.add_spacer(height=6)
@@ -231,11 +231,12 @@ def _build_chord_tab():
                 dpg.add_spacer(width=20)
                 dpg.add_text("", tag="detail_inversion",
                              color=COLOR_TEXT)
-                dpg.add_spacer(width=10)
+                dpg.add_spacer(width=6)
                 dpg.add_text("", tag="detail_sounding_notes",
                              color=COLOR_TEXT_DIM)
-
+            dpg.add_spacer(height=6)
             dpg.add_text("Fretboard", color=COLOR_ACCENT)
+            dpg.add_spacer(height=6)
             with dpg.group(horizontal=True):
                 dpg.add_spacer(width=20)
                 with dpg.drawlist(width=360, height=220,
@@ -302,7 +303,7 @@ def _build_progression_tab():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=24)
         dpg.add_text("Paste Mode:", color=COLOR_TEXT_DIM)
-        dpg.add_combo(items=["Insert (push down)", "Replace", "Swap"],
+        dpg.add_combo(items=["Insert", "Replace", "Swap"],
                       default_value="Replace",
                       tag="paste_mode_combo", width=170,
                       callback=on_paste_mode_change)
