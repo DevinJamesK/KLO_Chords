@@ -140,7 +140,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
 
     string_spacing = cw / 9
     fret_spacing   = ch / 6.5
-    x_start = (cw - 5 * string_spacing) / 2
+    x_start = 28  # leftmost string (low E) near the left edge
     y_start = 18
 
     min_fret  = min(f for _, f in diagram)
