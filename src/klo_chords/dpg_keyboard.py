@@ -6,9 +6,9 @@ modifier key state. This module uses DPG's built-in is_key_down() to poll
 the Ctrl and Shift keys on each frame, providing simple ctrl_is_down()
 and shift_is_down() checks that work on Windows, macOS, and Linux.
 
-On macOS, the Command key is detected via the native Carbon/CoreGraphics
-CGEventSourceFlagsState() API, because DearPyGui (and GLFW) do not expose
-the Cmd key state through is_key_down() or key press/release handlers.
+On macOS, the Command key uses DPG key codes 527 / 663 (not GLFW 343/347),
+tracked via key press/release handlers since is_key_down() doesn't report it.
+On Windows/Linux, the Super/Win key is not used.
 
 Usage in build_ui():
     from klo_chords import dpg_keyboard
@@ -19,7 +19,6 @@ Usage in build_ui():
         ...
 """
 
-import ctypes
 import dearpygui.dearpygui as dpg
 import sys
 
@@ -27,36 +26,10 @@ _ctrl_held  = False
 _shift_held = False
 _super_held = False
 
-# ── macOS Command-key detection via CoreGraphics ──────────────────────────────
-# kCGEventFlagMaskCommand = 1 << 20  (NSEventModifierFlagCommand)
-_kCGEventFlagMaskCommand = 1 << 20
-
-# Cache the function pointer (we're on macOS, so Carbon/CoreGraphics is always available)
-_CGEventSourceFlagsState = None
-def _init_mac_cmd_detect():
-    """Resolve the CGEventSourceFlagsState function once."""
-    global _CGEventSourceFlagsState
-    if _CGEventSourceFlagsState is None:
-        try:
-            cg = ctypes.cdll.LoadLibrary(
-                '/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics')
-            _CGEventSourceFlagsState = cg.CGEventSourceFlagsState
-            _CGEventSourceFlagsState.restype = ctypes.c_uint64
-            _CGEventSourceFlagsState.argtypes = [ctypes.c_int32]
-        except Exception:
-            _CGEventSourceFlagsState = False  # sentinel: not available
-
-
-def _mac_cmd_is_down() -> bool:
-    """Return True if the Command key is held (macOS only)."""
-    global _CGEventSourceFlagsState
-    if _CGEventSourceFlagsState is None:
-        _init_mac_cmd_detect()
-    if _CGEventSourceFlagsState is False:
-        return False
-    # kCGEventSourceStateCombinedSessionState = 0
-    flags = _CGEventSourceFlagsState(0)
-    return bool(flags & _kCGEventFlagMaskCommand)
+# ── macOS Command key codes (from DPG key handler, not GLFW) ─────────────────
+# On macOS, DPG reports Cmd press as 527 and release as 663.
+_KEY_CMD_PRESS   = 527
+_KEY_CMD_RELEASE = 663
 
 
 def ctrl_is_down() -> bool:
@@ -93,20 +66,29 @@ def toggle_is_down() -> bool:
     return _ctrl_held
 
 
+def _on_cmd_press(sender=None, app_data=None):
+    global _super_held
+    _super_held = True
+
+
+def _on_cmd_release(sender=None, app_data=None):
+    global _super_held
+    _super_held = False
+
+
 def setup():
     """Initialize the keyboard state tracker.
 
-    On macOS, pre-load the CoreGraphics framework for Cmd-key detection.
-    No DPG handler registration needed — Cmd is detected via native API.
+    Registers DPG key press/release handlers for the macOS Command key
+    (codes 527 press, 663 release — validated on macOS via test_keys.py).
     """
-    if sys.platform == 'darwin':
-        _init_mac_cmd_detect()
+    with dpg.handler_registry():
+        dpg.add_key_press_handler(key=_KEY_CMD_PRESS, callback=_on_cmd_press)
+        dpg.add_key_release_handler(key=_KEY_CMD_RELEASE, callback=_on_cmd_release)
 
 
 def poll():
-    """Call once per frame to update modifier key state using DPG and native APIs."""
-    global _ctrl_held, _shift_held, _super_held
+    """Call once per frame to update Ctrl/Shift key state via DPG is_key_down()."""
+    global _ctrl_held, _shift_held
     _ctrl_held  = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
     _shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
-    if sys.platform == 'darwin':
-        _super_held = _mac_cmd_is_down()
