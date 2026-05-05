@@ -142,7 +142,7 @@ def draw_fretboard(chord: ChordInfo, voicing_idx: int = 0):
     string_spacing = cw / 8.5   # 6 strings in ~360px: ~42px apart
     fret_spacing   = ch / 6.5
     x_start = 12                # leftmost string (low E) — circle radius 11 → edge at x=1, no clipping
-    y_start = 48                # push down so X/O at y_start-24=24 has room above nut
+    y_start = 40                # X/O at y_start-24=16 just clears canvas top
 
     min_fret  = min(f for _, f in diagram)
     max_fret  = max(f for _, f in diagram)
