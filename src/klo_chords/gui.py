@@ -679,9 +679,9 @@ def build_ui():
 
 
 def _on_key_with_ctrl(sender, app_data, user_data):
-    """Handle key presses that require Ctrl modifier (tracked by dpg_keyboard)."""
+    """Handle key presses that require platform-native modifier (Ctrl on Win, Cmd on Mac)."""
     from klo_chords import dpg_keyboard
-    if not dpg_keyboard.ctrl_is_down():
+    if not dpg_keyboard.toggle_is_down():
         return
     action = user_data
     if action == "undo":

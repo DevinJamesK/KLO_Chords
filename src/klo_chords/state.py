@@ -220,18 +220,19 @@ def on_prog_clear_all(sender=None, app_data=None):
 
 
 def on_prog_cell_click(sender, app_data, user_data):
+    global _prog_selected_idx
     idx = user_data
     if 0 <= idx < len(_prog_cells):
         from klo_chords import dpg_keyboard
-        shift = dpg_keyboard.shift_is_down()
-        ctrl  = dpg_keyboard.ctrl_is_down()
-        if shift and ctrl:
-            # Ctrl+Shift+click: add range to existing selection (union)
+        shift  = dpg_keyboard.shift_is_down()
+        toggle = dpg_keyboard.toggle_is_down()  # Cmd on macOS, Ctrl otherwise
+        if shift and toggle:
+            # Ctrl/Cmd+Shift+click: add range to existing selection (union)
             on_prog_cell_shift_click(sender, app_data, user_data, union=True)
         elif shift:
             on_prog_cell_shift_click(sender, app_data, user_data)
-        elif ctrl:
-            # Ctrl+click: toggle individual cell in/out of multi-select set
+        elif toggle:
+            # Ctrl/Cmd+click: toggle individual cell in/out of multi-select set
             if idx in _prog_selected_set or idx == _prog_selected_idx:
                 _prog_selected_set.discard(idx)
                 if _prog_selected_idx == idx:
@@ -407,9 +408,9 @@ def _get_degree_for_col(col: int) -> str:
 
 def on_key_press(sender, app_data, user_data):
     global _current_tab
-    # Don't fire if Ctrl is held (conflicts with Ctrl+Z/C/V shortcuts)
+    # Don't fire if platform-native modifier is held (conflicts with shortcuts)
     from klo_chords import dpg_keyboard
-    if dpg_keyboard.ctrl_is_down():
+    if dpg_keyboard.toggle_is_down():
         return
     if _current_tab == "tab_chords":
         idx = user_data
