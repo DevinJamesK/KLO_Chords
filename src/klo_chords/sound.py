@@ -195,9 +195,16 @@ class _AudioEngine:
                 for freq, amp in zip(frequencies, amplitudes):
                     self._vb.add(freq, amp, oneshot)
             else:
-                # Legato: only add frequencies that aren't already playing
+                # Legato: only add frequencies that aren't already playing (and not released)
+                # Released voices still linger in self._vb.freqs until the release tail
+                # finishes, so we must exclude them from the "already playing" check.
+                active_mask = ~self._vb.release
+                if np.any(active_mask):
+                    active_freqs = self._vb.freqs[active_mask]
+                else:
+                    active_freqs = np.array([], dtype=np.float64)
                 for freq, amp in zip(frequencies, amplitudes):
-                    if freq not in self._vb.freqs:
+                    if freq not in active_freqs:
                         self._vb.add(freq, amp, oneshot)
 
             self._note_history = list(notes)

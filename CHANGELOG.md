@@ -11,6 +11,28 @@
 
 ---
 
+## [0.4.2] - 2026-05-05
+
+### Added
+- **Progression keyboard shortcuts** — map 28 cells to 1-7 (row 0), Q-U (row 1), A-J (row 2), Z-M (row 3); skip cell playback when Ctrl held.
+- **Arrow key navigation in progression tab** — Left/Right = inversion, Up/Down = quality.
+
+### Changed
+- **Mini fretboard proportions** — tighter string spacing, keep canvas wide for fret labels.
+- **Big fretboard canvas** — match canvas width to 360px, snap low E string to x=8.
+- **Fretboard nut bar color** — now renders as grey-yellow [190,185,140] on both mini and large fretboards when `start_fret==0`.
+- **Fretboard dot text readability** — dark text on gold root dots.
+- **Mini fretboard dots** — removed numbers from dots, shrink dot radius 6→4.
+
+### Fixed
+- **Fretboard leftmost dot clipping** — widen mini fretboard canvas to 390px and shift `x_start` to 12 (subsequently kept at 360px width with `x_start=12`).
+- **Fretboard X/O overlap with nut** — pushed text above nut on mini (y0→18) and large (`y_start`→24) fretboards.
+- **Large fretboard X/O clipping** — adjusted canvas height to 240px and `y_start` to 48 so X/O text isn't clipped; final settled values keep drawing proportions with appropriate padding.
+- **Speaker indicator crash on macOS** — catch generic `Exception` instead of `SystemError` in speaker indicator refresh to avoid crashes on non-Windows platforms.
+- **Legato mode stale voice detection** — exclude released (fading-out) voices from the "already playing" check so notes are properly re-triggered during legato transitions.
+
+---
+
 ## [0.5.0] - 2026-05-04
 
 ### Added
