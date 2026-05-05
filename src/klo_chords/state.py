@@ -886,7 +886,7 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
-            except SystemError:
+            except Exception:
                 pass
 
     for i in range(PROG_CELLS_TOTAL):
@@ -895,7 +895,7 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
-            except SystemError:
+            except Exception:
                 pass
 
     if not playing:
