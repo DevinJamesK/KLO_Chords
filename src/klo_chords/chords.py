@@ -1,4 +1,4 @@
-﻿"""
+"""
 Music theory engine: scales, diatonic triads, chord names, and guitar tab diagrams.
 
 All note math is done in pitch-class (0-11) space.
@@ -356,23 +356,7 @@ def _parallel_chord(chord: ChordInfo) -> Optional[ChordInfo]:
 
 def _build_chord_variant(root: str, quality: str) -> ChordInfo:
     """Build a ChordInfo from root + quality string, inferring intervals."""
-    # Define interval patterns for known qualities
-    quality_intervals = {
-        "M":      [0, 4, 7],
-        "m":      [0, 3, 7],
-        "dim":    [0, 3, 6],
-        "aug":    [0, 4, 8],
-        "7":      [0, 4, 7, 10],
-        "m7":     [0, 3, 7, 10],
-        "maj7":   [0, 4, 7, 11],
-        "dim7":   [0, 3, 6, 9],
-        "m7b5":   [0, 3, 6, 10],
-        "mmaj7":  [0, 3, 7, 11],
-        "aug7":   [0, 4, 8, 10],
-        "sus2":   [0, 2, 7],
-        "sus4":   [0, 5, 7],
-    }
-    intervals = quality_intervals.get(quality, [0, 4, 7])
+    intervals = QUALITY_INTERVALS.get(quality, [0, 4, 7])
     root_pc = note_to_pc(root)
     style = get_accidental_style(root)
     notes = _spell_chord(root_pc, intervals, style)

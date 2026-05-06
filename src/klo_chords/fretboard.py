@@ -7,7 +7,6 @@ Supports two display modes:
 """
 
 import dearpygui.dearpygui as dpg
-import math
 from typing import List, Tuple, Optional
 
 from klo_chords.chords import ChordInfo, get_guitar_diagram, note_to_pc, pc_to_note

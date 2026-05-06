@@ -120,13 +120,3 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     notes_str = " ".join(cell.get_notes())
     dpg.draw_text([5, 44], notes_str,
                   color=COLOR_TEXT_DIM, size=13, parent=canvas_tag)
-
-
-
-def _get_degree_symbol(col: int) -> str:
-    """Return the degree symbol for a given column index (0-6, 7 columns)."""
-    # 7 columns for the 7 diatonic scale degrees
-    degree_symbols = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°']
-    if 0 <= col < len(degree_symbols):
-        return degree_symbols[col]
-    return '?'

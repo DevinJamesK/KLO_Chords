@@ -615,38 +615,28 @@ def build_ui():
 
     # ── Keyboard handlers ──────────────────────────────────────────────────────
     with dpg.handler_registry(tag="main_handler_registry"):
-        # Row 0 (cells 0-6): 1-7
-        dpg.add_key_press_handler(key=dpg.mvKey_1, callback=on_key_press, user_data=0)
-        dpg.add_key_press_handler(key=dpg.mvKey_2, callback=on_key_press, user_data=1)
-        dpg.add_key_press_handler(key=dpg.mvKey_3, callback=on_key_press, user_data=2)
-        dpg.add_key_press_handler(key=dpg.mvKey_4, callback=on_key_press, user_data=3)
-        dpg.add_key_press_handler(key=dpg.mvKey_5, callback=on_key_press, user_data=4)
-        dpg.add_key_press_handler(key=dpg.mvKey_6, callback=on_key_press, user_data=5)
-        dpg.add_key_press_handler(key=dpg.mvKey_7, callback=on_key_press, user_data=6)
-        # Row 1 (cells 7-13): Q W E R T Y U
-        dpg.add_key_press_handler(key=dpg.mvKey_Q, callback=on_key_press, user_data=7)
-        dpg.add_key_press_handler(key=dpg.mvKey_W, callback=on_key_press, user_data=8)
-        dpg.add_key_press_handler(key=dpg.mvKey_E, callback=on_key_press, user_data=9)
-        dpg.add_key_press_handler(key=dpg.mvKey_R, callback=on_key_press, user_data=10)
-        dpg.add_key_press_handler(key=dpg.mvKey_T, callback=on_key_press, user_data=11)
-        dpg.add_key_press_handler(key=dpg.mvKey_Y, callback=on_key_press, user_data=12)
-        dpg.add_key_press_handler(key=dpg.mvKey_U, callback=on_key_press, user_data=13)
-        # Row 2 (cells 14-20): A S D F G H J
-        dpg.add_key_press_handler(key=dpg.mvKey_A, callback=on_key_press, user_data=14)
-        dpg.add_key_press_handler(key=dpg.mvKey_S, callback=on_key_press, user_data=15)
-        dpg.add_key_press_handler(key=dpg.mvKey_D, callback=on_key_press, user_data=16)
-        dpg.add_key_press_handler(key=dpg.mvKey_F, callback=on_key_press, user_data=17)
-        dpg.add_key_press_handler(key=dpg.mvKey_G, callback=on_key_press, user_data=18)
-        dpg.add_key_press_handler(key=dpg.mvKey_H, callback=on_key_press, user_data=19)
-        dpg.add_key_press_handler(key=dpg.mvKey_J, callback=on_key_press, user_data=20)
-        # Row 3 (cells 21-27): Z X C V B N M
-        dpg.add_key_press_handler(key=dpg.mvKey_Z, callback=on_key_press, user_data=21)
-        dpg.add_key_press_handler(key=dpg.mvKey_X, callback=on_key_press, user_data=22)
-        dpg.add_key_press_handler(key=dpg.mvKey_C, callback=on_key_press, user_data=23)
-        dpg.add_key_press_handler(key=dpg.mvKey_V, callback=on_key_press, user_data=24)
-        dpg.add_key_press_handler(key=dpg.mvKey_B, callback=on_key_press, user_data=25)
-        dpg.add_key_press_handler(key=dpg.mvKey_N, callback=on_key_press, user_data=26)
-        dpg.add_key_press_handler(key=dpg.mvKey_M, callback=on_key_press, user_data=27)
+        # Row 0 (cells 0-6): keys 1-7, then QWERTY rows for cells 7-27
+        PROG_KEY_CELL_MAP = [
+            # Row 0: 1-7
+            (dpg.mvKey_1, 0), (dpg.mvKey_2, 1), (dpg.mvKey_3, 2),
+            (dpg.mvKey_4, 3), (dpg.mvKey_5, 4), (dpg.mvKey_6, 5),
+            (dpg.mvKey_7, 6),
+            # Row 1: Q W E R T Y U
+            (dpg.mvKey_Q, 7), (dpg.mvKey_W, 8), (dpg.mvKey_E, 9),
+            (dpg.mvKey_R, 10), (dpg.mvKey_T, 11), (dpg.mvKey_Y, 12),
+            (dpg.mvKey_U, 13),
+            # Row 2: A S D F G H J
+            (dpg.mvKey_A, 14), (dpg.mvKey_S, 15), (dpg.mvKey_D, 16),
+            (dpg.mvKey_F, 17), (dpg.mvKey_G, 18), (dpg.mvKey_H, 19),
+            (dpg.mvKey_J, 20),
+            # Row 3: Z X C V B N M
+            (dpg.mvKey_Z, 21), (dpg.mvKey_X, 22), (dpg.mvKey_C, 23),
+            (dpg.mvKey_V, 24), (dpg.mvKey_B, 25), (dpg.mvKey_N, 26),
+            (dpg.mvKey_M, 27),
+        ]
+        for key, cell_idx in PROG_KEY_CELL_MAP:
+            dpg.add_key_press_handler(key=key, callback=on_key_press, user_data=cell_idx)
+        # Escape / Spacebar
         dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
         dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)
         # Arrow keys: Left/Right = inversion, Up/Down = quality (progression tab)
@@ -661,7 +651,6 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_V, callback=_on_key_with_ctrl, user_data="paste")
         # Delete key
         dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
-        # Shift+click for multi-select is handled in the click handler
 
     from klo_chords import dpg_keyboard
     dpg_keyboard.setup()

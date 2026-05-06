@@ -709,8 +709,15 @@ def _update_prog_piano(cell: ProgCell):
     if midi_notes:
         lowest_midi = min(midi_notes)
         start_octave = (lowest_midi // 12) + 1
+        # Effective octave derived from the actual root MIDI note (not cell.octave).
+        effective_oct = midi_notes[0] // 12 - 1
     else:
         start_octave = 3
+        effective_oct = 3
+
+    # Sync the displayed octave to the effective octave of the root note.
+    if dpg.does_item_exist("prog_detail_octave"):
+        dpg.set_value("prog_detail_octave", str(effective_oct))
 
     if dpg.does_item_exist("prog_piano_canvas"):
         dpg.delete_item("prog_piano_canvas", children_only=True)
@@ -756,8 +763,7 @@ def _update_prog_detail(idx: int):
         dpg.set_value("prog_detail_inversion", inv_name)
         notes_str = " ".join(cell.get_notes()) if cell.get_notes() else "--"
         dpg.set_value("prog_detail_notes", notes_str)
-        if dpg.does_item_exist("prog_detail_octave"):
-            dpg.set_value("prog_detail_octave", str(cell.octave))
+        # Octave display is set by _update_prog_piano below (effective octave from root MIDI).
         _update_prog_piano(cell)
 
 

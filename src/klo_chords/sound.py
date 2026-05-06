@@ -160,11 +160,16 @@ class _AudioEngine:
     def start(self):
         if self._stream is not None:
             return
-        self._stream = sd.OutputStream(
-            samplerate=SAMPLE_RATE, channels=1, blocksize=BLOCK_SIZE,
-            callback=self._callback, dtype='float32', latency='low',
-        )
-        self._stream.start()
+        try:
+            self._stream = sd.OutputStream(
+                samplerate=SAMPLE_RATE, channels=1, blocksize=BLOCK_SIZE,
+                callback=self._callback, dtype='float32', latency='low',
+            )
+            self._stream.start()
+        except (sd.PortAudioError, OSError) as e:
+            # Audio device unavailable — degrade gracefully (no crash).
+            print(f"[sound] Warning: could not open audio stream: {e}", flush=True)
+            self._stream = None
 
     def stop(self):
         if self._stream is not None:

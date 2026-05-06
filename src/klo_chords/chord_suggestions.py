@@ -231,23 +231,6 @@ def _build_chord_info(root: str, quality: str) -> ChordInfo:
     return _build_chord_variant(root, quality)
 
 
-QUALITY_INTERVALS = {
-    "M":      [0, 4, 7],
-    "m":      [0, 3, 7],
-    "dim":    [0, 3, 6],
-    "aug":    [0, 4, 8],
-    "7":      [0, 4, 7, 10],
-    "m7":     [0, 3, 7, 10],
-    "maj7":   [0, 4, 7, 11],
-    "dim7":   [0, 3, 6, 9],
-    "m7b5":   [0, 3, 6, 10],
-    "mmaj7":  [0, 3, 7, 11],
-    "aug7":   [0, 4, 8, 10],
-    "sus2":   [0, 2, 7],
-    "sus4":   [0, 5, 7],
-}
-
-
 # ── Borrowed chords ────────────────────────────────────────────────────────────
 
 def _get_borrowed_chords(key: str, scale_name: str, style: str,

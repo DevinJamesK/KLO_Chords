@@ -13,7 +13,7 @@ import json
 from importlib import resources
 from typing import Iterable, Optional
 
-
+# Local note→pitch-class lookup (kept here to avoid circular import with chords.py).
 NOTE_TO_PC = {
     "C": 0, "B#": 0,
     "C#": 1, "Db": 1,
@@ -29,6 +29,12 @@ NOTE_TO_PC = {
     "B": 11, "Cb": 11,
 }
 
+
+def _note_to_pc(note: str) -> int:
+    return NOTE_TO_PC[note.strip()]
+
+
+# Pitch-class to sharp note name (used internally for chord-shape key lookups)
 PC_TO_SHARP = {
     0: "C", 1: "C#", 2: "D", 3: "D#", 4: "E", 5: "F",
     6: "F#", 7: "G", 8: "G#", 9: "A", 10: "A#", 11: "B",
@@ -59,8 +65,7 @@ class RankedShape:
     missing_pcs: frozenset[int]
 
 
-def _note_to_pc(note: str) -> int:
-    return NOTE_TO_PC[note.strip()]
+
 
 
 def _fret_to_token(fret: int) -> str:
