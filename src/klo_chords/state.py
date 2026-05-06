@@ -75,6 +75,11 @@ _current_tab          = "tab_chords"
 _speaker_frame_count  = 0
 _prog_sounding_idx: Optional[int] = None
 
+# ── UI display toggles ──────────────────────────────────────────────────────────
+_show_keybinds = False
+"""Show keyboard shortcut labels on chord cells (toggled via checkbox / Cmd+K)."""
+
+
 
 def state() -> dict:
     return dict(
@@ -523,6 +528,26 @@ def on_fretboard_mode_change(sender, app_data):
     _rebuild_chord_list()
 
 
+def on_keybinds_toggle(sender=None, app_data=None):
+    """Toggle the display of keybind labels on chord cells."""
+    global _show_keybinds
+    if app_data is not None:
+        _show_keybinds = bool(app_data)
+    else:
+        _show_keybinds = not _show_keybinds
+    # Sync the checkbox in the toolbar
+    if dpg.does_item_exist("toolbar_show_keybinds"):
+        dpg.set_value("toolbar_show_keybinds", _show_keybinds)
+    _rebuild_chord_list()
+    _rebuild_progression_grid()
+
+
+def get_show_keybinds() -> bool:
+    """Return whether keybind labels should be displayed on cells."""
+    return _show_keybinds
+
+
+
 def on_stop(sender=None, app_data=None):
     """Stop any currently playing chord (spacebar handler)."""
     stop_current()
@@ -624,8 +649,9 @@ def _rebuild_chord_list():
                                   width=115, height=90):
                     pass
 
-            draw_chord_label("chord_box_" + str(i), chord, i)
+            draw_chord_label("chord_box_" + str(i), chord, i, show_keybind=_show_keybinds)
             draw_mini_fretboard("tab_canvas_" + str(i), chord)
+
 
             with dpg.item_handler_registry(tag="click_hreg_" + str(i)):
                 dpg.add_item_clicked_handler(callback=on_chord_click,
@@ -650,7 +676,9 @@ def _refresh_prog_cell(idx: int):
         # A cell is highlighted if it's the primary selection OR in the multi-select set
         selected = (idx == _prog_selected_idx) or (idx in _prog_selected_set)
         draw_prog_cell(tag, cell, row, col, selected=selected,
-                       key=_prog_key, scale=_prog_scale)
+                       key=_prog_key, scale=_prog_scale,
+                       show_keybind=_show_keybinds)
+
 
 
 def _update_prog_piano(cell: ProgCell):

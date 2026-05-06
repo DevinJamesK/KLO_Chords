@@ -13,6 +13,17 @@ from klo_chords.theme import (
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_BG_LIGHT,
 )
 
+# ── Keybind labels for chord cells ──────────────────────────────────────────────
+# Chords tab: 1-7 for the 7 diatonic chords
+# Progression tab: 28 cells mapped to keyboard rows
+KEYBIND_LABELS = [
+    "1", "2", "3", "4", "5", "6", "7",                # Row 0
+    "Q", "W", "E", "R", "T", "Y", "U",                # Row 1
+    "A", "S", "D", "F", "G", "H", "J",                # Row 2
+    "Z", "X", "C", "V", "B", "N", "M",                # Row 3
+]
+
+
 CHORD_BOX_W = 140
 CHORD_BOX_H = 90
 
@@ -34,11 +45,13 @@ PROG_QUALITY_REVERSE_MAP = {v: k for k, v in PROG_QUALITY_MAP.items()}
 
 
 def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
-                     selected: bool = False):
+                     selected: bool = False, show_keybind: bool = False):
     """Redraw the chord name tile inside *canvas_tag*.
     Degree is shown in a separate column outside this drawlist.
     Selection highlighting is handled externally by state._select_chord()
     via configure_item on the border/title tags.
+    If *show_keybind* is True, the key shortcut (e.g. "1".."7") is drawn
+    in the top‑right corner.
     """
     dpg.delete_item(canvas_tag, children_only=True)
     q = quality_symbol(chord.quality).strip()
@@ -65,14 +78,25 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
     dpg.draw_text([8, 40], notes,
                   color=COLOR_TEXT_DIM, size=18, parent=canvas_tag)
 
+    # Keybind label in top‑right corner
+    if show_keybind and idx < len(KEYBIND_LABELS):
+        lbl = KEYBIND_LABELS[idx]
+        lbl_w = len(lbl) * 8  # rough width estimate
+        dpg.draw_text([CHORD_BOX_W - 8 - lbl_w, 4], lbl,
+                      color=COLOR_TEXT_DIM, size=12, parent=canvas_tag)
+
+
 
 def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                    row: int, col: int, selected: bool = False,
-                   key: str = "C", scale: str = "Major"):
+                   key: str = "C", scale: str = "Major",
+                   show_keybind: bool = False):
     """Draw a compact progression grid cell inside *canvas_tag*.
 
     Shows degree symbol (computed from cell's root vs key/scale),
     chord name, notes, speaker dot, and play bar.
+    If *show_keybind* is True, the keyboard shortcut is drawn
+    in the top‑right corner.
     """
     dpg.delete_item(canvas_tag, children_only=True)
 
@@ -94,10 +118,18 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                        show=False,
                        tag=f"prog_play_bar_{idx}", parent=canvas_tag)
 
+    # Keybind label in top‑right corner (drawn even on empty cells)
+    if show_keybind and idx < len(KEYBIND_LABELS):
+        lbl = KEYBIND_LABELS[idx]
+        lbl_w = len(lbl) * 7
+        dpg.draw_text([PROG_CELL_W - 8 - lbl_w, 3], lbl,
+                      color=COLOR_TEXT_DIM, size=10, parent=canvas_tag)
+
     if cell.is_empty():
         dpg.draw_text([PROG_CELL_W // 2 - 22, PROG_CELL_H // 2 - 8], "Empty",
                       color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
         return
+
 
     # Degree symbol — compute from actual cell root vs key/scale
     from klo_chords.chords import get_degree_for_root
@@ -120,3 +152,5 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     notes_str = " ".join(cell.get_notes())
     dpg.draw_text([5, 44], notes_str,
                   color=COLOR_TEXT_DIM, size=13, parent=canvas_tag)
+
+

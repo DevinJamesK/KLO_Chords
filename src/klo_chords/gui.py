@@ -40,8 +40,10 @@ from klo_chords.state import (
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
     on_prog_show_suggestions, on_prog_cell_shift_click,
     on_paste_mode_change, on_paste_shape_change,
+    on_keybinds_toggle, get_show_keybinds,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
+
 
 from klo_chords.sound import get_settings as get_sound_settings
 from klo_chords.quality import quality_symbol
@@ -49,7 +51,7 @@ from klo_chords.quality import quality_symbol
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
 VIEWPORT_WIDTH  = 860
-VIEWPORT_HEIGHT = 1040
+VIEWPORT_HEIGHT = 1000
 
 WAVE_INTERNAL_TO_DISPLAY = {
     "triangle": "Triangle",
@@ -135,6 +137,14 @@ def _build_toolbar():
                                fill=[0, 0, 0, 0],
                                color=COLOR_TEXT_DIM)
         _draw_wave_preview(snd["mode"])
+        dpg.add_spacer(width=20)
+        dpg.add_text("|", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=20)
+        dpg.add_checkbox(label="Show Keybinds",
+                         tag="toolbar_show_keybinds",
+                         default_value=False,
+                         callback=on_keybinds_toggle)
+
 
 
 
@@ -143,7 +153,7 @@ def _build_chord_tab():
     # ── Key & Scale — one row across the top ────────────────────────────
     dpg.add_spacer(height=6)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=2)
+        dpg.add_spacer(width=4)
         dpg.add_text("Key")
         dpg.add_spacer(width=4)
         dpg.add_combo(items=NOTE_NAMES, default_value="C",
@@ -277,7 +287,7 @@ def _build_progression_tab():
     # ── Scale chooser — centered row ───────────────────────────────────────
     dpg.add_spacer(height=6)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=2)
+        dpg.add_spacer(width=4)
         dpg.add_text("Key")
         dpg.add_spacer(width=4)
         dpg.add_combo(items=NOTE_NAMES, default_value="C",
@@ -302,11 +312,11 @@ def _build_progression_tab():
 
     dpg.add_spacer(height=4)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=24)
-        dpg.add_text("Paste Mode:", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=4)
+        dpg.add_text("Paste Mode", color=COLOR_TEXT_DIM)
         dpg.add_combo(items=["Insert", "Replace", "Swap"],
                       default_value="Replace",
-                      tag="paste_mode_combo", width=170,
+                      tag="paste_mode_combo", width=100,
                       callback=on_paste_mode_change)
         dpg.add_spacer(width=20)
         dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
@@ -409,27 +419,26 @@ def _build_progression_tab():
         dpg.add_button(label="Show Suggestions", tag="prog_suggest_btn",
                         width=180, height=24, callback=on_prog_show_suggestions)
         dpg.add_spacer(height=4)
+
+        _piano_pad = 20
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=24)
             dpg.add_text("Notes:", color=COLOR_TEXT_DIM)
             dpg.add_text("--", tag="prog_detail_notes", color=COLOR_ACCENT)
+            #dpg.add_spacer(width=16)
+            dpg.add_spacer(width=_piano_pad)
+            dpg.add_text("", tag="prog_detail_inv_name", color=COLOR_TEXT)
 
         # ── Multi-octave piano for cell detail (centered) ─────────────────
         dpg.add_spacer(height=8)
 
-        _piano_pad = 20
+       
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=_piano_pad)
             with dpg.drawlist(tag="prog_piano_canvas",
                               width=PROG_PIANO_CANVAS_W,
                               height=PROG_PIANO_CANVAS_H):
                 pass
-
-        dpg.add_spacer(height=4)
-        with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
-            dpg.add_text("", tag="prog_detail_inv_name",
-                         color=COLOR_TEXT)
 
 
 def _build_sound_tab():
@@ -644,13 +653,15 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_Right, callback=on_prog_cell_arrow_press, user_data="inv_next")
         dpg.add_key_press_handler(key=dpg.mvKey_Up,    callback=on_prog_cell_arrow_press, user_data="quality_prev")
         dpg.add_key_press_handler(key=dpg.mvKey_Down,  callback=on_prog_cell_arrow_press, user_data="quality_next")
-        # Ctrl+Z/Y = Undo/Redo; Ctrl+C/V = Copy/Paste
+        # Ctrl+Z/Y = Undo/Redo; Ctrl+C/V = Copy/Paste; Ctrl+K = Show Keybinds
         dpg.add_key_press_handler(key=dpg.mvKey_Z, callback=_on_key_with_ctrl, user_data="undo")
         dpg.add_key_press_handler(key=dpg.mvKey_Y, callback=_on_key_with_ctrl, user_data="redo")
         dpg.add_key_press_handler(key=dpg.mvKey_C, callback=_on_key_with_ctrl, user_data="copy")
         dpg.add_key_press_handler(key=dpg.mvKey_V, callback=_on_key_with_ctrl, user_data="paste")
+        dpg.add_key_press_handler(key=dpg.mvKey_K, callback=_on_key_with_ctrl, user_data="keybinds")
         # Delete key
         dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
+
 
     from klo_chords import dpg_keyboard
     dpg_keyboard.setup()
@@ -681,6 +692,9 @@ def _on_key_with_ctrl(sender, app_data, user_data):
         on_prog_copy()
     elif action == "paste":
         on_prog_paste()
+    elif action == "keybinds":
+        on_keybinds_toggle()
+
 
 
 def main():
