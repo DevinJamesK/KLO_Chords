@@ -478,31 +478,32 @@ def play_chord_notes(notes: List[str]):
 
 
 def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
-    """Stack pitch classes in root position above *base_octave*.
+    """Stack chord pitch classes anchored to *base_octave*.
     
-    The first note is placed closest to the centre (base_octave⋅12+21).
-    Each subsequent note is placed at least a 3rd above the previous one,
-    preferring a 4th-6th interval. This always returns valid MIDI notes
-    for the given pitch classes — no octave drift.
+    The first note is placed at or just above base_octave.
+    Each subsequent note is stacked above the previous one.
+    This works correctly for any inversion because the pcs are
+    already rotated by get_notes() to reflect the inversion order.
     """
-    centre = base_octave * 12 + 21
+    # anchor: MIDI note of C at base_octave+2 (e.g. C4=60 for octave 3)
+    anchor = (base_octave + 2) * 12
     midi_notes = []
     for i, pc in enumerate(pcs):
         if i == 0:
-            best = pc + 12
-            best_dist = abs(best - centre)
+            # Place first note at or just above the anchor octave
+            best = None
             for octave in range(0, 9):
                 midi = pc + 12 * octave
-                dist = abs(midi - centre)
-                if dist < best_dist:
-                    best_dist = dist
+                if midi >= anchor:
                     best = midi
+                    break
+            if best is None:
+                best = pc + 12 * 8  # fallback
         else:
             prev = midi_notes[i - 1]
-            # Minimum MIDI: at least a minor 3rd above the previous note
-            min_midi = prev + 3
-            target_midi = prev + 5  # prefer a 5th above
-            # Find the lowest octave of this pc that's >= min_midi
+
+            min_midi = prev + 1      # at least 1 semitone above previous
+            target_midi = prev + 5    # prefer a 5th above
             best = None
             best_dist = float('inf')
             for octave in range(0, 9):
@@ -512,7 +513,7 @@ def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
                     if dist < best_dist:
                         best_dist = dist
                         best = midi
-            # Fallback: the lowest octave above prev (shouldn't happen in practice)
+            # Fallback: lowest octave above prev
             if best is None:
                 for octave in range(0, 9):
                     midi = pc + 12 * octave
@@ -520,9 +521,10 @@ def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
                         best = midi
                         break
                 if best is None:
-                    best = pc + 12 * 8  # highest plausible octave
+                    best = pc + 12 * 8
         midi_notes.append(best)
     return midi_notes
+
 
 
 def play_progression_notes(notes: List[str], base_octave: int = 3):
