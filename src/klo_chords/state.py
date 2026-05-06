@@ -1366,11 +1366,15 @@ def _do_paste_shape_replace(data: list, target: int, um):
             idx = (tr + r_offset) * PROG_COLS + (tc + c_offset)
             if idx < 0 or idx >= PROG_CELLS_TOTAL:
                 continue
+            # Never overwrite a filled cell with an empty one from clipboard
+            if cell_data.get("root") is None:
+                continue
             _prog_cells[idx].root = cell_data.get("root", _prog_cells[idx].root)
             _prog_cells[idx].quality = cell_data.get("quality", _prog_cells[idx].quality)
             _prog_cells[idx].inversion = cell_data.get("inversion", 0)
             _prog_cells[idx].octave = cell_data.get("octave", 3)
             _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
 
     def undo_shape():
         for (r_offset, c_offset), old in old_data.items():
@@ -1387,11 +1391,15 @@ def _paste_replace(data: list, target: int):
         idx = target + i
         if idx >= PROG_CELLS_TOTAL:
             break
+        # Never overwrite a filled cell with an empty one from clipboard
+        if cell_data.get("root") is None:
+            continue
         _prog_cells[idx].root = cell_data["root"]
         _prog_cells[idx].quality = cell_data["quality"]
         _prog_cells[idx].inversion = cell_data.get("inversion", 0)
         _prog_cells[idx].octave = cell_data.get("octave", 3)
         _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
 
 
 def _restore_replace(old_data: list, target: int):
@@ -1404,7 +1412,9 @@ def _restore_replace(old_data: list, target: int):
 
 
 def _paste_insert(data: list, target: int):
-    n = len(data)
+    # Filter out empty clipboard entries — they should never overwrite filled cells
+    filled_data = [d for d in data if d.get("root") is not None]
+    n = len(filled_data)
     for i in range(PROG_CELLS_TOTAL - 1, target + n - 1, -1):
         if i >= n and i - n >= 0:
             _prog_cells[i].root = _prog_cells[i - n].root
@@ -1412,7 +1422,7 @@ def _paste_insert(data: list, target: int):
             _prog_cells[i].inversion = _prog_cells[i - n].inversion
             _prog_cells[i].octave = _prog_cells[i - n].octave
             _prog_cells[i].voicing_idx = _prog_cells[i - n].voicing_idx
-    for i, cell_data in enumerate(data):
+    for i, cell_data in enumerate(filled_data):
         idx = target + i
         if idx >= PROG_CELLS_TOTAL:
             break
@@ -1421,6 +1431,7 @@ def _paste_insert(data: list, target: int):
         _prog_cells[idx].inversion = cell_data.get("inversion", 0)
         _prog_cells[idx].octave = cell_data.get("octave", 3)
         _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
 
 
 def _restore_insert(old_tail: list, target: int):
