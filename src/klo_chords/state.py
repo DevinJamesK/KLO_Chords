@@ -1053,8 +1053,7 @@ def on_prog_paste(sender=None, app_data=None):
     global _prog_clipboard
     if not _prog_clipboard:
         return
-    from klo_chords.drag_drop import show_paste_menu
-    show_paste_menu(_prog_clipboard)
+    _do_paste(_prog_clipboard, get_paste_mode())
 
 
 def on_prog_delete_selection(sender=None, app_data=None):
@@ -1081,7 +1080,7 @@ def on_prog_delete_selection(sender=None, app_data=None):
     _rebuild_progression_grid()
 
 
-# ── Grid mutation helpers (also used by drag_drop) ────────────────────────────
+# ── Grid mutation helpers  ────────────────────────────
 
 def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
     """Insert cell at src_idx into tgt_idx.
@@ -1241,6 +1240,198 @@ def _do_swap(src_idx: int, tgt_idx: int, with_undo: bool = False):
         _prog_cells[src_idx].octave = old_tgt.octave
         _prog_cells[src_idx].voicing_idx = old_tgt.voicing_idx
 
+
+
+
+# ── Paste helpers ─────────────────────────────────────────────────────────────
+
+_paste_swap_buf: list = []
+
+
+def _do_paste(clipboard_data: list, mode: str):
+    """Execute paste from clipboard."""
+    target = _prog_selected_idx if _prog_selected_idx is not None else 0
+    shape = get_paste_shape()
+
+    from klo_chords.undo_manager import get_undo_manager
+    um = get_undo_manager()
+
+    if mode == "replace":
+        if shape == "shape":
+            _do_paste_shape_replace(clipboard_data, target, um)
+        else:
+            old_data = [copy.deepcopy(_prog_cells[i]) for i in
+                        range(target, min(target + len(clipboard_data), PROG_CELLS_TOTAL))]
+            um.do(
+                do_fn=lambda: _paste_replace(clipboard_data, target),
+                undo_fn=lambda: _restore_replace(old_data, target),
+                description="paste (replace)"
+            )
+    elif mode == "insert":
+        old_tail = [copy.deepcopy(_prog_cells[i]) for i in
+                    range(target, PROG_CELLS_TOTAL)]
+        um.do(
+            do_fn=lambda: _paste_insert(clipboard_data, target),
+            undo_fn=lambda: _restore_insert(old_tail, target),
+            description="paste (insert)"
+        )
+    elif mode == "swap":
+        um.do(
+            do_fn=lambda: _paste_swap(clipboard_data, target),
+            undo_fn=lambda: _paste_swap_backward(clipboard_data, target),
+            description="paste (swap)"
+        )
+    _select_prog_cell(target)
+    _rebuild_progression_grid()
+
+
+def _compute_clipboard_shape(data: list):
+    """Compute the bounding dimensions of copied cells from their stored indices."""
+    indices = [d.get("_idx") for d in data if d.get("_idx") is not None]
+    if not indices:
+        return 1, len(data), 0, 0
+    rows = [i // PROG_COLS for i in indices]
+    cols = [i % PROG_COLS for i in indices]
+    min_row, max_row = min(rows), max(rows)
+    min_col, max_col = min(cols), max(cols)
+    return (max_row - min_row + 1, max_col - min_col + 1, min_row, min_col)
+
+
+def _do_paste_shape_replace(data: list, target: int, um):
+    """Paste with shape preservation: maintain 2D layout of copied cells."""
+    n_rows, n_cols, min_row, min_col = _compute_clipboard_shape(data)
+    tr, tc = target // PROG_COLS, target % PROG_COLS
+
+    shape_map = {}
+    for d in data:
+        src_idx = d.get("_idx")
+        if src_idx is not None:
+            sr = src_idx // PROG_COLS - min_row
+            sc = src_idx % PROG_COLS - min_col
+            shape_map[(sr, sc)] = d
+
+    for d in data:
+        if d.get("_idx") is None:
+            for r in range(n_rows):
+                for c in range(n_cols):
+                    if (r, c) not in shape_map:
+                        shape_map[(r, c)] = d
+                        break
+                if (r, c) in shape_map and shape_map[(r, c)] == d:
+                    break
+
+    old_data = {}
+    for r in range(n_rows):
+        for c in range(n_cols):
+            idx = (tr + r) * PROG_COLS + (tc + c)
+            if 0 <= idx < PROG_CELLS_TOTAL:
+                old_data[(r, c)] = copy.deepcopy(_prog_cells[idx])
+
+    def do_shape():
+        for (r_offset, c_offset), cell_data in shape_map.items():
+            idx = (tr + r_offset) * PROG_COLS + (tc + c_offset)
+            if idx < 0 or idx >= PROG_CELLS_TOTAL:
+                continue
+            _prog_cells[idx].root = cell_data.get("root", _prog_cells[idx].root)
+            _prog_cells[idx].quality = cell_data.get("quality", _prog_cells[idx].quality)
+            _prog_cells[idx].inversion = cell_data.get("inversion", 0)
+            _prog_cells[idx].octave = cell_data.get("octave", 3)
+            _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
+    def undo_shape():
+        for (r_offset, c_offset), old in old_data.items():
+            idx = (tr + r_offset) * PROG_COLS + (tc + c_offset)
+            if idx < 0 or idx >= PROG_CELLS_TOTAL:
+                continue
+            _prog_cells[idx] = old
+
+    um.do(do_shape, undo_shape, description="paste shape (replace)")
+
+
+def _paste_replace(data: list, target: int):
+    for i, cell_data in enumerate(data):
+        idx = target + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        _prog_cells[idx].root = cell_data["root"]
+        _prog_cells[idx].quality = cell_data["quality"]
+        _prog_cells[idx].inversion = cell_data.get("inversion", 0)
+        _prog_cells[idx].octave = cell_data.get("octave", 3)
+        _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
+
+def _restore_replace(old_data: list, target: int):
+    for i, cell in enumerate(old_data):
+        idx = target + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        _prog_cells[idx] = cell
+    _rebuild_progression_grid()
+
+
+def _paste_insert(data: list, target: int):
+    n = len(data)
+    for i in range(PROG_CELLS_TOTAL - 1, target + n - 1, -1):
+        if i >= n and i - n >= 0:
+            _prog_cells[i].root = _prog_cells[i - n].root
+            _prog_cells[i].quality = _prog_cells[i - n].quality
+            _prog_cells[i].inversion = _prog_cells[i - n].inversion
+            _prog_cells[i].octave = _prog_cells[i - n].octave
+            _prog_cells[i].voicing_idx = _prog_cells[i - n].voicing_idx
+    for i, cell_data in enumerate(data):
+        idx = target + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        _prog_cells[idx].root = cell_data["root"]
+        _prog_cells[idx].quality = cell_data["quality"]
+        _prog_cells[idx].inversion = cell_data.get("inversion", 0)
+        _prog_cells[idx].octave = cell_data.get("octave", 3)
+        _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
+
+def _restore_insert(old_tail: list, target: int):
+    for i, cell in enumerate(old_tail):
+        idx = target + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        _prog_cells[idx] = cell
+    _rebuild_progression_grid()
+
+
+def _paste_swap(data: list, target: int):
+    """Swap clipboard cells with existing cells at target position."""
+    global _paste_swap_buf
+    _paste_swap_buf = []
+    for i, cell_data in enumerate(data):
+        idx = target + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        _paste_swap_buf.append({
+            "root": _prog_cells[idx].root,
+            "quality": _prog_cells[idx].quality,
+            "inversion": _prog_cells[idx].inversion,
+            "octave": _prog_cells[idx].octave,
+            "voicing_idx": _prog_cells[idx].voicing_idx,
+        })
+        _prog_cells[idx].root = cell_data["root"]
+        _prog_cells[idx].quality = cell_data["quality"]
+        _prog_cells[idx].inversion = cell_data.get("inversion", 0)
+        _prog_cells[idx].octave = cell_data.get("octave", 3)
+        _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
+
+
+def _paste_swap_backward(data: list, target: int):
+    """Undo the swap by swapping back."""
+    for i, cell_data in enumerate(_paste_swap_buf):
+        idx = target + i
+        if idx >= PROG_CELLS_TOTAL:
+            break
+        _prog_cells[idx].root = cell_data["root"]
+        _prog_cells[idx].quality = cell_data["quality"]
+        _prog_cells[idx].inversion = cell_data["inversion"]
+        _prog_cells[idx].octave = cell_data["octave"]
+        _prog_cells[idx].voicing_idx = cell_data["voicing_idx"]
+    _rebuild_progression_grid()
 
 # ── Multi-cell move up/down ────────────────────────────────────────────────────
 
