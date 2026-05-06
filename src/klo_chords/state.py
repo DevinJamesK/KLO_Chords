@@ -104,7 +104,7 @@ def _play_prog_cell(idx: int):
         if not cell.is_empty():
             notes = cell.get_notes()
             if notes:
-                play_progression_notes(notes, base_octave=cell.octave)
+                play_progression_notes(notes, base_octave=cell.effective_octave())
                 _prog_sounding_idx = idx
 
 
@@ -204,7 +204,7 @@ def on_prog_fill(sender=None, app_data=None):
         cell = _prog_cells[idx]
         cell.root = chord.root
         cell.quality = chord.quality
-        cell.inversion = 0
+        cell.rotation = 0
         cell.voicing_idx = 0
     _rebuild_progression_grid()
     # Auto-select the starting cell so arrow buttons work immediately
@@ -316,66 +316,56 @@ def on_prog_cell_quality_next(sender=None, app_data=None):
 
 
 def on_prog_cell_inversion_prev(sender=None, app_data=None):
+    """Move the chord down the keyboard (previous inversion / rotation step)."""
     if _prog_selected_idx is None:
         return
     cell = _prog_cells[_prog_selected_idx]
     if cell.is_empty():
         cell.root = "C"
         cell.quality = "M"
-    intervals = QUALITY_INTERVALS.get(cell.quality, [0, 4, 7])
-    max_inv = max(0, len(intervals) - 1)
-    if max_inv > 0:
-        if cell.inversion == 0:
-            cell.inversion = max_inv
-            cell.octave -= 1  # wrap down → go down an octave
-        else:
-            cell.inversion -= 1
+    cell.rotation -= 1
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
 
 
 def on_prog_cell_inversion_next(sender=None, app_data=None):
+    """Move the chord up the keyboard (next inversion / rotation step)."""
     if _prog_selected_idx is None:
         return
     cell = _prog_cells[_prog_selected_idx]
     if cell.is_empty():
         cell.root = "C"
         cell.quality = "M"
-    intervals = QUALITY_INTERVALS.get(cell.quality, [0, 4, 7])
-    max_inv = max(0, len(intervals) - 1)
-    if max_inv > 0:
-        if cell.inversion == max_inv:
-            cell.inversion = 0
-            cell.octave += 1  # wrap around → go up an octave
-        else:
-            cell.inversion += 1
+    cell.rotation += 1
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
 
 
 def on_prog_cell_octave_prev(sender=None, app_data=None):
+    """Lower the base octave of the selected cell."""
     if _prog_selected_idx is None:
         return
     cell = _prog_cells[_prog_selected_idx]
     if cell.is_empty():
         cell.root = "C"
         cell.quality = "M"
-    cell.octave = max(0, cell.octave - 1)
+    cell.base_octave = max(0, cell.base_octave - 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
 
 
 def on_prog_cell_octave_next(sender=None, app_data=None):
+    """Raise the base octave of the selected cell."""
     if _prog_selected_idx is None:
         return
     cell = _prog_cells[_prog_selected_idx]
     if cell.is_empty():
         cell.root = "C"
         cell.quality = "M"
-    cell.octave = min(8, cell.octave + 1)
+    cell.base_octave = min(8, cell.base_octave + 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -683,9 +673,9 @@ def _refresh_prog_cell(idx: int):
 
 def _update_prog_piano(cell: ProgCell):
     """Update the multi-octave piano with root-position voicing matching play_progression_notes.
-    
+
     Uses the same _stack_root_position logic as sound.py so display matches audio.
-    The octave display always shows cell.octave directly (not recomputed from MIDI).
+    The octave display shows the effective octave (base_octave + wrap shift).
     """
     notes = cell.get_notes()
     if not notes:
@@ -695,16 +685,16 @@ def _update_prog_piano(cell: ProgCell):
         return
 
     from klo_chords.sound import _stack_root_position
-    
-    base_oct = cell.octave
+
+    eff_oct = cell.effective_octave()
     pcs = [note_to_pc(n) for n in notes]
-    midi_notes = _stack_root_position(pcs, base_oct)
+    midi_notes = _stack_root_position(pcs, eff_oct)
 
     bass_midi = min(midi_notes) if midi_notes else -1
 
-    # Display octave always matches cell.octave (the user's base octave setting).
+    # Display octave always matches the effective octave.
     if dpg.does_item_exist("prog_detail_octave"):
-        dpg.set_value("prog_detail_octave", str(base_oct))
+        dpg.set_value("prog_detail_octave", str(eff_oct))
 
     # Calculate the octave range so all notes fit in the 2-octave display
     if midi_notes:
@@ -754,7 +744,9 @@ def _update_prog_detail(idx: int):
         display_q = PROG_QUALITY_REVERSE_MAP.get(cell.quality, "Major")
         dpg.set_value("prog_detail_quality", display_q)
         inv_labels = {0: "Root", 1: "1st", 2: "2nd", 3: "3rd"}
-        inv_name = inv_labels.get(cell.inversion, "Root")
+        intervals = QUALITY_INTERVALS.get(cell.quality, [0, 4, 7])
+        inv_idx = cell.rotation % max(1, len(intervals))
+        inv_name = inv_labels.get(inv_idx, "Root")
         dpg.set_value("prog_detail_inversion", inv_name)
         notes_str = " ".join(cell.get_notes()) if cell.get_notes() else "--"
         dpg.set_value("prog_detail_notes", notes_str)
@@ -874,7 +866,7 @@ def _refresh_progression():
             cell = _prog_cells[i]
             cell.root = chords[i].root
             cell.quality = chords[i].quality
-            cell.inversion = 0
+            cell.rotation = 0
             cell.voicing_idx = 0
         else:
             _prog_cells[i].clear()
@@ -1036,8 +1028,8 @@ def on_prog_copy(sender=None, app_data=None):
         _prog_clipboard.append({
             "root": cell.root,
             "quality": cell.quality,
-            "inversion": cell.inversion,
-            "octave": cell.octave,
+            "rotation": cell.rotation,
+            "base_octave": cell.base_octave,
             "voicing_idx": cell.voicing_idx,
             "_idx": idx,  # store original index for shape-aware paste
         })
@@ -1102,8 +1094,8 @@ def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
             def do_fill():
                 _prog_cells[tgt_idx].root = src_data.root
                 _prog_cells[tgt_idx].quality = src_data.quality
-                _prog_cells[tgt_idx].inversion = src_data.inversion
-                _prog_cells[tgt_idx].octave = src_data.octave
+                _prog_cells[tgt_idx].rotation = src_data.rotation
+                _prog_cells[tgt_idx].base_octave = src_data.base_octave
                 _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
                 _prog_cells[src_idx].clear()
             def undo_fill():
@@ -1113,8 +1105,8 @@ def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
         else:
             _prog_cells[tgt_idx].root = src_data.root
             _prog_cells[tgt_idx].quality = src_data.quality
-            _prog_cells[tgt_idx].inversion = src_data.inversion
-            _prog_cells[tgt_idx].octave = src_data.octave
+            _prog_cells[tgt_idx].rotation = src_data.rotation
+            _prog_cells[tgt_idx].base_octave = src_data.base_octave
             _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
             _prog_cells[src_idx].clear()
         return
@@ -1131,13 +1123,13 @@ def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
             for i in range(PROG_CELLS_TOTAL - 1, tgt_idx, -1):
                 _prog_cells[i].root = _prog_cells[i - 1].root
                 _prog_cells[i].quality = _prog_cells[i - 1].quality
-                _prog_cells[i].inversion = _prog_cells[i - 1].inversion
-                _prog_cells[i].octave = _prog_cells[i - 1].octave
+                _prog_cells[i].rotation = _prog_cells[i - 1].rotation
+                _prog_cells[i].base_octave = _prog_cells[i - 1].base_octave
                 _prog_cells[i].voicing_idx = _prog_cells[i - 1].voicing_idx
             _prog_cells[tgt_idx].root = src_data.root
             _prog_cells[tgt_idx].quality = src_data.quality
-            _prog_cells[tgt_idx].inversion = src_data.inversion
-            _prog_cells[tgt_idx].octave = src_data.octave
+            _prog_cells[tgt_idx].rotation = src_data.rotation
+            _prog_cells[tgt_idx].base_octave = src_data.base_octave
             _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
             _prog_cells[src_idx].clear()
 
@@ -1153,13 +1145,13 @@ def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
         for i in range(PROG_CELLS_TOTAL - 1, tgt_idx, -1):
             _prog_cells[i].root = _prog_cells[i - 1].root
             _prog_cells[i].quality = _prog_cells[i - 1].quality
-            _prog_cells[i].inversion = _prog_cells[i - 1].inversion
-            _prog_cells[i].octave = _prog_cells[i - 1].octave
+            _prog_cells[i].rotation = _prog_cells[i - 1].rotation
+            _prog_cells[i].base_octave = _prog_cells[i - 1].base_octave
             _prog_cells[i].voicing_idx = _prog_cells[i - 1].voicing_idx
         _prog_cells[tgt_idx].root = src_data.root
         _prog_cells[tgt_idx].quality = src_data.quality
-        _prog_cells[tgt_idx].inversion = src_data.inversion
-        _prog_cells[tgt_idx].octave = src_data.octave
+        _prog_cells[tgt_idx].rotation = src_data.rotation
+        _prog_cells[tgt_idx].base_octave = src_data.base_octave
         _prog_cells[tgt_idx].voicing_idx = src_data.voicing_idx
         _prog_cells[src_idx].clear()
 
@@ -1180,8 +1172,8 @@ def _do_replace(src_idx: int, tgt_idx: int, with_undo: bool = False):
         def do_replace():
             _prog_cells[tgt_idx].root = old_src.root
             _prog_cells[tgt_idx].quality = old_src.quality
-            _prog_cells[tgt_idx].inversion = old_src.inversion
-            _prog_cells[tgt_idx].octave = old_src.octave
+            _prog_cells[tgt_idx].rotation = old_src.rotation
+            _prog_cells[tgt_idx].base_octave = old_src.base_octave
             _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
             _prog_cells[src_idx].clear()
 
@@ -1193,8 +1185,8 @@ def _do_replace(src_idx: int, tgt_idx: int, with_undo: bool = False):
     else:
         _prog_cells[tgt_idx].root = old_src.root
         _prog_cells[tgt_idx].quality = old_src.quality
-        _prog_cells[tgt_idx].inversion = old_src.inversion
-        _prog_cells[tgt_idx].octave = old_src.octave
+        _prog_cells[tgt_idx].rotation = old_src.rotation
+        _prog_cells[tgt_idx].base_octave = old_src.base_octave
         _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
         _prog_cells[src_idx].clear()
 
@@ -1215,13 +1207,13 @@ def _do_swap(src_idx: int, tgt_idx: int, with_undo: bool = False):
         def do_swap():
             _prog_cells[tgt_idx].root = old_src.root
             _prog_cells[tgt_idx].quality = old_src.quality
-            _prog_cells[tgt_idx].inversion = old_src.inversion
-            _prog_cells[tgt_idx].octave = old_src.octave
+            _prog_cells[tgt_idx].rotation = old_src.rotation
+            _prog_cells[tgt_idx].base_octave = old_src.base_octave
             _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
             _prog_cells[src_idx].root = old_tgt.root
             _prog_cells[src_idx].quality = old_tgt.quality
-            _prog_cells[src_idx].inversion = old_tgt.inversion
-            _prog_cells[src_idx].octave = old_tgt.octave
+            _prog_cells[src_idx].rotation = old_tgt.rotation
+            _prog_cells[src_idx].base_octave = old_tgt.base_octave
             _prog_cells[src_idx].voicing_idx = old_tgt.voicing_idx
 
         def undo_swap():
@@ -1232,13 +1224,13 @@ def _do_swap(src_idx: int, tgt_idx: int, with_undo: bool = False):
     else:
         _prog_cells[tgt_idx].root = old_src.root
         _prog_cells[tgt_idx].quality = old_src.quality
-        _prog_cells[tgt_idx].inversion = old_src.inversion
-        _prog_cells[tgt_idx].octave = old_src.octave
+        _prog_cells[tgt_idx].rotation = old_src.rotation
+        _prog_cells[tgt_idx].base_octave = old_src.base_octave
         _prog_cells[tgt_idx].voicing_idx = old_src.voicing_idx
         _prog_cells[src_idx].root = old_tgt.root
         _prog_cells[src_idx].quality = old_tgt.quality
-        _prog_cells[src_idx].inversion = old_tgt.inversion
-        _prog_cells[src_idx].octave = old_tgt.octave
+        _prog_cells[src_idx].rotation = old_tgt.rotation
+        _prog_cells[src_idx].base_octave = old_tgt.base_octave
         _prog_cells[src_idx].voicing_idx = old_tgt.voicing_idx
 
 
@@ -1338,8 +1330,8 @@ def _do_paste_shape_replace(data: list, target: int, um):
                 continue
             _prog_cells[idx].root = cell_data.get("root", _prog_cells[idx].root)
             _prog_cells[idx].quality = cell_data.get("quality", _prog_cells[idx].quality)
-            _prog_cells[idx].inversion = cell_data.get("inversion", 0)
-            _prog_cells[idx].octave = cell_data.get("octave", 3)
+            _prog_cells[idx].rotation = cell_data.get("rotation", 0)
+            _prog_cells[idx].base_octave = cell_data.get("base_octave", 3)
             _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
 
 
@@ -1363,8 +1355,8 @@ def _paste_replace(data: list, target: int):
             continue
         _prog_cells[idx].root = cell_data["root"]
         _prog_cells[idx].quality = cell_data["quality"]
-        _prog_cells[idx].inversion = cell_data.get("inversion", 0)
-        _prog_cells[idx].octave = cell_data.get("octave", 3)
+        _prog_cells[idx].rotation = cell_data.get("rotation", 0)
+        _prog_cells[idx].base_octave = cell_data.get("base_octave", 3)
         _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
 
 
@@ -1386,8 +1378,8 @@ def _paste_insert(data: list, target: int):
         if i >= n and i - n >= 0:
             _prog_cells[i].root = _prog_cells[i - n].root
             _prog_cells[i].quality = _prog_cells[i - n].quality
-            _prog_cells[i].inversion = _prog_cells[i - n].inversion
-            _prog_cells[i].octave = _prog_cells[i - n].octave
+            _prog_cells[i].rotation = _prog_cells[i - n].rotation
+            _prog_cells[i].base_octave = _prog_cells[i - n].base_octave
             _prog_cells[i].voicing_idx = _prog_cells[i - n].voicing_idx
     for i, cell_data in enumerate(filled_data):
         idx = target + i
@@ -1395,8 +1387,8 @@ def _paste_insert(data: list, target: int):
             break
         _prog_cells[idx].root = cell_data["root"]
         _prog_cells[idx].quality = cell_data["quality"]
-        _prog_cells[idx].inversion = cell_data.get("inversion", 0)
-        _prog_cells[idx].octave = cell_data.get("octave", 3)
+        _prog_cells[idx].rotation = cell_data.get("rotation", 0)
+        _prog_cells[idx].base_octave = cell_data.get("base_octave", 3)
         _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
 
 
@@ -1421,14 +1413,14 @@ def _paste_swap(data: list, target: int):
         _paste_swap_buf.append({
             "root": _prog_cells[idx].root,
             "quality": _prog_cells[idx].quality,
-            "inversion": _prog_cells[idx].inversion,
-            "octave": _prog_cells[idx].octave,
+            "rotation": _prog_cells[idx].rotation,
+            "base_octave": _prog_cells[idx].base_octave,
             "voicing_idx": _prog_cells[idx].voicing_idx,
         })
         _prog_cells[idx].root = cell_data["root"]
         _prog_cells[idx].quality = cell_data["quality"]
-        _prog_cells[idx].inversion = cell_data.get("inversion", 0)
-        _prog_cells[idx].octave = cell_data.get("octave", 3)
+        _prog_cells[idx].rotation = cell_data.get("rotation", 0)
+        _prog_cells[idx].base_octave = cell_data.get("base_octave", 3)
         _prog_cells[idx].voicing_idx = cell_data.get("voicing_idx", 0)
 
 
@@ -1440,8 +1432,8 @@ def _paste_swap_backward(data: list, target: int):
             break
         _prog_cells[idx].root = cell_data["root"]
         _prog_cells[idx].quality = cell_data["quality"]
-        _prog_cells[idx].inversion = cell_data["inversion"]
-        _prog_cells[idx].octave = cell_data["octave"]
+        _prog_cells[idx].rotation = cell_data["rotation"]
+        _prog_cells[idx].base_octave = cell_data["base_octave"]
         _prog_cells[idx].voicing_idx = cell_data["voicing_idx"]
     _rebuild_progression_grid()
 
@@ -1623,8 +1615,8 @@ def _apply_suggestion(sug):
         cell = _prog_cells[_prog_selected_idx]
         cell.root = sug.root
         cell.quality = sug.quality
-        cell.inversion = 0
-        cell.octave = 3
+        cell.rotation = 0
+        cell.base_octave = 3
         cell.voicing_idx = 0
 
     def undo_apply():

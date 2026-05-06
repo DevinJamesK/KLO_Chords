@@ -99,11 +99,16 @@ class ChordInfo:
 
 @dataclass
 class ProgCell:
-    """A single cell in the chord progression grid."""
+    """A single cell in the chord progression grid.
+
+    ``rotation`` tracks cumulative inversion steps from root position.
+    ``rotation % num_notes`` gives the inversion index (0=root pos, 1=1st, ...).
+    ``rotation // num_notes`` gives the octave offset from ``base_octave``.
+    """
     root: Optional[str] = None
     quality: str = "M"
-    inversion: int = 0
-    octave: int = 3
+    rotation: int = 0
+    base_octave: int = 3
     voicing_idx: int = 0
 
     def is_empty(self) -> bool:
@@ -117,16 +122,22 @@ class ProgCell:
         root_pc = note_to_pc(self.root)
         raw_pcs = [(root_pc + i) % 12 for i in intervals]
         # Apply inversion: rotate the chord
-        inv = self.inversion % max(1, len(raw_pcs))
+        inv = self.rotation % max(1, len(raw_pcs))
         pcs = raw_pcs[inv:] + raw_pcs[:inv]
         style = get_accidental_style(self.root)
         return [pc_to_note(pc, style) for pc in pcs]
 
+    def effective_octave(self) -> int:
+        """Return the octave anchoring the bass note, accounting for wraps."""
+        intervals = QUALITY_INTERVALS.get(self.quality, [0, 4, 7])
+        num_notes = max(1, len(intervals))
+        return self.base_octave + self.rotation // num_notes
+
     def clear(self):
         self.root = None
         self.quality = "M"
-        self.inversion = 0
-        self.octave = 3
+        self.rotation = 0
+        self.base_octave = 3
         self.voicing_idx = 0
 
 
