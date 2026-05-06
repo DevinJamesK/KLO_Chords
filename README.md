@@ -9,12 +9,13 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
   - Roman numeral degree (dynamically computed from the chord's actual root vs the key/scale)
   - Chord name and notes in a bordered tile
   - A mini fretboard preview
-  - Animated speaker indicator dot and play bar when sounding
+  - Play bar indicator when sounding
 - **Chord detail panel** — Click any chord to see:
   - Full name with spelled-out quality
   - Chord notes and intervals
   - Large interactive fretboard diagram
   - Multiple voicings (navigate with Prev/Next)
+  - Fretboard display modes: fret numbers or note names
 - **Streaming audio engine** — Chords play automatically on selection via `sounddevice` + numpy. Waveforms: triangle (default), sine, sawtooth.
 - **Playback modes** — Toggle (on/off per chord) or One-Shot (~1s burst).
 - **Legato mode** — Notes shared between consecutive chords are held smoothly.
@@ -22,40 +23,101 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 - **Base octave slider** — Shift chord voicings up or down.
 - **Piano keyboard** — Highlights chord notes (gold), scale notes (blue), and bass note (green).
 - **Inversion display** — Shows the current inversion name and sounding notes below the keyboard.
-- **Number key shortcuts (1-8)** — Press 1-8 to select and play diatonic chords.
+- **Number key shortcuts (1-7)** — Press 1-7 to select and play diatonic chords.
+- **Mute/Unmute** — Press `ESC` to toggle mute; `Spacebar` to stop playback.
 - **Validated guitar voicings** — Loads local guitar chord data, rejects shapes with wrong notes, de-duplicates results, and ranks shapes by playability.
-- **Progression grid** — 8-column × 4-row grid for building chord progressions. Click any cell to edit root, quality, and inversion. Each cell shows the chord name, notes, and a roman numeral dynamically computed against the current key/scale.
-- **Multi-select in progression** — Shift+click to select a range of cells, Ctrl+click to toggle individual cell selection. Copy (Ctrl+C) selected cells, then Paste (Ctrl+V) them to another location with your choice of paste mode:
+- **Fretboard note-name mode** — Toggle between fret numbers and actual note names on fretboard dots.
+- **Progression grid** — 7-column × 4-row grid for building chord progressions. Click any cell to edit root, quality, and inversion. Each cell shows the chord name, notes, and a roman numeral dynamically computed against the current key/scale.
+- **Multi-select in progression** — Shift+click to select a range of cells, Ctrl/Cmd+click to toggle individual cell selection. Copy (Ctrl+C) and Paste (Ctrl+V) with multiple paste modes:
   - **Replace mode** — overwrites cells starting at the paste position
   - **Insert mode** — shifts existing cells right to make room
-  - **Linear paste** — pastes in a flat row
+  - **Swap mode** — exchanges clipboard contents with target cells
   - **Preserve Shape paste** — keeps the original 2D row/column layout
+- **Undo/Redo** — Full command-pattern undo/redo (Ctrl+Z / Ctrl+Y) for all progression grid operations.
 - **Delete selected cells** — Press Delete to clear all multi-selected cells at once.
+- **Move selection** — Ctrl+Up / Ctrl+Down moves selected cells one row up or down.
 - **Chord suggestions** — Select any cell (empty or non-empty) to see categorized chord suggestions: safe (diatonic), borrowed, secondary dominants, chromatic mediants, and advanced chords. Click a suggestion to instantly apply it to the cell.
 - **Clear All** — Red "Clear All" button resets all progression grid cells, with automatic sound stop.
 
-## Usage
+## Quick Start
 
-### Conda / Miniforge Setup
+### Option 1: Launcher Scripts (Recommended)
 
-```powershell
-conda env create -f environment.yml
-conda activate klo_music
+**macOS / Linux:**
+```bash
+./run.sh
 ```
 
-### Run
+**Windows:**
+```batch
+run.bat
+```
+
+The launcher automatically creates the Conda environment (if needed), installs dependencies, and starts the app.
+
+### Option 2: Manual Setup
 
 ```bash
+# Create Conda environment
+conda env create -f environment.yml
+conda activate klo_music
+
+# Or use pip + venv
+pip install -e .
+
+# Run
 python -m klo_chords
 ```
 
-Or directly:
+## Keyboard Shortcuts
 
-```bash
-python src/klo_chords/gui.py
-```
+### Global
 
-### Controls
+| Shortcut | Action |
+|---|---|
+| `Spacebar` | Stop current sound |
+| `ESC` | Toggle mute on/off |
+| `Ctrl+Z` | Undo (progression grid) |
+| `Ctrl+Y` | Redo (progression grid) |
+
+### Chord Tab (Diatonic Chords)
+
+| Shortcut | Action |
+|---|---|
+| `1` – `7` | Select & play diatonic chord |
+| Same key again | Toggle off playing chord |
+
+### Progression Tab
+
+#### Cell Selection & Playback
+
+| Shortcut | Action |
+|---|---|
+| `1` – `7` | Select & play cells in row 0 |
+| `Q` – `U` | Select & play cells in row 1 |
+| `A` – `J` | Select & play cells in row 2 |
+| `Z` – `M` | Select & play cells in row 3 |
+| `Ctrl` + any above | Select cell without playing sound |
+
+#### Cell Editing
+
+| Shortcut | Action |
+|---|---|
+| `←` / `→` | Cycle inversion of selected cell |
+| `↑` / `↓` | Cycle quality of selected cell |
+| `Ctrl+↑` / `Ctrl+↓` | Move selection up/down one row |
+
+#### Multi-Select & Clipboard
+
+| Shortcut | Action |
+|---|---|
+| `Shift+Click` | Range-select cells |
+| `Ctrl/Cmd+Click` | Toggle individual cell selection |
+| `Ctrl+C` | Copy selected cells |
+| `Ctrl+V` | Paste cells |
+| `Delete` | Clear selected cells |
+
+## Controls
 
 | Control | Action |
 |---|---|
@@ -64,11 +126,17 @@ python src/klo_chords/gui.py
 | Include 7th chords | Toggle triads vs. seventh chords |
 | Click a chord box | Select and view details |
 | < Prev / Next > | Cycle through fretboard voicings |
-| 1-8 keys | Select and play diatonic chords |
+| 1-7 keys | Select and play diatonic chords |
 | Volume slider | Adjust master volume |
 | Wave combo | Switch waveform (triangle/sine/sawtooth) |
 | Legato toggle | Enable smooth note transitions |
 | Sound tab | Full audio configuration panel |
+| Show Note Names | Toggle fretboard display mode |
+| Fill Chords | Fill progression grid with diatonic chords |
+| Clear All | Reset all progression cells |
+| Show Suggestions | Open chord suggestion panel |
+| Paste Mode | Choose insert/replace/swap for paste |
+| Paste Shape | Choose linear or preserve-shape paste |
 
 ## Chord Shape Data
 
@@ -104,9 +172,11 @@ src/klo_chords/
 |-- state.py                    Global state and callbacks
 |-- chords.py                   Music theory engine
 |-- chord_shapes.py             Guitar shape loading, validation, and ranking
+|-- chord_suggestions.py        Smart chord suggestion engine
+|-- undo_manager.py             Undo/redo command-pattern manager
 |-- theme.py                    Colors, font path, and icon path
 |-- quality.py                  Chord quality formatting
-|-- chord_box.py                Chord name tile rendering
+|-- chord_box.py                Chord name tile and progression cell rendering
 |-- fretboard.py                Mini and large fretboard drawing
 |-- piano.py                    Piano keyboard rendering
 |-- sound.py                    Streaming audio engine (sounddevice + numpy)
