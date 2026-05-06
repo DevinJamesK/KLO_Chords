@@ -371,7 +371,6 @@ def on_prog_cell_octave_prev(sender=None, app_data=None):
     cell.base_octave = max(0, cell.base_octave - 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    stop_current()
     _play_prog_cell(_prog_selected_idx)
 
 
@@ -386,7 +385,6 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
     cell.base_octave = min(8, cell.base_octave + 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    stop_current()
     _play_prog_cell(_prog_selected_idx)
 
 
