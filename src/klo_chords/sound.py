@@ -477,14 +477,15 @@ def play_chord_notes(notes: List[str]):
     _engine.play_notes(freqs, amps, notes)
 
 
-def play_progression_notes(notes: List[str], base_octave: int = 3):
-    """Play chord notes for the progression tab with root-position voicing."""
-    global _current_notes
-    if not _sound_enabled or not notes:
-        return
-    # Use root-position stacking based on base_octave
+def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
+    """Stack pitch classes in root position above *base_octave*.
+    
+    The first note is placed closest to the centre (base_octave⋅12+21).
+    Each subsequent note is placed at least a 3rd above the previous one,
+    preferring a 4th-6th interval. This always returns valid MIDI notes
+    for the given pitch classes — no octave drift.
+    """
     centre = base_octave * 12 + 21
-    pcs = [note_to_pc(n) for n in notes]
     midi_notes = []
     for i, pc in enumerate(pcs):
         if i == 0:
@@ -497,24 +498,41 @@ def play_progression_notes(notes: List[str], base_octave: int = 3):
                     best_dist = dist
                     best = midi
         else:
-            best = midi_notes[i - 1] + 3
-            best_dist = abs(best - (midi_notes[i - 1] + 5))
+            prev = midi_notes[i - 1]
+            # Minimum MIDI: at least a minor 3rd above the previous note
+            min_midi = prev + 3
+            target_midi = prev + 5  # prefer a 5th above
+            # Find the lowest octave of this pc that's >= min_midi
+            best = None
+            best_dist = float('inf')
             for octave in range(0, 9):
                 midi = pc + 12 * octave
-                if midi >= midi_notes[i - 1] + 3 and midi <= midi_notes[i - 1] + 8:
-                    best_dist = 0
-                    best = midi
-                    break
-                elif midi > midi_notes[i - 1] + 3 and midi - (midi_notes[i - 1] + 5) < best_dist:
-                    best_dist = abs(midi - (midi_notes[i - 1] + 5))
-                    best = midi
+                if midi >= min_midi:
+                    dist = abs(midi - target_midi)
+                    if dist < best_dist:
+                        best_dist = dist
+                        best = midi
+            # Fallback: the lowest octave above prev (shouldn't happen in practice)
+            if best is None:
+                for octave in range(0, 9):
+                    midi = pc + 12 * octave
+                    if midi > prev:
+                        best = midi
+                        break
+                if best is None:
+                    best = pc + 12 * 8  # highest plausible octave
         midi_notes.append(best)
+    return midi_notes
 
-    if midi_notes:
-        avg = sum(midi_notes) // len(midi_notes)
-        drift = avg - centre
-        if abs(drift) > 6:
-            midi_notes = [m + (-12 if drift > 6 else 12) for m in midi_notes]
+
+def play_progression_notes(notes: List[str], base_octave: int = 3):
+    """Play chord notes for the progression tab with root-position voicing."""
+    global _current_notes
+    if not _sound_enabled or not notes:
+        return
+    pcs = [note_to_pc(n) for n in notes]
+    midi_notes = _stack_root_position(pcs, base_octave)
+
 
     freqs = [_midi_to_frequency(m) for m in midi_notes]
     amps = []

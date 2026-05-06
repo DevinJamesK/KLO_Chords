@@ -684,8 +684,8 @@ def _refresh_prog_cell(idx: int):
 def _update_prog_piano(cell: ProgCell):
     """Update the multi-octave piano with root-position voicing matching play_progression_notes.
     
-    The piano canvas is rebuilt so that all sounding notes are visible
-    within the 2-octave display.
+    Uses the same _stack_root_position logic as sound.py so display matches audio.
+    The octave display always shows cell.octave directly (not recomputed from MIDI).
     """
     notes = cell.get_notes()
     if not notes:
@@ -694,58 +694,25 @@ def _update_prog_piano(cell: ProgCell):
             dpg.set_value("prog_detail_inv_name", "")
         return
 
+    from klo_chords.sound import _stack_root_position
+    
     base_oct = cell.octave
-    centre = base_oct * 12 + 21
-
     pcs = [note_to_pc(n) for n in notes]
-
-    # Root-position stacking (same as play_progression_notes)
-    midi_notes = []
-    for i, pc in enumerate(pcs):
-        if i == 0:
-            best = pc + 12
-            best_dist = abs(best - centre)
-            for octave in range(0, 9):
-                midi = pc + 12 * octave
-                dist = abs(midi - centre)
-                if dist < best_dist:
-                    best_dist = dist
-                    best = midi
-        else:
-            best = midi_notes[i - 1] + 3
-            best_dist = abs(best - (midi_notes[i - 1] + 5))
-            for octave in range(0, 9):
-                midi = pc + 12 * octave
-                if midi >= midi_notes[i - 1] + 3 and midi <= midi_notes[i - 1] + 8:
-                    best_dist = 0
-                    best = midi
-                    break
-                elif midi > midi_notes[i - 1] + 3 and midi - (midi_notes[i - 1] + 5) < best_dist:
-                    best_dist = abs(midi - (midi_notes[i - 1] + 5))
-                    best = midi
-        midi_notes.append(best)
-
-    if midi_notes:
-        avg = sum(midi_notes) // len(midi_notes)
-        drift = avg - centre
-        if abs(drift) > 6:
-            midi_notes = [m + (-12 if drift > 6 else 12) for m in midi_notes]
+    midi_notes = _stack_root_position(pcs, base_oct)
 
     bass_midi = min(midi_notes) if midi_notes else -1
+
+    # Display octave always matches cell.octave (the user's base octave setting).
+    if dpg.does_item_exist("prog_detail_octave"):
+        dpg.set_value("prog_detail_octave", str(base_oct))
 
     # Calculate the octave range so all notes fit in the 2-octave display
     if midi_notes:
         lowest_midi = min(midi_notes)
         start_octave = (lowest_midi // 12) + 1
-        # Effective octave derived from the actual root MIDI note (not cell.octave).
-        effective_oct = midi_notes[0] // 12 - 1
     else:
         start_octave = 3
-        effective_oct = 3
 
-    # Sync the displayed octave to the effective octave of the root note.
-    if dpg.does_item_exist("prog_detail_octave"):
-        dpg.set_value("prog_detail_octave", str(effective_oct))
 
     if dpg.does_item_exist("prog_piano_canvas"):
         dpg.delete_item("prog_piano_canvas", children_only=True)
