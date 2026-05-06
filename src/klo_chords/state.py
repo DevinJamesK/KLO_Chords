@@ -315,6 +315,17 @@ def on_prog_cell_quality_next(sender=None, app_data=None):
     _play_prog_cell(_prog_selected_idx)
 
 
+def _cell_in_midi_range(cell: ProgCell) -> bool:
+    """Return True if every MIDI note for *cell* is in the valid 0-127 range."""
+    notes = cell.get_notes()
+    if not notes:
+        return True
+    from klo_chords.sound import _stack_root_position
+    pcs = [note_to_pc(n) for n in notes]
+    midi_notes = _stack_root_position(pcs, cell.effective_octave())
+    return all(0 <= m <= 127 for m in midi_notes)
+
+
 def on_prog_cell_inversion_prev(sender=None, app_data=None):
     """Move the chord down the keyboard (previous inversion / rotation step)."""
     if _prog_selected_idx is None:
@@ -324,6 +335,9 @@ def on_prog_cell_inversion_prev(sender=None, app_data=None):
         cell.root = "C"
         cell.quality = "M"
     cell.rotation -= 1
+    if not _cell_in_midi_range(cell):
+        cell.rotation += 1  # revert — would go out of MIDI range
+        return
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -338,6 +352,9 @@ def on_prog_cell_inversion_next(sender=None, app_data=None):
         cell.root = "C"
         cell.quality = "M"
     cell.rotation += 1
+    if not _cell_in_midi_range(cell):
+        cell.rotation -= 1  # revert — would go out of MIDI range
+        return
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -354,6 +371,7 @@ def on_prog_cell_octave_prev(sender=None, app_data=None):
     cell.base_octave = max(0, cell.base_octave - 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
+    stop_current()
     _play_prog_cell(_prog_selected_idx)
 
 
@@ -368,6 +386,7 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
     cell.base_octave = min(8, cell.base_octave + 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
+    stop_current()
     _play_prog_cell(_prog_selected_idx)
 
 
