@@ -86,12 +86,13 @@ def _polyblep_vec(t, inc):
     mask_rise = t < inc
     # Guard against division by zero for voices at rest (inc could be 0)
     inc_safe = np.where(inc > 0, inc, np.float64(1e-9))
-    tr = t[mask_rise] / inc_safe[mask_rise]
+    inc_bc = np.broadcast_to(inc_safe, t.shape)
+    tr = t[mask_rise] / inc_bc[mask_rise]
     result[mask_rise] = tr + tr - tr * tr - 1.0
 
     # Falling edge at phase=0:  t close to 1
     mask_fall = t > (1.0 - inc)
-    tf = (t[mask_fall] - 1.0) / inc_safe[mask_fall]
+    tf = (t[mask_fall] - 1.0) / inc_bc[mask_fall]
     result[mask_fall] = tf * tf + tf + tf + 1.0
 
     return result
