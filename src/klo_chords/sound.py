@@ -308,8 +308,9 @@ _velocity_max    = 100
 _base_octave     = 3
 _volume               = 0.75           # global volume 0-1, scales the master amp
 _volume_before_mute   = 75             # volume percentage before muting (0-100)
-_sub_oscillator_enabled = False        # sub oscillator adds root one octave below
+_sub_oscillator_enabled = False        # sub oscillator adds root below all chord notes
 _last_root_midi: int | None = None     # MIDI of the root of the currently sounding chord
+_lowest_midi: int | None = None        # lowest MIDI of the currently sounding chord
 _sub_osc_freq: float | None = None     # frequency of the active sub oscillator voice
 
 
@@ -382,18 +383,20 @@ def set_legato(val: bool):
 
 
 def set_sub_oscillator(val: bool):
-    """If True, a copy of the chord root is played one octave lower.
+    """If True, a copy of the chord root is played below the lowest chord note.
 
     When toggled on while notes are already playing, the sub voice is
     added immediately without interrupting existing voices.  When
     toggled off the sub voice is released smoothly.
     """
-    global _sub_oscillator_enabled, _sub_osc_freq
+    global _sub_oscillator_enabled, _sub_osc_freq, _lowest_midi
     _sub_oscillator_enabled = val
     if val:
         # Turning ON — add sub voice if a chord is already sounding
-        if _last_root_midi is not None and _sound_enabled:
-            sub_midi = _last_root_midi - 12
+        if _last_root_midi is not None and _lowest_midi is not None and _sound_enabled:
+            root_pc = _last_root_midi % 12
+            sub_midi = root_pc + 12 * ((_lowest_midi - 1 - root_pc) // 12)
+            sub_midi = max(0, sub_midi)  # clamp to valid MIDI range
             sub_freq = _midi_to_frequency(sub_midi)
             if _random_velocity:
                 vel = random.randint(_velocity_min, _velocity_max) / 127.0
@@ -598,9 +601,9 @@ def play_chord_notes(notes: List[str], root_note: str | None = None):
     """Play chord notes via the streaming engine (never stops).
 
     If *root_note* is provided and sub oscillator is enabled, an
-    additional copy of the root is played one octave lower.
+    additional copy of the root is played below the lowest chord note.
     """
-    global _current_notes, _last_root_midi, _sub_osc_freq
+    global _current_notes, _last_root_midi, _lowest_midi, _sub_osc_freq
     if not _sound_enabled or not notes:
         return
     freqs, amps, midi_notes = _get_freqs_and_amps(notes)
@@ -615,8 +618,12 @@ def play_chord_notes(notes: List[str], root_note: str | None = None):
                 _last_root_midi = midi_notes[i]
                 break
 
+    _lowest_midi = min(midi_notes)
+
     if _sub_oscillator_enabled and root_note is not None:
-        sub_midi = _last_root_midi - 12
+        root_pc = _last_root_midi % 12
+        sub_midi = root_pc + 12 * ((_lowest_midi - 1 - root_pc) // 12)
+        sub_midi = max(0, sub_midi)  # clamp to valid MIDI range
         sub_freq = _midi_to_frequency(sub_midi)
         if _random_velocity:
             vel = random.randint(_velocity_min, _velocity_max) / 127.0
@@ -687,12 +694,13 @@ def _stack_root_position(pcs: List[int], base_octave: int, root_pc: int = 0) -> 
 
 def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0):
     """Play chord notes for the progression tab with root-position voicing."""
-    global _current_notes, _last_root_midi, _sub_osc_freq
+    global _current_notes, _last_root_midi, _lowest_midi, _sub_osc_freq
     if not _sound_enabled or not notes:
         return
     pcs = [note_to_pc(n) for n in notes]
     midi_notes = _stack_root_position(pcs, base_octave, root_pc)
 
+    _lowest_midi = min(midi_notes)
 
     freqs = [_midi_to_frequency(m) for m in midi_notes]
     amps = []
@@ -716,7 +724,8 @@ def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int 
     _last_root_midi = root_midi
 
     if _sub_oscillator_enabled:
-        sub_midi = root_midi - 12
+        sub_midi = root_pc + 12 * ((_lowest_midi - 1 - root_pc) // 12)
+        sub_midi = max(0, sub_midi)  # clamp to valid MIDI range
         sub_freq = _midi_to_frequency(sub_midi)
         if _random_velocity:
             vel = random.randint(_velocity_min, _velocity_max) / 127.0
@@ -735,18 +744,20 @@ def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int 
 
 
 def stop_current():
-    global _current_notes, _sub_osc_freq, _last_root_midi
+    global _current_notes, _sub_osc_freq, _last_root_midi, _lowest_midi
     _current_notes = []
     _sub_osc_freq = None
     _last_root_midi = None
+    _lowest_midi = None
     _engine.release_all()
 
 
 def release_note(notes: List[str]):
-    global _current_notes, _sub_osc_freq, _last_root_midi
+    global _current_notes, _sub_osc_freq, _last_root_midi, _lowest_midi
     _current_notes = []
     _sub_osc_freq = None
     _last_root_midi = None
+    _lowest_midi = None
     _engine.release_all()
 
 
