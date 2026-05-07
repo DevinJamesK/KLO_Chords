@@ -486,19 +486,20 @@ def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
     already rotated by get_notes() to reflect the inversion order.
     """
     # anchor: MIDI note of C at base_octave+2 (e.g. C4=60 for octave 3)
+    MIDI_MAX = 127
     anchor = (base_octave + 2) * 12
     midi_notes = []
     for i, pc in enumerate(pcs):
         if i == 0:
             # Place first note at or just above the anchor octave
             best = None
-            for octave in range(0, 9):
+            for octave in range(0, 11):
                 midi = pc + 12 * octave
-                if midi >= anchor:
+                if midi >= anchor and midi <= MIDI_MAX:
                     best = midi
                     break
             if best is None:
-                best = pc + 12 * 8  # fallback
+                best = pc + 12 * 10  # fallback
         else:
             prev = midi_notes[i - 1]
 
@@ -506,22 +507,22 @@ def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
             target_midi = prev + 5    # prefer a 5th above
             best = None
             best_dist = float('inf')
-            for octave in range(0, 9):
+            for octave in range(0, 11):
                 midi = pc + 12 * octave
-                if midi >= min_midi:
+                if min_midi <= midi <= MIDI_MAX:
                     dist = abs(midi - target_midi)
                     if dist < best_dist:
                         best_dist = dist
                         best = midi
             # Fallback: lowest octave above prev
             if best is None:
-                for octave in range(0, 9):
+                for octave in range(0, 11):
                     midi = pc + 12 * octave
-                    if midi > prev:
+                    if midi > prev and midi <= MIDI_MAX:
                         best = midi
                         break
                 if best is None:
-                    best = pc + 12 * 8
+                    best = pc + 12 * 10
         midi_notes.append(best)
     return midi_notes
 
