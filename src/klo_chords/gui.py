@@ -44,6 +44,7 @@ from klo_chords.state import (
     on_prog_show_suggestions, on_prog_cell_shift_click,
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds,
+    on_sub_oscillator_toggle,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
 
@@ -70,7 +71,7 @@ def _draw_wave_preview(internal_mode: str = "triangle"):
         return
     dpg.delete_item("wave_preview", children_only=True)
 
-    cw, ch = 80, 28
+    cw, ch = 36, 28
     mid_y = ch / 2
     amp = ch / 2 - 3  # leave 3px margin top/bottom
 
@@ -135,11 +136,15 @@ def _build_toolbar():
                       tag="toolbar_wave_combo", width=110,
                       callback=on_wave_type_change)
         dpg.add_spacer(width=6)
-        with dpg.drawlist(tag="wave_preview", width=80, height=28):
-            dpg.draw_rectangle([0, 0], [80, 28],
+        with dpg.drawlist(tag="wave_preview", width=36, height=28):
+            dpg.draw_rectangle([0, 0], [36, 28],
                                fill=[0, 0, 0, 0],
                                color=COLOR_TEXT_DIM)
         _draw_wave_preview(snd["mode"])
+        dpg.add_checkbox(label="Sub Osc",
+                         tag="toolbar_sub_osc_toggle",
+                         default_value=get_sound_settings().get("sub_oscillator", False),
+                         callback=on_sub_oscillator_toggle)
         dpg.add_spacer(width=20)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
         dpg.add_spacer(width=20)
@@ -731,6 +736,7 @@ def _apply_preferences():
         set_volume, set_enabled, set_mode,
         set_audio_quality, set_legato, set_playback_mode,
         set_random_velocity, set_velocity_range, set_base_octave,
+        set_sub_oscillator,
     )
     set_volume(prefs_data.get("volume", 75) / 100.0)
     set_enabled(prefs_data.get("sound_enabled", True))
@@ -742,6 +748,7 @@ def _apply_preferences():
     set_velocity_range(prefs_data.get("vel_min", 60),
                        prefs_data.get("vel_max", 100))
     set_base_octave(prefs_data.get("base_octave", 3))
+    set_sub_oscillator(prefs_data.get("sub_oscillator", False))
 
 
 if __name__ == "__main__":

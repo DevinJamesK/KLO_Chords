@@ -96,7 +96,8 @@ def state() -> dict:
 
 def _play_current_chord():
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
-        play_chord_notes(_current_chords[_selected_chord_idx].notes)
+        ci = _current_chords[_selected_chord_idx]
+        play_chord_notes(ci.notes, root_note=ci.root)
 
 
 def _play_prog_cell(idx: int):
@@ -471,6 +472,7 @@ def _save_prefs():
         "base_octave":     s.get("base_octave", 3),
         "show_note_names": get_fretboard_mode() == "note",
         "show_keybinds":   _show_keybinds,
+        "sub_oscillator":  s.get("sub_oscillator", False),
     })
 
 
@@ -542,6 +544,12 @@ def on_legato_toggle(sender, app_data):
         dpg.set_value("toolbar_legato_toggle", app_data)
     if dpg.does_item_exist("sound_legato_toggle"):
         dpg.set_value("sound_legato_toggle", app_data)
+    _save_prefs()
+
+
+def on_sub_oscillator_toggle(sender, app_data):
+    from klo_chords.sound import set_sub_oscillator
+    set_sub_oscillator(app_data)
     _save_prefs()
 
 

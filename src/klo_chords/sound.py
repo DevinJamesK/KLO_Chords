@@ -129,6 +129,14 @@ class _VoiceBank:
                 self.release[i] = True
                 self.ages[i] = 0.0
 
+    def release_frequency(self, freq: float):
+        """Release the voice at *freq* (with tiny tolerance), if it exists."""
+        for i in range(len(self.freqs)):
+            if not self.release[i] and abs(self.freqs[i] - freq) < 0.01:
+                self.release[i] = True
+                self.ages[i] = 0.0
+                break
+
     def render(self, frames: int, wave_fn, volume: float) -> np.ndarray:
         """Generate a block of *frames* samples."""
         dt = self._dt
@@ -260,6 +268,16 @@ class _AudioEngine:
         with self._lock:
             self._vb.release_all()
 
+    def add_voice(self, freq: float, amp: float):
+        """Add a single voice directly (bypasses note-history logic)."""
+        with self._lock:
+            self._vb.add(freq, amp, False)
+
+    def release_frequency(self, freq: float):
+        """Release the voice at a specific frequency."""
+        with self._lock:
+            self._vb.release_frequency(freq)
+
     def _callback(self, outdata, frames, time_info, status):
         with self._lock:
             block = self._vb.render(frames, _get_wave_fn(), _volume)
@@ -289,6 +307,9 @@ _velocity_max    = 100
 _base_octave     = 3
 _volume               = 0.75           # global volume 0-1, scales the master amp
 _volume_before_mute   = 75             # volume percentage before muting (0-100)
+_sub_oscillator_enabled = False        # sub oscillator adds root one octave below
+_last_root_midi: int | None = None     # MIDI of the root of the currently sounding chord
+_sub_osc_freq: float | None = None     # frequency of the active sub oscillator voice
 
 
 def set_mute(val: bool):
@@ -359,6 +380,35 @@ def set_legato(val: bool):
     _engine._legato = val
 
 
+def set_sub_oscillator(val: bool):
+    """If True, a copy of the chord root is played one octave lower.
+
+    When toggled on while notes are already playing, the sub voice is
+    added immediately without interrupting existing voices.  When
+    toggled off the sub voice is released smoothly.
+    """
+    global _sub_oscillator_enabled, _sub_osc_freq
+    _sub_oscillator_enabled = val
+    if val:
+        # Turning ON — add sub voice if a chord is already sounding
+        if _last_root_midi is not None and _sound_enabled:
+            sub_midi = _last_root_midi - 12
+            sub_freq = _midi_to_frequency(sub_midi)
+            if _random_velocity:
+                vel = random.randint(_velocity_min, _velocity_max) / 127.0
+            else:
+                vel = 0.7
+            sub_amp = vel * _equal_loudness_gain(sub_freq) * 0.7
+            _engine.start()
+            _engine.add_voice(sub_freq, sub_amp)
+            _sub_osc_freq = sub_freq
+    else:
+        # Turning OFF — release sub voice if active
+        if _sub_osc_freq is not None:
+            _engine.release_frequency(_sub_osc_freq)
+            _sub_osc_freq = None
+
+
 def set_volume(val: float):
     global _volume
     _volume = max(0.0, min(1.0, val))
@@ -401,6 +451,7 @@ def get_settings() -> dict:
         volume=_volume,
         playback_mode=_engine._mode,
         legato=_engine._legato,
+        sub_oscillator=_sub_oscillator_enabled,
     )
 
 
@@ -537,17 +588,46 @@ def _get_freqs_and_amps(notes: List[str]):
             vel = 0.7
         amp = vel * _equal_loudness_gain(freq)
         amps.append(amp)
-    return freqs, amps
+    return freqs, amps, midi_notes
 
 
 # ── Public playback API ──────────────────────────────────────────────────────────
 
-def play_chord_notes(notes: List[str]):
-    """Play chord notes via the streaming engine (never stops)."""
-    global _current_notes
+def play_chord_notes(notes: List[str], root_note: str | None = None):
+    """Play chord notes via the streaming engine (never stops).
+
+    If *root_note* is provided and sub oscillator is enabled, an
+    additional copy of the root is played one octave lower.
+    """
+    global _current_notes, _last_root_midi, _sub_osc_freq
     if not _sound_enabled or not notes:
         return
-    freqs, amps = _get_freqs_and_amps(notes)
+    freqs, amps, midi_notes = _get_freqs_and_amps(notes)
+
+    # Always track the root's MIDI so the sub oscillator can be toggled
+    # on mid-chord without needing to retrigger playback.
+    _last_root_midi = midi_notes[0]  # chord-tab chords are root-position
+    if root_note is not None:
+        root_pc = note_to_pc(root_note)
+        for i, n in enumerate(notes):
+            if note_to_pc(n) == root_pc:
+                _last_root_midi = midi_notes[i]
+                break
+
+    if _sub_oscillator_enabled and root_note is not None:
+        sub_midi = _last_root_midi - 12
+        sub_freq = _midi_to_frequency(sub_midi)
+        if _random_velocity:
+            vel = random.randint(_velocity_min, _velocity_max) / 127.0
+        else:
+            vel = 0.7
+        sub_amp = vel * _equal_loudness_gain(sub_freq) * 0.7
+        freqs.append(sub_freq)
+        amps.append(sub_amp)
+        _sub_osc_freq = sub_freq
+    else:
+        _sub_osc_freq = None
+
     _current_notes = list(notes)
     _engine.start()
     _engine.play_notes(freqs, amps, notes)
@@ -606,7 +686,7 @@ def _stack_root_position(pcs: List[int], base_octave: int, root_pc: int = 0) -> 
 
 def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0):
     """Play chord notes for the progression tab with root-position voicing."""
-    global _current_notes
+    global _current_notes, _last_root_midi, _sub_osc_freq
     if not _sound_enabled or not notes:
         return
     pcs = [note_to_pc(n) for n in notes]
@@ -623,20 +703,49 @@ def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int 
         amp = vel * _equal_loudness_gain(freq)
         amps.append(amp)
 
+    # Always track the root's MIDI so the sub oscillator can be toggled
+    # on mid-chord without needing to retrigger playback.
+    root_midi = None
+    for midi in midi_notes:
+        if midi % 12 == root_pc:
+            root_midi = midi
+            break
+    if root_midi is None:
+        root_midi = root_pc + (base_octave + 2) * 12
+    _last_root_midi = root_midi
+
+    if _sub_oscillator_enabled:
+        sub_midi = root_midi - 12
+        sub_freq = _midi_to_frequency(sub_midi)
+        if _random_velocity:
+            vel = random.randint(_velocity_min, _velocity_max) / 127.0
+        else:
+            vel = 0.7
+        sub_amp = vel * _equal_loudness_gain(sub_freq) * 0.7
+        freqs.append(sub_freq)
+        amps.append(sub_amp)
+        _sub_osc_freq = sub_freq
+    else:
+        _sub_osc_freq = None
+
     _current_notes = list(notes)
     _engine.start()
     _engine.play_notes(freqs, amps, notes)
 
 
 def stop_current():
-    global _current_notes
+    global _current_notes, _sub_osc_freq, _last_root_midi
     _current_notes = []
+    _sub_osc_freq = None
+    _last_root_midi = None
     _engine.release_all()
 
 
 def release_note(notes: List[str]):
-    global _current_notes
+    global _current_notes, _sub_osc_freq, _last_root_midi
     _current_notes = []
+    _sub_osc_freq = None
+    _last_root_midi = None
     _engine.release_all()
 
 

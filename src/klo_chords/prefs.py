@@ -32,6 +32,7 @@ DEFAULTS: Dict[str, Any] = {
     "base_octave":    3,
     "show_note_names": False,
     "show_keybinds":   False,
+    "sub_oscillator":  False,
 }
 
 MIGRATIONS: Dict[int, Any] = {
