@@ -104,7 +104,16 @@ def _play_prog_cell(idx: int):
         if not cell.is_empty():
             notes = cell.get_notes()
             if notes:
-                play_progression_notes(notes, base_octave=cell.effective_octave())
+                from klo_chords.sound import _stack_root_position
+                pcs = [note_to_pc(n) for n in notes]
+                eff_oct = cell.effective_octave()
+                midis = _stack_root_position(pcs, eff_oct)
+                midi_names = [_midi_to_note_name(m) for m in midis]
+                print(f"[cell {idx}] {cell.root}{cell.quality} "
+                      f"rot={cell.rotation} base_oct={cell.base_octave} "
+                      f"eff_oct={eff_oct} notes={notes} midi={midis} "
+                      f"({', '.join(midi_names)})")
+                play_progression_notes(notes, base_octave=eff_oct)
                 _prog_sounding_idx = idx
 
 
