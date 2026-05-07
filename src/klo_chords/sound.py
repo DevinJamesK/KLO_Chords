@@ -22,8 +22,8 @@ import numpy as np
 from klo_chords.chords import note_to_pc
 
 SAMPLE_RATE = 44100
-BLOCK_SIZE  = 512
-MASTER_AMP  = 0.35
+BLOCK_SIZE  = 512          # fallback; overridden by _get_blocksize() at stream creation
+MASTER_AMP  = 0.28         # reduced to avoid clipping with multiple voices
 
 ATTACK_S   = 0.008
 RELEASE_S  = 0.250
@@ -37,17 +37,30 @@ MODE_ONESHOT = "oneshot"
 
 # ── Waveform generators ──────────────────────────────────────────────────────────
 
-def _gen_sine(phases):
+def _gen_sine(phases, freqs=None):
+    """Pure sine — no aliasing, no polyBLEP needed."""
     return np.sin(phases)
 
-def _gen_triangle(phases):
+def _gen_triangle(phases, freqs=None):
+    """Triangle wave.  When freqs is provided (smooth quality),
+    applies polyBLEP anti-aliasing via corrected sawtooth."""
     p = phases % (2.0 * math.pi)
     t = p / (2.0 * math.pi)
+    if freqs is not None:
+        # Generate via bandlimited sawtooth: tri = 1 - 2*|saw_blep|
+        inc = freqs[:, np.newaxis] / SAMPLE_RATE
+        saw_blep = (2.0 * t - 1.0) - _polyblep_vec(t, inc)
+        return 1.0 - 2.0 * np.abs(saw_blep)
     return 2.0 * np.abs(2.0 * t - 1.0) - 1.0
 
-def _gen_sawtooth(phases):
+def _gen_sawtooth(phases, freqs=None):
+    """Sawtooth wave.  When freqs is provided (smooth quality),
+    applies polyBLEP correction to suppress aliasing."""
     p = phases % (2.0 * math.pi)
     t = p / (2.0 * math.pi)
+    if freqs is not None:
+        inc = freqs[:, np.newaxis] / SAMPLE_RATE
+        return (2.0 * t - 1.0) - _polyblep_vec(t, inc)
     return 2.0 * t - 1.0
 
 _WAVE_GENS = {
@@ -55,6 +68,33 @@ _WAVE_GENS = {
     "triangle":  _gen_triangle,
     "sawtooth":  _gen_sawtooth,
 }
+
+
+# ── PolyBLEP anti-aliasing ──────────────────────────────────────────────────────
+
+def _polyblep_vec(t, inc):
+    """Vectorized polyBLEP residual for a unit step at phase=0.
+
+    t:   normalized phase in [0, 1), broadcastable array
+    inc: phase increment per sample (freq / SAMPLE_RATE), broadcastable to t
+
+    Returns an array of same shape as t with the polyBLEP residual.
+    """
+    result = np.zeros_like(t)
+
+    # Rising edge at phase=0:  t close to 0
+    mask_rise = t < inc
+    # Guard against division by zero for voices at rest (inc could be 0)
+    inc_safe = np.where(inc > 0, inc, np.float64(1e-9))
+    tr = t[mask_rise] / inc_safe[mask_rise]
+    result[mask_rise] = tr + tr - tr * tr - 1.0
+
+    # Falling edge at phase=0:  t close to 1
+    mask_fall = t > (1.0 - inc)
+    tf = (t[mask_fall] - 1.0) / inc_safe[mask_fall]
+    result[mask_fall] = tf * tf + tf + tf + 1.0
+
+    return result
 
 
 # ── Voice manager — numpy-friendly state ────────────────────────────────────────
@@ -98,7 +138,7 @@ class _VoiceBank:
 
         t = np.arange(frames, dtype=np.float64) * dt
         phases = self.phases[:, np.newaxis] + 2.0 * math.pi * self.freqs[:, np.newaxis] * t[np.newaxis, :]
-        wave = wave_fn(phases)
+        wave = wave_fn(phases, self.freqs if _audio_quality == "smooth" else None)
         self.phases = np.float64(phases[:, -1] + 2.0 * math.pi * self.freqs * dt) % (2.0 * math.pi)
 
         voice_ages = self.ages[:, np.newaxis] + t[np.newaxis, :]
@@ -161,9 +201,11 @@ class _AudioEngine:
         if self._stream is not None:
             return
         try:
+            blocksize = _get_blocksize()
+            latency = 'high' if _audio_quality == 'smooth' else 'low'
             self._stream = sd.OutputStream(
-                samplerate=SAMPLE_RATE, channels=1, blocksize=BLOCK_SIZE,
-                callback=self._callback, dtype='float32', latency='low',
+                samplerate=SAMPLE_RATE, channels=1, blocksize=blocksize,
+                callback=self._callback, dtype='float32', latency=latency,
             )
             self._stream.start()
         except (sd.PortAudioError, OSError) as e:
@@ -221,9 +263,14 @@ class _AudioEngine:
     def _callback(self, outdata, frames, time_info, status):
         with self._lock:
             block = self._vb.render(frames, _get_wave_fn(), _volume)
-        peak = np.max(np.abs(block))
-        if peak > 0.99:
-            block = block / peak * 0.95
+        if _audio_quality == "legacy":
+            # Keep original hard block-level limiter for legacy mode
+            peak = np.max(np.abs(block))
+            if peak > 0.99:
+                block = block / peak * 0.95
+        else:
+            # Soft tanh clipper — per-sample saturation, no pumping
+            block = np.tanh(block * 1.5) / 1.5
         outdata[:, 0] = block
 
 
@@ -235,6 +282,7 @@ _engine = _AudioEngine()
 
 _sound_enabled   = True
 _sound_mode      = "triangle"
+_audio_quality   = "smooth"       # "smooth" | "responsive" | "legacy"
 _random_velocity = True          # ON by default
 _velocity_min    = 60
 _velocity_max    = 100
@@ -316,15 +364,43 @@ def set_volume(val: float):
     _volume = max(0.0, min(1.0, val))
 
 
+def _get_blocksize() -> int:
+    """Return the block size for the current audio quality setting."""
+    if _audio_quality == "smooth":
+        return 1024  # 23ms — less CPU pressure, fewer dropouts
+    return 512       # 11ms — standard responsive buffer
+
+
+def set_audio_quality(val: str):
+    """Change audio quality. Restarts the stream if already running."""
+    global _audio_quality
+    if val not in ("smooth", "responsive", "legacy"):
+        return
+    if val == _audio_quality:
+        return
+    _audio_quality = val
+    # Restart audio stream to apply new blocksize/latency
+    _engine.stop()
+    _engine.start()
+
+
+def get_audio_quality() -> str:
+    """Return the current audio quality mode."""
+    return _audio_quality
+
+
 def get_settings() -> dict:
     return dict(
         enabled=_sound_enabled,
         mode=_sound_mode,
+        audio_quality=_audio_quality,
         base_octave=_base_octave,
         random_vel=_random_velocity,
         vel_min=_velocity_min,
         vel_max=_velocity_max,
         volume=_volume,
+        playback_mode=_engine._mode,
+        legato=_engine._legato,
     )
 
 

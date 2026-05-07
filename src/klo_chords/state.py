@@ -9,6 +9,8 @@ from typing import List, Optional, Set
 
 import dearpygui.dearpygui as dpg
 
+import klo_chords.prefs as prefs
+
 from klo_chords.chords import (
     ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS,
     get_diatonic_chords, get_all_voicings,
@@ -450,9 +452,32 @@ def on_key_press(sender, app_data, user_data):
 
 # ── Sound setting callbacks ──────────────────────────────────────────────────────
 
+# ── Preferences persistence helper ───────────────────────────────────────────
+
+def _save_prefs():
+    """Collect current sound/UI state and persist to preferences.json."""
+    s = get_sound_settings()
+    from klo_chords.fretboard import get_fretboard_mode
+    prefs.save({
+        "sound_enabled":   s.get("enabled", True),
+        "volume":          int(round(s.get("volume", 0.75) * 100)),
+        "wave":            s.get("mode", "triangle"),
+        "audio_quality":   s.get("audio_quality", "smooth"),
+        "legato":          s.get("legato", True),
+        "playback_mode":   s.get("playback_mode", "toggle"),
+        "random_velocity": s.get("random_vel", True),
+        "vel_min":         s.get("vel_min", 60),
+        "vel_max":         s.get("vel_max", 100),
+        "base_octave":     s.get("base_octave", 3),
+        "show_note_names": get_fretboard_mode() == "note",
+        "show_keybinds":   _show_keybinds,
+    })
+
+
 def on_sound_enable_toggle(sender, app_data):
     from klo_chords.sound import set_enabled
     set_enabled(app_data)
+    _save_prefs()
 
 
 def on_wave_type_change(sender, app_data):
@@ -469,31 +494,46 @@ def on_wave_type_change(sender, app_data):
     # Redraw wave preview
     from klo_chords.gui import _draw_wave_preview
     _draw_wave_preview(internal)
+    _save_prefs()
+
+
+def on_audio_quality_change(sender, app_data):
+    """Handle Audio Quality combo change. app_data is 'Smooth', 'Responsive', or 'Legacy'."""
+    quality_map = {"Smooth": "smooth", "Responsive": "responsive", "Legacy": "legacy"}
+    internal = quality_map.get(app_data, "smooth")
+    from klo_chords.sound import set_audio_quality
+    set_audio_quality(internal)
+    _save_prefs()
 
 
 def on_random_velocity_toggle(sender, app_data):
     from klo_chords.sound import set_random_velocity
     set_random_velocity(app_data)
+    _save_prefs()
 
 
 def on_vel_min_change(sender, app_data):
     from klo_chords.sound import set_velocity_range
     set_velocity_range(app_data, _get_vel_max())
+    _save_prefs()
 
 
 def on_vel_max_change(sender, app_data):
     from klo_chords.sound import set_velocity_range
     set_velocity_range(_get_vel_min(), app_data)
+    _save_prefs()
 
 
 def on_base_octave_change(sender, app_data):
     set_base_octave(app_data)
+    _save_prefs()
 
 
 def on_playback_mode_change(sender, app_data):
     mode_map = {"Toggle/Latch": "toggle", "One-Shot": "oneshot"}
     set_playback_mode(mode_map.get(app_data, "toggle"))
     reset_voice_leading()
+    _save_prefs()
 
 
 def on_legato_toggle(sender, app_data):
@@ -502,6 +542,7 @@ def on_legato_toggle(sender, app_data):
         dpg.set_value("toolbar_legato_toggle", app_data)
     if dpg.does_item_exist("sound_legato_toggle"):
         dpg.set_value("sound_legato_toggle", app_data)
+    _save_prefs()
 
 
 def on_volume_change(sender, app_data):
@@ -517,6 +558,7 @@ def on_volume_change(sender, app_data):
             # Unmute was triggered by slider movement
             set_mute(False)
             _update_volume_theme(False)
+    _save_prefs()
 
 
 def on_mute_toggle(sender=None, app_data=None):
@@ -544,6 +586,7 @@ def on_fretboard_mode_change(sender, app_data):
         chord = _current_chords[_selected_chord_idx]
         draw_fretboard(chord, _current_voicing_idx)
     _rebuild_chord_list()
+    _save_prefs()
 
 
 def on_keybinds_toggle(sender=None, app_data=None):
@@ -558,6 +601,7 @@ def on_keybinds_toggle(sender=None, app_data=None):
         dpg.set_value("toolbar_show_keybinds", _show_keybinds)
     _rebuild_chord_list()
     _rebuild_progression_grid()
+    _save_prefs()
 
 
 def get_show_keybinds() -> bool:

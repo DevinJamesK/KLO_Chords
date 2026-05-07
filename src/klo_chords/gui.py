@@ -9,6 +9,8 @@ import math
 import dearpygui.dearpygui as dpg
 import os
 
+import klo_chords.prefs as prefs
+
 from klo_chords.chords import NOTE_NAMES, SCALE_TYPES
 from klo_chords.theme import (
     COLOR_ACCENT, COLOR_BG_LIGHT, COLOR_TEXT_DIM, COLOR_TEXT,
@@ -35,7 +37,8 @@ from klo_chords.state import (
     on_random_velocity_toggle, on_vel_min_change, on_vel_max_change,
     on_base_octave_change, on_playback_mode_change,
     on_legato_toggle, on_volume_change,
-    on_wave_type_change, on_tab_change,
+    on_wave_type_change, on_audio_quality_change,
+    on_tab_change,
     on_fretboard_mode_change, on_mute_toggle, on_stop,
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
     on_prog_show_suggestions, on_prog_cell_shift_click,
@@ -464,6 +467,19 @@ def _build_sound_tab():
                           tag="sound_mode_combo", width=120,
                           callback=on_wave_type_change)
 
+        dpg.add_spacer(height=10)
+
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=20)
+            dpg.add_text("Audio Quality:")
+            dpg.add_spacer(width=6)
+            quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
+            snd2 = get_sound_settings()
+            dpg.add_combo(items=["Smooth", "Responsive", "Legacy"],
+                          default_value=quality_display.get(snd2.get("audio_quality", "smooth"), "Smooth"),
+                          tag="sound_quality_combo", width=120,
+                          callback=on_audio_quality_change)
+
         dpg.add_spacer(height=12)
         dpg.add_text("Velocity", color=COLOR_ACCENT)
         dpg.add_separator()
@@ -699,11 +715,33 @@ def _on_key_with_ctrl(sender, app_data, user_data):
 
 def main():
     try:
+        # Load persisted preferences and apply to sound engine before UI builds
+        _apply_preferences()
         build_ui()
     except Exception as e:
         import traceback
         traceback.print_exc()
         input("Press Enter to exit...")
+
+
+def _apply_preferences():
+    """Read preferences.json and push values into the sound engine."""
+    prefs_data = prefs.load()
+    from klo_chords.sound import (
+        set_volume, set_enabled, set_mode,
+        set_audio_quality, set_legato, set_playback_mode,
+        set_random_velocity, set_velocity_range, set_base_octave,
+    )
+    set_volume(prefs_data.get("volume", 75) / 100.0)
+    set_enabled(prefs_data.get("sound_enabled", True))
+    set_mode(prefs_data.get("wave", "triangle"))
+    set_audio_quality(prefs_data.get("audio_quality", "smooth"))
+    set_legato(prefs_data.get("legato", True))
+    set_playback_mode(prefs_data.get("playback_mode", "toggle"))
+    set_random_velocity(prefs_data.get("random_velocity", True))
+    set_velocity_range(prefs_data.get("vel_min", 60),
+                       prefs_data.get("vel_max", 100))
+    set_base_octave(prefs_data.get("base_octave", 3))
 
 
 if __name__ == "__main__":
