@@ -477,7 +477,7 @@ def play_chord_notes(notes: List[str]):
     _engine.play_notes(freqs, amps, notes)
 
 
-def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
+def _stack_root_position(pcs: List[int], base_octave: int, root_pc: int = 0) -> List[int]:
     """Stack chord pitch classes anchored to *base_octave*.
     
     The first note is placed at or just above base_octave.
@@ -485,9 +485,9 @@ def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
     This works correctly for any inversion because the pcs are
     already rotated by get_notes() to reflect the inversion order.
     """
-    # anchor: MIDI note of C at base_octave+2 (e.g. C4=60 for octave 3)
+    # anchor: MIDI note of the *root* at base_octave+2
     MIDI_MAX = 127
-    anchor = (base_octave + 2) * 12
+    anchor = root_pc + (base_octave + 2) * 12
     midi_notes = []
     for i, pc in enumerate(pcs):
         if i == 0:
@@ -528,13 +528,13 @@ def _stack_root_position(pcs: List[int], base_octave: int) -> List[int]:
 
 
 
-def play_progression_notes(notes: List[str], base_octave: int = 3):
+def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0):
     """Play chord notes for the progression tab with root-position voicing."""
     global _current_notes
     if not _sound_enabled or not notes:
         return
     pcs = [note_to_pc(n) for n in notes]
-    midi_notes = _stack_root_position(pcs, base_octave)
+    midi_notes = _stack_root_position(pcs, base_octave, root_pc)
 
 
     freqs = [_midi_to_frequency(m) for m in midi_notes]

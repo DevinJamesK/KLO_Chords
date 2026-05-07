@@ -106,14 +106,15 @@ def _play_prog_cell(idx: int):
             if notes:
                 from klo_chords.sound import _stack_root_position
                 pcs = [note_to_pc(n) for n in notes]
+                root_pc = note_to_pc(cell.root)
                 eff_oct = cell.effective_octave()
-                midis = _stack_root_position(pcs, eff_oct)
+                midis = _stack_root_position(pcs, eff_oct, root_pc)
                 midi_names = [_midi_to_note_name(m) for m in midis]
                 print(f"[cell {idx}] {cell.root}{cell.quality} "
                       f"rot={cell.rotation} base_oct={cell.base_octave} "
                       f"eff_oct={eff_oct} notes={notes} midi={midis} "
                       f"({', '.join(midi_names)})")
-                play_progression_notes(notes, base_octave=eff_oct)
+                play_progression_notes(notes, base_octave=eff_oct, root_pc=root_pc)
                 _prog_sounding_idx = idx
 
 
@@ -331,7 +332,8 @@ def _cell_in_midi_range(cell: ProgCell) -> bool:
         return True
     from klo_chords.sound import _stack_root_position
     pcs = [note_to_pc(n) for n in notes]
-    midi_notes = _stack_root_position(pcs, cell.effective_octave())
+    root_pc = note_to_pc(cell.root) if cell.root else 0
+    midi_notes = _stack_root_position(pcs, cell.effective_octave(), root_pc)
     return all(0 <= m <= 127 for m in midi_notes)
 
 
@@ -714,7 +716,8 @@ def _update_prog_piano(cell: ProgCell):
 
     eff_oct = cell.effective_octave()
     pcs = [note_to_pc(n) for n in notes]
-    midi_notes = _stack_root_position(pcs, eff_oct)
+    root_pc = note_to_pc(cell.root) if cell.root else 0
+    midi_notes = _stack_root_position(pcs, eff_oct, root_pc)
 
     bass_midi = min(midi_notes) if midi_notes else -1
 
@@ -737,7 +740,6 @@ def _update_prog_piano(cell: ProgCell):
     update_multi_octave_piano("prog_piano_canvas", midi_notes, bass_midi,
                               start_octave=start_octave)
 
-    root_pc = note_to_pc(cell.root) if cell.root else -1
     inv_name = _get_inversion_name(root_pc, bass_midi % 12)
     if dpg.does_item_exist("prog_detail_inv_name"):
         notes_str = "  ".join(_midi_to_note_name(m) for m in midi_notes)
