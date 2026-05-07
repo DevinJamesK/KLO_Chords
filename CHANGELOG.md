@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.1] - 2026-05-06
+
+### Changed
+- **Inversion system simplified** — `ProgCell` now uses a single `rotation` field (replacing separate `inversion` + `octave`). Rotation tracks cumulative inversion steps from root position; `rotation % num_notes` gives inversion index, `rotation // num_notes` gives octave offset. Octave wraps naturally as you cycle through inversions.
+- **Inversion anchored to chord root** — `_stack_root_position` now anchors the bass note to the chord's actual root pitch class (e.g., F for F Major) instead of always C. Fixes inversion ordering for non-C roots.
+- **MIDI range clamping** — Inversion/rotation steps that would push notes outside MIDI range (0–127) are now prevented with automatic rollback.
+
+### Added
+- **Audio quality presets** — new "Audio Quality" combo in the Sound Settings tab with three modes:
+  - **Smooth** — polyBLEP anti-aliasing on triangle and sawtooth waves + soft tanh clipper + larger 1024-sample buffer for fewer dropouts
+  - **Responsive** — standard 512-sample buffer with soft tanh clipper (no polyBLEP)
+  - **Legacy** — original hard peak limiter, standard buffer
+- **Persistent preferences** — new `prefs.py` module saves sound settings, keybind display, and fretboard note-name mode to `preferences.json` (platform-native paths: `~/Library/Application Support/KLO_Chords/` on macOS, `%LOCALAPPDATA%/KLO_Chords/` on Windows, `~/.local/share/KLO_Chords/` on Linux). Settings persist across restarts and include schema versioning for future migrations.
+
+### Fixed
+- **F Major inversion ordering** — anchor fix ensures correct bass note ordering for chords rooted on F and other notes where C-anchoring produced wrong octave placement.
+- **Octave search range** — expanded from `range(0,9)` to `range(0,11)` to correctly find MIDI placements at extreme pitches.
+- **Sound stops on octave change** — removed erroneous `stop_current()` call from octave callbacks; sound now continues playing when adjusting base octave.
+
 ## [0.5.0] - 2026-05-05
 
 ### Added
