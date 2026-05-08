@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.2] - 2026-05-08
+
+### Added
+- **Augmented major 7th chord** (`+Maj7`) — Harmonic Minor iii and Melodic Minor iii were displaying as `?7`; now correctly named and fully supported in the quality symbol and spelled-out name tables.
+- **Modal scale triad qualities** — Dorian, Phrygian, Lydian, Mixolydian, and Locrian now have correct diatonic triad quality tables instead of falling back to the Major scale pattern. Affected degrees: e.g. Dorian i (was Major, now minor), Mixolydian iii (was minor, now diminished), Locrian VII (was diminished, now Major), etc.
+
+### Changed
+- **Progression grid expanded to 8×4** — grid is now 8 columns × 4 rows (32 cells, up from 7×4 / 28 cells). Keyboard shortcuts updated to match: `1–8`, `Q–I`, `A–K`, `Z–,`.
+- **Pentatonic and blues scales show no diatonic chords** — stacking scale degrees across a 5- or 6-note scale produces non-standard intervals that don't correspond to real chords. The chord list now shows an informational message directing users to the Progression tab instead.
+- **"Include 7th" disabled for non-heptatonic scales** — the checkbox is greyed out when a pentatonic or blues scale is selected.
+- **Scale change stops audio** — switching scales in the Chord tab now stops any currently playing sound.
+
 ## [0.5.1] - 2026-05-06
 
 ### Changed

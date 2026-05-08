@@ -12,7 +12,7 @@ import dearpygui.dearpygui as dpg
 import klo_chords.prefs as prefs
 
 from klo_chords.chords import (
-    ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS,
+    ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS, SCALE_TYPES,
     get_diatonic_chords, get_all_voicings,
     get_scale_notes, note_to_pc, pc_to_note,
 )
@@ -44,9 +44,9 @@ from klo_chords.theme import (
 )
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-PROG_COLS = 7
+PROG_COLS = 8
 PROG_ROWS = 4
-PROG_CELLS_TOTAL = PROG_COLS * PROG_ROWS  # 28
+PROG_CELLS_TOTAL = PROG_COLS * PROG_ROWS  # 32
 
 
 def _midi_to_note_name(midi: int) -> str:
@@ -140,9 +140,15 @@ def on_key_change(sender, app_data):
 
 
 def on_scale_change(sender, app_data):
-    global _current_scale, _current_voicing_idx
+    global _current_scale, _current_voicing_idx, _include_sevenths
+    stop_current()
     _current_scale = app_data
     _current_voicing_idx = 0
+    is_heptatonic = len(SCALE_TYPES[app_data].intervals) == 7
+    if not is_heptatonic:
+        _include_sevenths = False
+        dpg.set_value("sevenths_toggle", False)
+    dpg.configure_item("sevenths_toggle", enabled=is_heptatonic)
     _refresh_chords()
 
 
@@ -194,8 +200,13 @@ def on_prog_key_change(sender, app_data):
 
 
 def on_prog_scale_change(sender, app_data):
-    global _prog_scale
+    global _prog_scale, _prog_sevenths
     _prog_scale = app_data
+    is_heptatonic = len(SCALE_TYPES[app_data].intervals) == 7
+    if not is_heptatonic:
+        _prog_sevenths = False
+        dpg.set_value("prog_sevenths_toggle", False)
+    dpg.configure_item("prog_sevenths_toggle", enabled=is_heptatonic)
 
 
 def on_prog_sevenths_toggle(sender, app_data):
@@ -719,6 +730,17 @@ def _rebuild_chord_list():
         dpg.delete_item("chord_list_group")
 
     with dpg.group(parent="chord_list_scroll", tag="chord_list_group"):
+        if not _current_chords:
+            dpg.add_spacer(height=16)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=60)
+                with dpg.group():
+                    dpg.add_text("Pentatonic and blues scales don't have\ndiatonic chords.",
+                                 color=COLOR_TEXT_DIM)
+                    dpg.add_spacer(height=8)
+                    dpg.add_text("Use the Progression tab to build\nchord progressions manually.",
+                                 color=COLOR_TEXT_DIM)
+            dpg.add_spacer(height=554)
         for i, chord in enumerate(_current_chords):
             with dpg.group(horizontal=True, tag="chord_row_" + str(i)):
                 dpg.add_spacer(width=6)
@@ -751,17 +773,17 @@ def _rebuild_chord_list():
 
     if _current_chords:
         _select_chord(0)
+    else:
+        _update_selected_chord()
 
 
 def _refresh_prog_cell(idx: int):
-    row = idx // PROG_COLS
-    col = idx % PROG_COLS
     tag = f"prog_cell_{idx}"
     if dpg.does_item_exist(tag):
         cell = _prog_cells[idx] if idx < len(_prog_cells) else ProgCell()
         # A cell is highlighted if it's the primary selection OR in the multi-select set
         selected = (idx == _prog_selected_idx) or (idx in _prog_selected_set)
-        draw_prog_cell(tag, cell, row, col, selected=selected,
+        draw_prog_cell(tag, cell, idx, selected=selected,
                        key=_prog_key, scale=_prog_scale,
                        show_keybind=_show_keybinds)
 
@@ -934,9 +956,13 @@ def _update_selected_chord():
 
 def _refresh_chords():
     global _current_chords, _selected_chord_idx, _current_scale_pcs
-    _current_chords = get_diatonic_chords(
-        _current_key, _current_scale, include_sevenths=_include_sevenths
-    )
+    scale = SCALE_TYPES.get(_current_scale)
+    if scale and len(scale.intervals) == 7:
+        _current_chords = get_diatonic_chords(
+            _current_key, _current_scale, include_sevenths=_include_sevenths
+        )
+    else:
+        _current_chords = []
     _selected_chord_idx = 0 if _current_chords else None
 
     if dpg.does_item_exist("scale_notes_text"):

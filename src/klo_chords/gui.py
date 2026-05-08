@@ -289,8 +289,8 @@ def _build_chord_tab():
 
 
 def _build_progression_tab():
-    """Chord progression tab with 7x4 grid of clickable cells."""
-    PROG_COLS = 7
+    """Chord progression tab with 8x4 grid of clickable cells."""
+    PROG_COLS = 8
     PROG_ROWS = 4
 
     # ── Scale chooser — centered row ───────────────────────────────────────
@@ -661,24 +661,24 @@ def build_ui():
 
     # ── Keyboard handlers ──────────────────────────────────────────────────────
     with dpg.handler_registry(tag="main_handler_registry"):
-        # Row 0 (cells 0-6): keys 1-7, then QWERTY rows for cells 7-27
+        # Row 0 (cells 0-7): keys 1-8, then QWERTY rows for cells 8-31
         PROG_KEY_CELL_MAP = [
-            # Row 0: 1-7
+            # Row 0: 1-8
             (dpg.mvKey_1, 0), (dpg.mvKey_2, 1), (dpg.mvKey_3, 2),
             (dpg.mvKey_4, 3), (dpg.mvKey_5, 4), (dpg.mvKey_6, 5),
-            (dpg.mvKey_7, 6),
-            # Row 1: Q W E R T Y U
-            (dpg.mvKey_Q, 7), (dpg.mvKey_W, 8), (dpg.mvKey_E, 9),
-            (dpg.mvKey_R, 10), (dpg.mvKey_T, 11), (dpg.mvKey_Y, 12),
-            (dpg.mvKey_U, 13),
-            # Row 2: A S D F G H J
-            (dpg.mvKey_A, 14), (dpg.mvKey_S, 15), (dpg.mvKey_D, 16),
-            (dpg.mvKey_F, 17), (dpg.mvKey_G, 18), (dpg.mvKey_H, 19),
-            (dpg.mvKey_J, 20),
-            # Row 3: Z X C V B N M
-            (dpg.mvKey_Z, 21), (dpg.mvKey_X, 22), (dpg.mvKey_C, 23),
-            (dpg.mvKey_V, 24), (dpg.mvKey_B, 25), (dpg.mvKey_N, 26),
-            (dpg.mvKey_M, 27),
+            (dpg.mvKey_7, 6), (dpg.mvKey_8, 7),
+            # Row 1: Q W E R T Y U I
+            (dpg.mvKey_Q, 8), (dpg.mvKey_W, 9), (dpg.mvKey_E, 10),
+            (dpg.mvKey_R, 11), (dpg.mvKey_T, 12), (dpg.mvKey_Y, 13),
+            (dpg.mvKey_U, 14), (dpg.mvKey_I, 15),
+            # Row 2: A S D F G H J K
+            (dpg.mvKey_A, 16), (dpg.mvKey_S, 17), (dpg.mvKey_D, 18),
+            (dpg.mvKey_F, 19), (dpg.mvKey_G, 20), (dpg.mvKey_H, 21),
+            (dpg.mvKey_J, 22), (dpg.mvKey_K, 23),
+            # Row 3: Z X C V B N M ,
+            (dpg.mvKey_Z, 24), (dpg.mvKey_X, 25), (dpg.mvKey_C, 26),
+            (dpg.mvKey_V, 27), (dpg.mvKey_B, 28), (dpg.mvKey_N, 29),
+            (dpg.mvKey_M, 30), (dpg.mvKey_Comma, 31),
         ]
         for key, cell_idx in PROG_KEY_CELL_MAP:
             dpg.add_key_press_handler(key=key, callback=on_key_press, user_data=cell_idx)

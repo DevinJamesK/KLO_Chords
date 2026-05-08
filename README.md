@@ -23,11 +23,11 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 - **Base octave slider** — Shift chord voicings up or down.
 - **Piano keyboard** — Highlights chord notes (gold), scale notes (blue), and bass note (green).
 - **Inversion display** — Shows the current inversion name and sounding notes below the keyboard.
-- **Number key shortcuts (1-7)** — Press 1-7 to select and play diatonic chords.
+- **Number key shortcuts (1-7)** — Press 1–7 to select and play diatonic chords.
 - **Mute/Unmute** — Press `ESC` to toggle mute; `Spacebar` to stop playback.
 - **Validated guitar voicings** — Loads local guitar chord data, rejects shapes with wrong notes, de-duplicates results, and ranks shapes by playability.
 - **Fretboard note-name mode** — Toggle between fret numbers and actual note names on fretboard dots.
-- **Progression grid** — 7-column × 4-row grid for building chord progressions. Click any cell to edit root, quality, and inversion. Each cell shows the chord name, notes, and a roman numeral dynamically computed against the current key/scale.
+- **Progression grid** — 8-column × 4-row grid for building chord progressions. Click any cell to edit root, quality, and inversion. Each cell shows the chord name, notes, and a roman numeral dynamically computed against the current key/scale.
 - **Multi-select in progression** — Shift+click to select a range of cells, Ctrl/Cmd+click to toggle individual cell selection. Copy (Ctrl+C) and Paste (Ctrl+V) with multiple paste modes:
   - **Replace mode** — overwrites cells starting at the paste position
   - **Insert mode** — shifts existing cells right to make room
@@ -93,10 +93,10 @@ python -m klo_chords
 
 | Shortcut | Action |
 |---|---|
-| `1` – `7` | Select & play cells in row 0 |
-| `Q` – `U` | Select & play cells in row 1 |
-| `A` – `J` | Select & play cells in row 2 |
-| `Z` – `M` | Select & play cells in row 3 |
+| `1` – `8` | Select & play cells in row 0 |
+| `Q` – `I` | Select & play cells in row 1 |
+| `A` – `K` | Select & play cells in row 2 |
+| `Z` – `,` | Select & play cells in row 3 |
 | `Ctrl` + any above | Select cell without playing sound |
 
 #### Cell Editing

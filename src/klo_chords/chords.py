@@ -80,6 +80,11 @@ TRIAD_QUALITIES = {
     "Natural Minor": ["m", "dim", "M", "m", "m", "M", "M"],
     "Harmonic Minor": ["m", "dim", "aug", "m", "M", "M", "dim"],
     "Melodic Minor":  ["m", "m", "aug", "M", "M", "dim", "dim"],
+    "Dorian":        ["m", "m", "M", "M", "m", "dim", "M"],
+    "Phrygian":      ["m", "M", "M", "m", "dim", "M", "m"],
+    "Lydian":        ["M", "M", "m", "dim", "M", "m", "m"],
+    "Mixolydian":    ["M", "m", "dim", "M", "m", "m", "M"],
+    "Locrian":       ["dim", "M", "m", "m", "M", "M", "m"],
 }
 
 DEFAULT_TRIAD_QUALITIES = ["M", "m", "m", "M", "M", "m", "dim"]
@@ -271,6 +276,8 @@ def _seventh_quality_from_intervals(intervals: List[int]) -> str:
         return "aug7"
     if third == 3 and fifth == 7 and seventh == 11:
         return "mmaj7"
+    if third == 4 and fifth == 8 and seventh == 11:
+        return "augmaj7"
     return f"?7"
 
 

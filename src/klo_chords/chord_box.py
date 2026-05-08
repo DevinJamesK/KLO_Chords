@@ -17,10 +17,10 @@ from klo_chords.theme import (
 # Chords tab: 1-7 for the 7 diatonic chords
 # Progression tab: 28 cells mapped to keyboard rows
 KEYBIND_LABELS = [
-    "1", "2", "3", "4", "5", "6", "7",                # Row 0
-    "Q", "W", "E", "R", "T", "Y", "U",                # Row 1
-    "A", "S", "D", "F", "G", "H", "J",                # Row 2
-    "Z", "X", "C", "V", "B", "N", "M",                # Row 3
+    "1", "2", "3", "4", "5", "6", "7", "8",           # Row 0
+    "Q", "W", "E", "R", "T", "Y", "U", "I",           # Row 1
+    "A", "S", "D", "F", "G", "H", "J", "K",           # Row 2
+    "Z", "X", "C", "V", "B", "N", "M", ",",           # Row 3
 ]
 
 
@@ -88,7 +88,7 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
 
 
 def draw_prog_cell(canvas_tag: str, cell: ProgCell,
-                   row: int, col: int, selected: bool = False,
+                   idx: int, selected: bool = False,
                    key: str = "C", scale: str = "Major",
                    show_keybind: bool = False):
     """Draw a compact progression grid cell inside *canvas_tag*.
@@ -99,9 +99,6 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     in the top‑right corner.
     """
     dpg.delete_item(canvas_tag, children_only=True)
-
-    PROG_COLS = 7
-    idx = row * PROG_COLS + col
 
     # Background and border
     border_col = COLOR_ACCENT if selected else COLOR_CHORD_BORDER
