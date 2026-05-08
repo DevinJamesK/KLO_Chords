@@ -955,7 +955,7 @@ def _refresh_progression():
     if dpg.does_item_exist("prog_scale_combo"):
         _prog_scale = dpg.get_value("prog_scale_combo")
     chords = get_diatonic_chords(
-        _prog_key, _prog_scale, include_sevenths=_prog_sevenths
+        _prog_key, _prog_scale, include_sevenths=True
     )
     for i in range(PROG_COLS):
         if i < len(chords):
@@ -964,6 +964,7 @@ def _refresh_progression():
             cell.quality = chords[i].quality
             cell.rotation = 0
             cell.voicing_idx = 0
+            cell.base_octave = 2
         else:
             _prog_cells[i].clear()
     for i in range(PROG_COLS, PROG_CELLS_TOTAL):
