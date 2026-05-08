@@ -207,7 +207,7 @@ def on_prog_fill(sender=None, app_data=None):
     """Fill chords starting from the selected cell, right→down like reading."""
     global _prog_cells
     chords = get_diatonic_chords(
-        _prog_key, _prog_scale, include_sevenths=_prog_sevenths
+        _prog_key, _prog_scale, include_sevenths=True
     )
     # Start filling from the selected cell, or column 0 row 0 if none selected
     start_idx = _prog_selected_idx if _prog_selected_idx is not None else 0
@@ -220,6 +220,7 @@ def on_prog_fill(sender=None, app_data=None):
         cell.quality = chord.quality
         cell.rotation = 0
         cell.voicing_idx = 0
+        cell.base_octave = 2
     _rebuild_progression_grid()
     # Auto-select the starting cell so arrow buttons work immediately
     if 0 <= start_idx < PROG_CELLS_TOTAL:
