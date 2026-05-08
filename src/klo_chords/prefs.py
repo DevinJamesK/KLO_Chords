@@ -33,6 +33,7 @@ DEFAULTS: Dict[str, Any] = {
     "show_note_names": False,
     "show_keybinds":   False,
     "sub_oscillator":  False,
+    "audio_device":    "system_default",
 }
 
 MIGRATIONS: Dict[int, Any] = {

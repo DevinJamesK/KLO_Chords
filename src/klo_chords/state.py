@@ -35,6 +35,7 @@ from klo_chords.sound import (
     set_mode as set_sound_mode,
     is_playing, get_current_midi_notes,
     get_settings as get_sound_settings,
+    get_audio_devices, set_device, get_device_name,
 )
 from klo_chords.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM,
@@ -473,6 +474,7 @@ def _save_prefs():
         "show_note_names": get_fretboard_mode() == "note",
         "show_keybinds":   _show_keybinds,
         "sub_oscillator":  s.get("sub_oscillator", False),
+        "audio_device":    get_device_name(),
     })
 
 
@@ -505,6 +507,19 @@ def on_audio_quality_change(sender, app_data):
     internal = quality_map.get(app_data, "smooth")
     from klo_chords.sound import set_audio_quality
     set_audio_quality(internal)
+    _save_prefs()
+
+
+def on_audio_device_change(sender, app_data):
+    """Handle Audio Device combo change. app_data is the device name string."""
+    if app_data == "System Default":
+        set_device(None)
+    else:
+        devices = get_audio_devices()
+        for dev in devices:
+            if dev["name"] == app_data:
+                set_device(dev["index"])
+                break
     _save_prefs()
 
 

@@ -23,8 +23,26 @@ if command -v conda &>/dev/null; then
         conda env create -f environment.yml
         echo "[✓] Conda environment '${ENV_NAME}' created."
     fi
+
+    # Activate conda env — use shell hook for reliable activation in scripts
+    eval "$(conda shell.bash hook)" 2>/dev/null || true
     conda activate "${ENV_NAME}" 2>/dev/null || true
-    PY="python"
+
+    # Verify python is available after activation; retry with explicit env path if needed
+    if command -v python &>/dev/null; then
+        PY="python"
+    else
+        echo "[i] 'python' not in PATH after conda activate — locating env python..."
+        # Find python in the conda env directly
+        CONDA_ENV_DIR=$(conda env list 2>/dev/null | grep "^${ENV_NAME} " | awk '{print $NF}')
+        if [ -n "$CONDA_ENV_DIR" ] && [ -x "$CONDA_ENV_DIR/bin/python" ]; then
+            PY="$CONDA_ENV_DIR/bin/python"
+            echo "[✓] Using ${PY}"
+        else
+            echo "[!] Could not locate python in '${ENV_NAME}' env — falling back to system."
+            PY="python3"
+        fi
+    fi
 else
     # Fall back to system python or venv
     echo "[i] Conda not found — using system python."

@@ -38,6 +38,7 @@ from klo_chords.state import (
     on_base_octave_change, on_playback_mode_change,
     on_legato_toggle, on_volume_change,
     on_wave_type_change, on_audio_quality_change,
+    on_audio_device_change,
     on_tab_change,
     on_fretboard_mode_change, on_mute_toggle, on_stop,
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
@@ -476,8 +477,23 @@ def _build_sound_tab():
 
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=20)
+            dpg.add_text("Audio Device:")
+            dpg.add_spacer(width=4)
+            from klo_chords.sound import get_audio_devices, get_device_name
+            devices = get_audio_devices()
+            device_names = [d["name"] for d in devices]
+            saved_device = get_device_name()
+            # Resolve saved device name to a display name (fall back to System Default if not found)
+            default_device = "System Default"
+            if saved_device != "system_default" and saved_device in device_names:
+                default_device = saved_device
+            dpg.add_combo(items=device_names,
+                          default_value=default_device,
+                          tag="sound_device_combo", width=180,
+                          callback=on_audio_device_change)
+            dpg.add_spacer(width=8)
             dpg.add_text("Audio Quality:")
-            dpg.add_spacer(width=6)
+            dpg.add_spacer(width=4)
             quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
             snd2 = get_sound_settings()
             dpg.add_combo(items=["Smooth", "Responsive", "Legacy"],
@@ -737,6 +753,7 @@ def _apply_preferences():
         set_audio_quality, set_legato, set_playback_mode,
         set_random_velocity, set_velocity_range, set_base_octave,
         set_sub_oscillator,
+        get_audio_devices, set_device,
     )
     set_volume(prefs_data.get("volume", 75) / 100.0)
     set_enabled(prefs_data.get("sound_enabled", True))
@@ -749,6 +766,14 @@ def _apply_preferences():
                        prefs_data.get("vel_max", 100))
     set_base_octave(prefs_data.get("base_octave", 3))
     set_sub_oscillator(prefs_data.get("sub_oscillator", False))
+    # Apply saved audio device
+    saved_device = prefs_data.get("audio_device", "system_default")
+    if saved_device != "system_default":
+        devices = get_audio_devices()
+        for dev in devices:
+            if dev["name"] == saved_device:
+                set_device(dev["index"])
+                break
 
 
 if __name__ == "__main__":

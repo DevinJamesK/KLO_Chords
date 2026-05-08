@@ -215,6 +215,7 @@ class _AudioEngine:
             self._stream = sd.OutputStream(
                 samplerate=SAMPLE_RATE, channels=1, blocksize=blocksize,
                 callback=self._callback, dtype='float32', latency=latency,
+                device=_device_id,
             )
             self._stream.start()
         except (sd.PortAudioError, OSError) as e:
@@ -302,6 +303,8 @@ _engine = _AudioEngine()
 _sound_enabled   = True
 _sound_mode      = "triangle"
 _audio_quality   = "smooth"       # "smooth" | "responsive" | "legacy"
+_device_id       = None           # None = system default
+_device_name     = "system_default"  # persisted display key for prefs
 _random_velocity = True          # ON by default
 _velocity_min    = 60
 _velocity_max    = 100
@@ -443,6 +446,55 @@ def get_audio_quality() -> str:
     return _audio_quality
 
 
+def get_audio_devices() -> list:
+    """Return a list of output audio devices as {name, index} dicts.
+
+    Index is the PortAudio device ID, or None for 'System Default'.
+    """
+    devices = [{"name": "System Default", "index": None}]
+    try:
+        for dev in sd.query_devices():
+            if dev["max_output_channels"] > 0:
+                devices.append({"name": dev["name"], "index": dev["index"]})
+    except (sd.PortAudioError, OSError):
+        pass  # return just "System Default" if we can't enumerate
+    return devices
+
+
+def set_device(device_id):
+    """Set the output audio device by PortAudio device ID (None = system default).
+
+    Restarts the audio stream if it's already running.
+    """
+    global _device_id, _device_name
+    if device_id == _device_id:
+        return
+    # Update _device_name for persistence
+    if device_id is None:
+        _device_name = "system_default"
+    else:
+        for dev in get_audio_devices():
+            if dev["index"] == device_id:
+                _device_name = dev["name"]
+                break
+        else:
+            _device_name = "system_default"
+    _device_id = device_id
+    # Restart audio stream to apply new device
+    _engine.stop()
+    _engine.start()
+
+
+def get_device_id():
+    """Return the current output device ID (None = system default)."""
+    return _device_id
+
+
+def get_device_name() -> str:
+    """Return the persisted device name key for preferences."""
+    return _device_name
+
+
 def get_settings() -> dict:
     return dict(
         enabled=_sound_enabled,
@@ -456,6 +508,7 @@ def get_settings() -> dict:
         playback_mode=_engine._mode,
         legato=_engine._legato,
         sub_oscillator=_sub_oscillator_enabled,
+        device_id=_device_name,
     )
 
 
