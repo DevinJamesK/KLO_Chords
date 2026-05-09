@@ -2,10 +2,11 @@ name: klo_music
 channels:
   - defaults
 dependencies:
-  - python>=3.11
+  - python=3.13
   - pip
   - pip:
     - dearpygui
     - sounddevice
     - numpy
+    - python-rtmidi
     - -e .
