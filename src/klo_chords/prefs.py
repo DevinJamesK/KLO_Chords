@@ -23,7 +23,7 @@ DEFAULTS: Dict[str, Any] = {
     "sound_enabled":  True,
     "volume":         75,
     "wave":           "triangle",
-    "audio_quality":  "smooth",
+    "audio_quality":  "legacy",
     "legato":         True,
     "playback_mode":  "toggle",
     "random_velocity": True,
@@ -31,8 +31,8 @@ DEFAULTS: Dict[str, Any] = {
     "vel_max":        100,
     "base_octave":    3,
     "show_note_names": False,
-    "show_keybinds":   False,
-    "sub_oscillator":  False,
+    "show_keybinds":   True,
+    "sub_oscillator":  True,
     "audio_device":    "system_default",
 }
 
@@ -58,6 +58,11 @@ def _get_path() -> str:
     d = _get_dir()
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, "preferences.json")
+
+
+def get_path() -> str:
+    """Return the full path to preferences.json."""
+    return _get_path()
 
 
 def _run_migrations(data: Dict[str, Any]) -> Dict[str, Any]:

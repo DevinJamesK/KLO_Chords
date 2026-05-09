@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.6] - 2026-05-08
+
+### Added
+- **Reset preferences button** — new "Reset" section at the bottom of the Settings tab with a red "Delete Saved Preferences" button. Deletes `preferences.json` from AppData (Windows) / `Application Support` (macOS) and immediately resets all in-memory settings and UI controls to defaults.
+
+### Fixed
+- **Mini fretboard top clipping on Windows** — open/muted string markers (O/X) were drawn at `y = -4`, which DearPyGui clips on Windows but not macOS. Fretboard origin (`y0`) moved from 14 to 22 px so all markers render within the canvas on both platforms.
+- **Active chord selection lost on "Show Note Names" toggle** — `_rebuild_chord_list` always re-selected chord 0 after rebuilding. Now restores the previously selected index.
+
+### Changed
+- **Settings tab** — "Sound" tab renamed to "Settings"; tab border removed.
+- **Tab widths equalized** — all three tabs padded to the same label width with increased `FramePadding`.
+- **Windows viewport size** — viewport is 880×1030 on Windows vs. 860×1000 on macOS to compensate for DPI/chrome differences.
+- **Chip detail fields centered** — Root, Quality, Inv, Oct, and Notes chips converted from `input_text` to `button` with `ButtonTextAlign (0.5, 0.5)` so values are centered in the box.
+- **Inversion name field fixed width** — inversion/notes string field is now a fixed 260 px transparent input so the Suggestions button stays stationary regardless of chord content.
+- **Default audio quality changed to Legacy.**
+- **Add Bass Root Note and Show Keybinds default to on.**
+
 ## [0.5.5] - 2026-05-08
 
 ### Changed

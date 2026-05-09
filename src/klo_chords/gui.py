@@ -1,4 +1,4 @@
-"""
+﻿"""
 KLO Chords - Application entry point.
 
 Builds the Dear PyGui window layout and runs the event loop.
@@ -51,7 +51,7 @@ from klo_chords.state import (
     on_prog_show_suggestions, on_prog_cell_shift_click,
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds,
-    on_sub_oscillator_toggle,
+    on_sub_oscillator_toggle, on_reset_prefs,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
 
@@ -61,8 +61,9 @@ from klo_chords.quality import quality_symbol
 
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
-VIEWPORT_WIDTH  = 860
-VIEWPORT_HEIGHT = 1000
+_IS_WINDOWS = platform.system() == "Windows"
+VIEWPORT_WIDTH  = 880 if _IS_WINDOWS else 860
+VIEWPORT_HEIGHT = 1030 if _IS_WINDOWS else 1000
 
 WAVE_INTERNAL_TO_DISPLAY = {
     "triangle": "Triangle",
@@ -145,14 +146,14 @@ def _build_toolbar():
         dpg.add_spacer(width=16)
         dpg.add_checkbox(label="Add Bass Root Note",
                          tag="toolbar_sub_osc_toggle",
-                         default_value=get_sound_settings().get("sub_oscillator", False),
+                         default_value=get_sound_settings().get("sub_oscillator", True),
                          callback=on_sub_oscillator_toggle)
         dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
         dpg.add_spacer(width=8)
         dpg.add_checkbox(label="Show Keybinds",
                          tag="toolbar_show_keybinds",
-                         default_value=False,
+                         default_value=True,
                          callback=on_keybinds_toggle)
     dpg.add_spacer(height=8)
 
@@ -312,7 +313,7 @@ def _build_progression_tab():
                          tag="prog_sevenths_toggle",
                          default_value=False,
                          callback=on_prog_sevenths_toggle)
-        dpg.add_spacer(width=80)
+        dpg.add_spacer(width=82)
         dpg.add_button(label="Fill Chords", width=100,
                        tag="prog_fill_btn", callback=on_prog_fill)
         dpg.add_spacer(width=10)
@@ -373,20 +374,28 @@ def _build_progression_tab():
     dpg.add_spacer(height=4)
 
     # Fixed-width value chip theme: gold text on a dark card, rounded frame.
-    with dpg.theme() as _chip_theme:
+    with dpg.theme() as _plain_text_theme:
         with dpg.theme_component(dpg.mvInputText):
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBg,        COLOR_CHORD_BG)
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, COLOR_CHORD_BG)
-            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive,  COLOR_CHORD_BG)
-            dpg.add_theme_color(dpg.mvThemeCol_Text,         [255, 210, 50, 255])
-            dpg.add_theme_color(dpg.mvThemeCol_Border,       [65, 65, 88, 255])
-            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
-            dpg.add_theme_style(dpg.mvStyleVar_FramePadding,  6, 3)
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg,        [0, 0, 0, 0])
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, [0, 0, 0, 0])
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive,  [0, 0, 0, 0])
+            dpg.add_theme_color(dpg.mvThemeCol_Text,           COLOR_TEXT_DIM)
+            dpg.add_theme_color(dpg.mvThemeCol_Border,         [0, 0, 0, 0])
+            dpg.add_theme_style(dpg.mvStyleVar_FramePadding,   0, 3)
+
+    with dpg.theme() as _chip_theme:
+        with dpg.theme_component(dpg.mvButton):
+            dpg.add_theme_color(dpg.mvThemeCol_Button,        COLOR_CHORD_BG)
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, COLOR_CHORD_BG)
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  COLOR_CHORD_BG)
+            dpg.add_theme_color(dpg.mvThemeCol_Text,          [255, 210, 50, 255])
+            dpg.add_theme_color(dpg.mvThemeCol_Border,        [65, 65, 88, 255])
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding,    4)
+            dpg.add_theme_style(dpg.mvStyleVar_FramePadding,     6, 3)
+            dpg.add_theme_style(dpg.mvStyleVar_ButtonTextAlign,  0.5, 0.5)
 
     def _chip(tag, default, width):
-        dpg.add_input_text(tag=tag, default_value=default,
-                           readonly=True, width=width,
-                           no_horizontal_scroll=True)
+        dpg.add_button(tag=tag, label=default, width=width, height=22)
         dpg.bind_item_theme(tag, _chip_theme)
 
     with dpg.group(tag="prog_cell_detail_group", show=True):
@@ -449,8 +458,10 @@ def _build_progression_tab():
             dpg.add_spacer(width=4)
             _chip("prog_detail_notes", "--", 108)
             dpg.add_spacer(width=12)
-            dpg.add_text("", tag="prog_detail_inv_name", color=COLOR_TEXT_DIM)
-            dpg.add_spacer(width=20)
+            dpg.add_input_text(tag="prog_detail_inv_name", default_value="",
+                               readonly=True, width=260, no_horizontal_scroll=True)
+            dpg.bind_item_theme("prog_detail_inv_name", _plain_text_theme)
+            dpg.add_spacer(width=25)
             dpg.add_button(label="Suggestions", tag="prog_suggest_btn",
                            width=120, height=25, callback=on_prog_show_suggestions)
 
@@ -468,7 +479,7 @@ def _build_progression_tab():
 def _build_sound_tab():
     """Sound settings."""
     with dpg.child_window(tag="sound_panel", width=-1,
-                          height=-1, border=True):
+                          height=-1, border=False):
         dpg.add_text("Sound Settings", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
@@ -584,6 +595,27 @@ def _build_sound_tab():
                          " only the differing notes change. Smoother transitions.",
                           color=COLOR_TEXT_DIM, wrap=480)
 
+        dpg.add_spacer(height=20)
+        dpg.add_text("Reset", color=COLOR_ACCENT)
+        dpg.add_separator()
+        dpg.add_spacer(height=8)
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=16)
+            dpg.add_button(label="Delete Saved Preferences",
+                           tag="reset_prefs_btn", width=200, height=28,
+                           callback=on_reset_prefs)
+            with dpg.theme() as _danger_theme:
+                with dpg.theme_component(dpg.mvButton):
+                    dpg.add_theme_color(dpg.mvThemeCol_Button,        [120, 30, 30, 255])
+                    dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,  [160, 40, 40, 255])
+                    dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,   [90, 20, 20, 255])
+                    dpg.add_theme_color(dpg.mvThemeCol_Text,           [255, 100, 100, 255])
+                    dpg.add_theme_style(dpg.mvStyleVar_FrameRounding,  4)
+            dpg.bind_item_theme("reset_prefs_btn", _danger_theme)
+            dpg.add_spacer(width=12)
+            dpg.add_text("Resets all settings to defaults. Current session will also reset.",
+                         color=COLOR_TEXT_DIM, wrap=300)
+
 
 def build_ui():
     dpg.create_context()
@@ -610,13 +642,13 @@ def build_ui():
 
         with dpg.tab_bar(tag="main_tab_bar",
                          callback=on_tab_change):
-            with dpg.tab(label="Chords", tag="tab_chords"):
+            with dpg.tab(label="   Chords    ", tag="tab_chords"):
                 _build_chord_tab()
 
-            with dpg.tab(label="Progression", tag="tab_progression"):
+            with dpg.tab(label=" Progression ", tag="tab_progression"):
                 _build_progression_tab()
 
-            with dpg.tab(label="Sound", tag="tab_sound"):
+            with dpg.tab(label="  Settings   ", tag="tab_sound"):
                 _build_sound_tab()
 
     # ── Theme ──────────────────────────────────────────────────────────────────
@@ -627,6 +659,11 @@ def build_ui():
             dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 4, 4)
 
     dpg.bind_theme(global_theme)
+
+    with dpg.theme() as _tab_theme:
+        with dpg.theme_component(dpg.mvTab):
+            dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 14, 5)
+    dpg.bind_item_theme("main_tab_bar", _tab_theme)
 
     # ── Viewport ────────────────────────────────────────────────────────────────
     dpg.create_viewport(title="KLO Chords", width=VIEWPORT_WIDTH,

@@ -302,7 +302,7 @@ _engine = _AudioEngine()
 
 _sound_enabled   = True
 _sound_mode      = "triangle"
-_audio_quality   = "smooth"       # "smooth" | "responsive" | "legacy"
+_audio_quality   = "legacy"       # "smooth" | "responsive" | "legacy"
 _device_id       = None           # None = system default
 _device_name     = "system_default"  # persisted display key for prefs
 _random_velocity = True          # ON by default

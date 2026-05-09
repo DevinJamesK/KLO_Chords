@@ -63,7 +63,7 @@ def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
     str_gap = 12                        # tighter spacing for natural proportion
     x0 = (W - 5 * str_gap) // 2         # centered; ~27px → leaves room for fret labels
 
-    y0 = 14
+    y0 = 22
     min_fret = min((f for _, f in diagram if f is not None and f > 0), default=0)
     max_fret = max((f for _, f in diagram if f is not None), default=0)
     has_open  = any(f == 0 for _, f in diagram if f is not None)

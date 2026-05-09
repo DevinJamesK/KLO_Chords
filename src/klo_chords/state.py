@@ -5,6 +5,7 @@ Holds the currently selected key, scale, chord list, etc.
 All state mutation goes through callbacks that trigger UI refreshes.
 """
 
+import os
 from typing import List, Optional, Set
 
 import dearpygui.dearpygui as dpg
@@ -640,6 +641,63 @@ def on_sub_oscillator_toggle(sender, app_data):
     _save_prefs()
 
 
+def on_reset_prefs(sender=None, app_data=None):
+    path = prefs.get_path()
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+    d = prefs.DEFAULTS
+    from klo_chords.sound import (
+        set_volume, set_enabled, set_mode, set_audio_quality,
+        set_legato, set_playback_mode, set_random_velocity,
+        set_velocity_range, set_base_octave, set_sub_oscillator,
+    )
+    set_volume(d["volume"] / 100.0)
+    set_enabled(d["sound_enabled"])
+    set_mode(d["wave"])
+    set_audio_quality(d["audio_quality"])
+    set_legato(d["legato"])
+    set_playback_mode(d["playback_mode"])
+    set_random_velocity(d["random_velocity"])
+    set_velocity_range(d["vel_min"], d["vel_max"])
+    set_base_octave(d["base_octave"])
+    set_sub_oscillator(d["sub_oscillator"])
+
+    wave_display = {"triangle": "Triangle", "sine": "Sine", "sawtooth": "Sawtooth"}
+    quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
+    playback_display = {"toggle": "Toggle/Latch", "oneshot": "One-Shot"}
+
+    for tag, val in [
+        ("volume_slider",        d["volume"]),
+        ("sound_enable",         d["sound_enabled"]),
+        ("random_vel",           d["random_velocity"]),
+        ("vel_min_slider",       d["vel_min"]),
+        ("vel_max_slider",       d["vel_max"]),
+        ("base_octave_slider",   d["base_octave"]),
+        ("sound_legato_toggle",  d["legato"]),
+        ("toolbar_legato_toggle", d["legato"]),
+        ("toolbar_sub_osc_toggle", d["sub_oscillator"]),
+        ("toolbar_show_keybinds", d["show_keybinds"]),
+        ("fretboard_mode_toggle", d["show_note_names"]),
+        ("sound_mode_combo",     wave_display.get(d["wave"], "Triangle")),
+        ("toolbar_wave_combo",   wave_display.get(d["wave"], "Triangle")),
+        ("sound_quality_combo",  quality_display.get(d["audio_quality"], "Legacy")),
+        ("playback_mode_combo",  playback_display.get(d["playback_mode"], "Toggle/Latch")),
+    ]:
+        if dpg.does_item_exist(tag):
+            dpg.set_value(tag, val)
+
+    global _show_keybinds
+    _show_keybinds = d["show_keybinds"]
+
+    from klo_chords.fretboard import set_fretboard_mode
+    set_fretboard_mode("note" if d["show_note_names"] else "fret")
+
+    _rebuild_chord_list()
+
+
 def on_volume_change(sender, app_data):
     """Volume slider changed. app_data is 0-100 percentage."""
     # Convert percentage (0-100) to internal 0.0-1.0
@@ -832,7 +890,8 @@ def _rebuild_chord_list():
                                             "click_hreg_" + str(i))
 
     if _current_chords:
-        _select_chord(0)
+        restore_idx = _selected_chord_idx if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords) else 0
+        _select_chord(restore_idx)
     else:
         _update_selected_chord()
 
@@ -873,7 +932,7 @@ def _update_prog_piano(cell: ProgCell):
 
     # Display octave always matches the effective octave.
     if dpg.does_item_exist("prog_detail_octave"):
-        dpg.set_value("prog_detail_octave", str(eff_oct))
+        dpg.configure_item("prog_detail_octave", label=str(eff_oct))
 
     # Calculate the octave range so all notes fit in the 2-octave display
     if midi_notes:
@@ -908,26 +967,26 @@ def _update_prog_detail(idx: int):
     dpg.set_value("prog_detail_pos", f"R{row}, C{col} ({real_degree})")
 
     if cell.is_empty():
-        dpg.set_value("prog_detail_root", "C")
-        dpg.set_value("prog_detail_quality", "Major")
-        dpg.set_value("prog_detail_inversion", "Root")
-        dpg.set_value("prog_detail_notes", "--")
+        dpg.configure_item("prog_detail_root", label="C")
+        dpg.configure_item("prog_detail_quality", label="Major")
+        dpg.configure_item("prog_detail_inversion", label="Root")
+        dpg.configure_item("prog_detail_notes", label="--")
         if dpg.does_item_exist("prog_detail_octave"):
-            dpg.set_value("prog_detail_octave", "3")
+            dpg.configure_item("prog_detail_octave", label="3")
         clear_multi_octave_piano("prog_piano_canvas")
         if dpg.does_item_exist("prog_detail_inv_name"):
             dpg.set_value("prog_detail_inv_name", "")
     else:
-        dpg.set_value("prog_detail_root", cell.root)
+        dpg.configure_item("prog_detail_root", label=cell.root)
         display_q = PROG_QUALITY_REVERSE_MAP.get(cell.quality, "Major")
-        dpg.set_value("prog_detail_quality", display_q)
+        dpg.configure_item("prog_detail_quality", label=display_q)
         inv_labels = {0: "Root", 1: "1st", 2: "2nd", 3: "3rd"}
         intervals = QUALITY_INTERVALS.get(cell.quality, [0, 4, 7])
         inv_idx = cell.rotation % max(1, len(intervals))
         inv_name = inv_labels.get(inv_idx, "Root")
-        dpg.set_value("prog_detail_inversion", inv_name)
+        dpg.configure_item("prog_detail_inversion", label=inv_name)
         notes_str = " ".join(cell.get_notes()) if cell.get_notes() else "--"
-        dpg.set_value("prog_detail_notes", notes_str)
+        dpg.configure_item("prog_detail_notes", label=notes_str)
         # Octave display is set by _update_prog_piano below (effective octave from root MIDI).
         _update_prog_piano(cell)
 
