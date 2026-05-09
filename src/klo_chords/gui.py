@@ -6,8 +6,14 @@ All logic (rendering, callbacks, state) lives in sibling modules.
 """
 
 import math
+import platform
 import dearpygui.dearpygui as dpg
 import os
+
+# On macOS Retina displays the physical pixel density is 2× the logical size.
+# Baking the font atlas at 2× then halving the global scale gives crisp text.
+# draw_text() uses explicit pixel sizes and is unaffected by global font scale.
+_DISPLAY_SCALE = 2.0 if platform.system() == "Darwin" else 1.0
 
 import klo_chords.prefs as prefs
 
@@ -120,17 +126,17 @@ def _build_toolbar():
                            default_value=int(round(snd["volume"] * 100)),
                            min_value=0, max_value=100,
                            width=120, callback=on_volume_change)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=8)
         dpg.add_text("Legato")
         snd2 = get_sound_settings()
         dpg.add_checkbox(label="", tag="toolbar_legato_toggle",
                           default_value=True,
                           callback=on_legato_toggle)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=8)
         dpg.add_text("Wave:")
         dpg.add_combo(items=WAVE_DISPLAY_NAMES,
                       default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
@@ -146,9 +152,9 @@ def _build_toolbar():
                          tag="toolbar_sub_osc_toggle",
                          default_value=get_sound_settings().get("sub_oscillator", False),
                          callback=on_sub_oscillator_toggle)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=8)
         dpg.add_checkbox(label="Show Keybinds",
                          tag="toolbar_show_keybinds",
                          default_value=False,
@@ -574,13 +580,15 @@ def build_ui():
     dpg.create_context()
     dpg.configure_app()
 
+    _font_px = int(16 * _DISPLAY_SCALE)
     with dpg.font_registry():
         path = font_path()
+        _default_font = None
         if os.path.exists(path):
-            dpg.add_font(path, 20)
+            _default_font = dpg.add_font(path, _font_px)
         fallback = font_path_fallback()
         if os.path.exists(fallback):
-            dpg.add_font(fallback, 20)
+            _fallback_font = dpg.add_font(fallback, _font_px)
 
     with dpg.window(tag="main_win", no_close=True, no_collapse=True,
                     no_scrollbar=True, width=-1, height=-1):
@@ -620,6 +628,10 @@ def build_ui():
         dpg.set_viewport_large_icon(ico)
         dpg.set_viewport_small_icon(ico)
     dpg.setup_dearpygui()
+    if _default_font is not None:
+        dpg.bind_font(_default_font)
+    if _DISPLAY_SCALE != 1.0:
+        dpg.set_global_font_scale(1.0 / _DISPLAY_SCALE)
     dpg.set_primary_window("main_win", True)
     dpg.show_viewport()
 

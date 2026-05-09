@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.4] - 2026-05-08
+
+### Changed
+- **Crisp text on Retina displays** — font atlas is now baked at 2× on macOS (`_DISPLAY_SCALE = 2.0`) and the global font scale is halved, eliminating pixelation on HiDPI screens. Non-macOS builds are unaffected.
+- **Widget font size reduced to 16 px** — matches the chord-name text drawn inside progression grid cells.
+- **Toolbar spacing tightened** — inter-element spacers reduced from 20 px to 8 px; the opening left indent is unchanged.
+
 ## [0.5.3] - 2026-05-08
 
 ### Added
