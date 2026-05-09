@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.5] - 2026-05-08
+
+### Changed
+- **Cell detail value fields styled as chips** — Root, Quality, Inv, Oct, and Notes are now fixed-width read-only input fields with gold text on the chord-cell background color (`COLOR_CHORD_BG`), a subtle border, and rounded corners. Layout no longer shifts when values change.
+- **"Suggestions" button moved inline** — the "Suggestions" button now sits on the Notes row to the right of the notes chip, reducing vertical height of the detail panel.
+- **Detail rows aligned to piano left edge** — both detail rows start at the same `_piano_pad = 20` indent as the piano keyboard below them.
+- **Sub oscillator checkbox relabeled** — toolbar checkbox reads "Add Bass Root Note" instead of "Sub Osc".
+- **Volume slider narrowed** — toolbar volume slider width reduced from 120 px to 100 px.
+- **Toolbar bottom spacer** — 8 px spacer added below the toolbar group so the separator line has breathing room.
+
 ## [0.5.4] - 2026-05-08
 
 ### Changed

@@ -125,7 +125,7 @@ def _build_toolbar():
         dpg.add_slider_int(tag="volume_slider",
                            default_value=int(round(snd["volume"] * 100)),
                            min_value=0, max_value=100,
-                           width=120, callback=on_volume_change)
+                           width=100, callback=on_volume_change)
         dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
         dpg.add_spacer(width=8)
@@ -142,13 +142,8 @@ def _build_toolbar():
                       default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
                       tag="toolbar_wave_combo", width=110,
                       callback=on_wave_type_change)
-        dpg.add_spacer(width=6)
-        with dpg.drawlist(tag="wave_preview", width=36, height=28):
-            dpg.draw_rectangle([0, 0], [36, 28],
-                               fill=[0, 0, 0, 0],
-                               color=COLOR_TEXT_DIM)
-        _draw_wave_preview(snd["mode"])
-        dpg.add_checkbox(label="Sub Osc",
+        dpg.add_spacer(width=16)
+        dpg.add_checkbox(label="Add Bass Root Note",
                          tag="toolbar_sub_osc_toggle",
                          default_value=get_sound_settings().get("sub_oscillator", False),
                          callback=on_sub_oscillator_toggle)
@@ -159,6 +154,7 @@ def _build_toolbar():
                          tag="toolbar_show_keybinds",
                          default_value=False,
                          callback=on_keybinds_toggle)
+    dpg.add_spacer(height=8)
 
 
 
@@ -168,9 +164,8 @@ def _build_chord_tab():
     # ── Key & Scale — one row across the top ────────────────────────────
     dpg.add_spacer(height=6)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=4)
+        dpg.add_spacer(width=20)
         dpg.add_text("Key")
-        dpg.add_spacer(width=4)
         dpg.add_combo(items=NOTE_NAMES, default_value="C",
                         tag="key_combo", width=50,
                         callback=on_key_change)
@@ -179,11 +174,11 @@ def _build_chord_tab():
         dpg.add_combo(items=SCALE_NAMES, default_value="Major",
                         tag="scale_combo", width=150,
                         callback=on_scale_change)
-        dpg.add_spacer(width=6)
+        dpg.add_spacer(width=10)
         dpg.add_checkbox(label="Include 7th",
                             tag="sevenths_toggle", default_value=False,
                             callback=on_sevenths_toggle)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=75)
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=10)
             dpg.add_text("C  |  D  |  E  |  F  |  G  |  A  |  B",
@@ -302,9 +297,8 @@ def _build_progression_tab():
     # ── Scale chooser — centered row ───────────────────────────────────────
     dpg.add_spacer(height=6)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=4)
+        dpg.add_spacer(width=20)
         dpg.add_text("Key")
-        dpg.add_spacer(width=4)
         dpg.add_combo(items=NOTE_NAMES, default_value="C",
                       tag="prog_key_combo", width=50,
                       callback=on_prog_key_change)
@@ -313,32 +307,19 @@ def _build_progression_tab():
         dpg.add_combo(items=SCALE_NAMES, default_value="Major",
                       tag="prog_scale_combo", width=150,
                       callback=on_prog_scale_change)
-        dpg.add_spacer(width=6)
+        dpg.add_spacer(width=10)
         dpg.add_checkbox(label="Include 7th",
                          tag="prog_sevenths_toggle",
                          default_value=False,
                          callback=on_prog_sevenths_toggle)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=80)
         dpg.add_button(label="Fill Chords", width=100,
                        tag="prog_fill_btn", callback=on_prog_fill)
         dpg.add_spacer(width=10)
         dpg.add_button(label="Clear All", width=100,
                        tag="prog_clear_btn", callback=on_prog_clear_all)
 
-    dpg.add_spacer(height=4)
-    with dpg.group(horizontal=True):
-        dpg.add_spacer(width=4)
-        dpg.add_text("Paste Mode", color=COLOR_TEXT_DIM)
-        dpg.add_combo(items=["Insert", "Replace", "Swap"],
-                      default_value="Replace",
-                      tag="paste_mode_combo", width=100,
-                      callback=on_paste_mode_change)
-        dpg.add_spacer(width=20)
-        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
-        dpg.add_combo(items=["Linear", "Preserve Shape"],
-                      default_value="Preserve Shape",
-                      tag="paste_shape_combo", width=150,
-                      callback=on_paste_shape_change)
+
 
     dpg.add_spacer(height=2)
     dpg.add_text(" Chord Grid (click to edit/play)", color=COLOR_ACCENT)
@@ -369,85 +350,113 @@ def _build_progression_tab():
                     if col < PROG_COLS - 1:
                         dpg.add_spacer(width=6)
         dpg.add_spacer(height=6)
+        
 
     # ── Cell detail panel (below the grid) ──────────────────────────────────
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        dpg.add_text("Paste Mode", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=6)
+        dpg.add_combo(items=["Insert", "Replace", "Swap"],
+                      default_value="Replace",
+                      tag="paste_mode_combo", width=100,
+                      callback=on_paste_mode_change)
+        dpg.add_spacer(width=20)
+        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
+        dpg.add_combo(items=["Linear", "Preserve Shape"],
+                      default_value="Preserve Shape",
+                      tag="paste_shape_combo", width=150,
+                      callback=on_paste_shape_change)
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
     dpg.add_spacer(height=4)
 
+    # Fixed-width value chip theme: gold text on a dark card, rounded frame.
+    with dpg.theme() as _chip_theme:
+        with dpg.theme_component(dpg.mvInputText):
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBg,        COLOR_CHORD_BG)
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, COLOR_CHORD_BG)
+            dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive,  COLOR_CHORD_BG)
+            dpg.add_theme_color(dpg.mvThemeCol_Text,         [255, 210, 50, 255])
+            dpg.add_theme_color(dpg.mvThemeCol_Border,       [65, 65, 88, 255])
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
+            dpg.add_theme_style(dpg.mvStyleVar_FramePadding,  6, 3)
+
+    def _chip(tag, default, width):
+        dpg.add_input_text(tag=tag, default_value=default,
+                           readonly=True, width=width,
+                           no_horizontal_scroll=True)
+        dpg.bind_item_theme(tag, _chip_theme)
+
     with dpg.group(tag="prog_cell_detail_group", show=True):
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=24)
+            dpg.add_spacer(width=20)
             dpg.add_text("Selected: ", color=COLOR_TEXT_DIM)
             dpg.add_text("None", tag="prog_detail_pos", color=COLOR_ACCENT)
 
         dpg.add_spacer(height=4)
 
-        # Root: < btn + text + > btn
+        _piano_pad = 20
+
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=24)
-            dpg.add_text("Root:", color=COLOR_TEXT_DIM)
-            dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=26, height=22,
+            dpg.add_spacer(width=_piano_pad)
+            dpg.add_text("Root", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=16)
+            dpg.add_button(label="<", width=25, height=22,
                            tag="prog_root_prev_btn",
                            callback=on_prog_cell_root_prev)
-            dpg.add_text("C", tag="prog_detail_root", color=COLOR_ACCENT)
-            dpg.add_button(label=">", width=26, height=22,
+            _chip("prog_detail_root", "C", 38)
+            dpg.add_button(label=">", width=25, height=22,
                            tag="prog_root_next_btn",
                            callback=on_prog_cell_root_next)
-            dpg.add_spacer(width=16)
-
-            dpg.add_text("Quality:", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=20)
+            dpg.add_text("Quality", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=26, height=22,
+            dpg.add_button(label="<", width=25, height=22,
                            tag="prog_quality_prev_btn",
                            callback=on_prog_cell_quality_prev)
-            dpg.add_text("Major", tag="prog_detail_quality", color=COLOR_ACCENT)
-            dpg.add_button(label=">", width=26, height=22,
+            _chip("prog_detail_quality", "Major", 66)
+            dpg.add_button(label=">", width=25, height=22,
                            tag="prog_quality_next_btn",
                            callback=on_prog_cell_quality_next)
             dpg.add_spacer(width=16)
-
-            dpg.add_text("Inversion:", color=COLOR_TEXT_DIM)
+            dpg.add_text("Inv", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=26, height=22,
+            dpg.add_button(label="<", width=25, height=22,
                            tag="prog_inv_prev_btn",
                            callback=on_prog_cell_inversion_prev)
-            dpg.add_text("Root", tag="prog_detail_inversion", color=COLOR_ACCENT)
-            dpg.add_button(label=">", width=26, height=22,
+            _chip("prog_detail_inversion", "Root", 46)
+            dpg.add_button(label=">", width=25, height=22,
                            tag="prog_inv_next_btn",
                            callback=on_prog_cell_inversion_next)
             dpg.add_spacer(width=16)
-
-            dpg.add_text("Octave:", color=COLOR_TEXT_DIM)
+            dpg.add_text("Oct", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=26, height=22,
+            dpg.add_button(label="<", width=25, height=22,
                            tag="prog_octave_prev_btn",
                            callback=on_prog_cell_octave_prev)
-            dpg.add_text("3", tag="prog_detail_octave", color=COLOR_ACCENT)
-            dpg.add_button(label=">", width=26, height=22,
+            _chip("prog_detail_octave", "3", 30)
+            dpg.add_button(label=">", width=25, height=22,
                            tag="prog_octave_next_btn",
                            callback=on_prog_cell_octave_next)
 
         dpg.add_spacer(height=4)
-        dpg.add_button(label="Show Suggestions", tag="prog_suggest_btn",
-                        width=180, height=24, callback=on_prog_show_suggestions)
-        dpg.add_spacer(height=4)
 
-        _piano_pad = 20
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=24)
-            dpg.add_text("Notes:", color=COLOR_TEXT_DIM)
-            dpg.add_text("--", tag="prog_detail_notes", color=COLOR_ACCENT)
-            #dpg.add_spacer(width=16)
             dpg.add_spacer(width=_piano_pad)
-            dpg.add_text("", tag="prog_detail_inv_name", color=COLOR_TEXT)
+            dpg.add_text("Notes", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=4)
+            _chip("prog_detail_notes", "--", 108)
+            dpg.add_spacer(width=12)
+            dpg.add_text("", tag="prog_detail_inv_name", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=20)
+            dpg.add_button(label="Suggestions", tag="prog_suggest_btn",
+                           width=120, height=25, callback=on_prog_show_suggestions)
 
         # ── Multi-octave piano for cell detail (centered) ─────────────────
         dpg.add_spacer(height=8)
 
-       
         with dpg.group(horizontal=True):
             dpg.add_spacer(width=_piano_pad)
             with dpg.drawlist(tag="prog_piano_canvas",
