@@ -57,6 +57,7 @@ from klo_chords.state import (
 
 
 from klo_chords.sound import get_settings as get_sound_settings
+import klo_chords.midi_tab as midi_tab
 from klo_chords.quality import quality_symbol
 
 SCALE_NAMES = list(SCALE_TYPES.keys())
@@ -648,6 +649,9 @@ def build_ui():
             with dpg.tab(label=" Progression ", tag="tab_progression"):
                 _build_progression_tab()
 
+            with dpg.tab(label="    MIDI     ", tag="tab_midi"):
+                midi_tab.build_midi_tab()
+
             with dpg.tab(label="  Settings   ", tag="tab_sound"):
                 _build_sound_tab()
 
@@ -712,6 +716,7 @@ def build_ui():
         dpg.bind_item_theme("prog_clear_btn", clear_theme)
 
     # ── Initialize ──────────────────────────────────────────────────────────────
+    midi_tab.init()
     build_piano_keys("piano_canvas")
     build_multi_octave_piano("prog_piano_canvas")
     _refresh_chords()
@@ -765,8 +770,10 @@ def build_ui():
     while dpg.is_dearpygui_running():
         dpg_keyboard.poll()
         _refresh_speaker_indicators()
+        midi_tab.drain_ui_events()
         dpg.render_dearpygui_frame()
 
+    midi_tab.cleanup()
     dpg.destroy_context()
 
 

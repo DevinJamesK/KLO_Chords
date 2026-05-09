@@ -7,7 +7,7 @@ name = "klo-chords"
 version = "0.5.5"
 description = "Chord theory tool with sound engine, piano keyboard, and progression builder."
 requires-python = ">=3.11"
-dependencies = ["dearpygui", "sounddevice", "numpy"]
+dependencies = ["dearpygui", "sounddevice", "numpy", "python-rtmidi"]
 
 [project.scripts]
 klo-chords = "klo_chords.gui:main"
