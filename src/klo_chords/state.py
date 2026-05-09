@@ -14,7 +14,7 @@ import klo_chords.prefs as prefs
 from klo_chords.chords import (
     ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS, SCALE_TYPES,
     get_diatonic_chords, get_all_voicings,
-    get_scale_notes, note_to_pc, pc_to_note,
+    get_scale_notes, note_to_pc, pc_to_note, get_degree_for_root,
 )
 from klo_chords.quality import quality_spelled, quality_symbol
 from klo_chords.fretboard import draw_fretboard, draw_mini_fretboard
@@ -93,12 +93,55 @@ def state() -> dict:
     )
 
 
+# ── Console logging ───────────────────────────────────────────────────────────────
+# Fixed-column format so fields stay aligned across all log lines.
+#
+# Event lines:
+#   [chord  3]  IV     Fmaj7     oct=3   F    A    C    E    F4   A4   C5   E5    sub:F3
+#   [cell   7]  IV     F         rot=0   F    A    C         F3   A3   C4         sub:--
+#
+# Row summary lines:
+#   [row 0]  0:C      1:Dm     2:Em     3:F      4:G      5:Am     6:Bdim   7:--
+
+_NOTE_COL_W  = 4   # width of each note name cell  ("Bb  " / "C#  ")
+_MIDI_COL_W  = 5   # width of each MIDI name cell  ("Bb3  " / "C#4  ")
+_MAX_NOTES   = 4   # triads=3, 7ths=4
+
+
+def _sub_midi(root_pc: int, midi_notes: list) -> Optional[int]:
+    """Return the sub oscillator MIDI note, or None when disabled/unavailable."""
+    if not get_sound_settings().get("sub_oscillator") or not midi_notes:
+        return None
+    lowest = min(midi_notes)
+    sub = root_pc + 12 * ((lowest - 1 - root_pc) // 12)
+    return max(0, sub)
+
+
+def _fmt_event(tag: str, degree: str, chord_name: str, context: str,
+               notes: list, midi_names: list, sub_name: str = "") -> str:
+    note_str = "".join(n.ljust(_NOTE_COL_W) for n in notes).ljust(_NOTE_COL_W * _MAX_NOTES)
+    midi_str = "".join(n.ljust(_MIDI_COL_W) for n in midi_names).ljust(_MIDI_COL_W * _MAX_NOTES)
+    sub_col  = f"sub:{sub_name}" if sub_name else "sub:--"
+    return f"{tag:<11}  {degree:<6}  {chord_name:<10}  {context:<7}  {note_str}  {midi_str}  {sub_col}"
+
+
 # ── Play helpers ─────────────────────────────────────────────────────────────────
 
 def _play_current_chord():
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         ci = _current_chords[_selected_chord_idx]
         play_chord_notes(ci.notes, root_note=ci.root)
+        base_oct = get_sound_settings()["base_octave"]
+        from klo_chords.sound import _stack_root_position
+        pcs = [note_to_pc(n) for n in ci.notes]
+        root_pc = note_to_pc(ci.root)
+        midis = _stack_root_position(pcs, base_oct, root_pc)
+        midi_names = [_midi_to_note_name(m) for m in midis]
+        sub = _sub_midi(root_pc, midis)
+        sub_name = _midi_to_note_name(sub) if sub is not None else ""
+        q = ci.quality if ci.quality != "M" else ""
+        tag = f"[chord {_selected_chord_idx:2d}]"
+        print(_fmt_event(tag, ci.degree, ci.root + q, f"oct={base_oct}", ci.notes, midi_names, sub_name))
 
 
 def _play_prog_cell(idx: int):
@@ -114,12 +157,29 @@ def _play_prog_cell(idx: int):
                 eff_oct = cell.effective_octave()
                 midis = _stack_root_position(pcs, eff_oct, root_pc)
                 midi_names = [_midi_to_note_name(m) for m in midis]
-                print(f"[cell {idx}] {cell.root}{cell.quality} "
-                      f"rot={cell.rotation} base_oct={cell.base_octave} "
-                      f"eff_oct={eff_oct} notes={notes} midi={midis} "
-                      f"({', '.join(midi_names)})")
+                sub = _sub_midi(root_pc, midis)
+                sub_name = _midi_to_note_name(sub) if sub is not None else ""
+                q = cell.quality if cell.quality != "M" else ""
+                degree = get_degree_for_root(cell.root, _prog_key, _prog_scale)
+                tag = f"[cell  {idx:2d}]"
+                print(_fmt_event(tag, degree, cell.root + q, f"rot={cell.rotation}", notes, midi_names, sub_name))
                 play_progression_notes(notes, base_octave=eff_oct, root_pc=root_pc)
                 _prog_sounding_idx = idx
+
+
+def _log_progression_row(row: int):
+    start = row * PROG_COLS
+    cells = _prog_cells[start:start + PROG_COLS]
+    col_w = 9
+    entries = []
+    for i, cell in enumerate(cells):
+        if cell.is_empty():
+            label = "--"
+        else:
+            q = "" if cell.quality == "M" else cell.quality
+            label = cell.root + q
+        entries.append(f"{start + i}:{label}".ljust(col_w))
+    print(f"[row {row}]  " + " ".join(entries))
 
 
 # ── Tab switching ────────────────────────────────────────────────────────────────
@@ -997,6 +1057,7 @@ def _refresh_progression():
         if _prog_cells[i].root is not None:
             _prog_cells[i].clear()
     _rebuild_progression_grid()
+    _log_progression_row(0)
     # Auto-select the first cell so arrow buttons work immediately
     if _prog_cells and not _prog_cells[0].is_empty():
         _select_prog_cell(0)

@@ -1,118 +1,628 @@
 {
   "schema": 1,
   "instrument": "guitar",
-  "tuning": ["E", "A", "D", "G", "B", "e"],
+  "tuning": [
+    "E",
+    "A",
+    "D",
+    "G",
+    "B",
+    "e"
+  ],
   "sources": {
     "manual": "Hand-curated canonical shapes used as the final tiebreaker.",
     "chords-db": "MIT source family: https://github.com/tombatossals/chords-db",
     "guitar-chords-db-json": "MIT source family: https://github.com/szaza/guitar-chords-db-json"
   },
   "chords": [
-    {"root": "C", "quality": "M", "positions": [
-      {"frets": "x32010", "fingers": "032010", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open C"},
-      {"frets": "x35553", "fingers": "013331", "barres": [3], "sources": ["manual"], "name": "A-shape barre"}
-    ]},
-    {"root": "D", "quality": "M", "positions": [
-      {"frets": "xx0232", "fingers": "000132", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open D"},
-      {"frets": "x57775", "fingers": "013331", "barres": [5], "sources": ["manual"], "name": "A-shape barre"}
-    ]},
-    {"root": "E", "quality": "M", "positions": [
-      {"frets": "022100", "fingers": "023100", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open E"}
-    ]},
-    {"root": "F", "quality": "M", "positions": [
-      {"frets": "133211", "fingers": "134211", "barres": [1], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "E-shape barre"},
-      {"frets": "xx3211", "fingers": "003211", "barres": [1], "sources": ["manual"], "name": "small F"}
-    ]},
-    {"root": "G", "quality": "M", "positions": [
-      {"frets": "320003", "fingers": "210003", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open G"},
-      {"frets": "320033", "fingers": "210034", "sources": ["manual"], "name": "open G four-finger"}
-    ]},
-    {"root": "A", "quality": "M", "positions": [
-      {"frets": "x02220", "fingers": "001230", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open A"},
-      {"frets": "577655", "fingers": "134211", "barres": [5], "sources": ["manual"], "name": "E-shape barre"}
-    ]},
-    {"root": "B", "quality": "M", "positions": [
-      {"frets": "x24442", "fingers": "013331", "barres": [2], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "A-shape barre"},
-      {"frets": "799877", "fingers": "134211", "barres": [7], "sources": ["manual"], "name": "E-shape barre"}
-    ]},
-
-    {"root": "C", "quality": "m", "positions": [
-      {"frets": "x35543", "fingers": "013421", "barres": [3], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "A-shape barre"}
-    ]},
-    {"root": "D", "quality": "m", "positions": [
-      {"frets": "xx0231", "fingers": "000231", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Dm"},
-      {"frets": "x57765", "fingers": "013421", "barres": [5], "sources": ["manual"], "name": "A-shape barre"}
-    ]},
-    {"root": "E", "quality": "m", "positions": [
-      {"frets": "022000", "fingers": "023000", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Em"}
-    ]},
-    {"root": "F", "quality": "m", "positions": [
-      {"frets": "133111", "fingers": "134111", "barres": [1], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "E-shape barre"}
-    ]},
-    {"root": "G", "quality": "m", "positions": [
-      {"frets": "355333", "fingers": "134111", "barres": [3], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "E-shape barre"}
-    ]},
-    {"root": "A", "quality": "m", "positions": [
-      {"frets": "x02210", "fingers": "002310", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Am"},
-      {"frets": "577555", "fingers": "134111", "barres": [5], "sources": ["manual"], "name": "E-shape barre"}
-    ]},
-    {"root": "B", "quality": "m", "positions": [
-      {"frets": "x24432", "fingers": "013421", "barres": [2], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "A-shape barre"}
-    ]},
-
-    {"root": "C", "quality": "7", "positions": [
-      {"frets": "x32310", "fingers": "032410", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open C7"},
-      {"frets": "x35353", "fingers": "013141", "barres": [3], "sources": ["manual"], "name": "A7-shape barre"}
-    ]},
-    {"root": "D", "quality": "7", "positions": [
-      {"frets": "xx0212", "fingers": "000213", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open D7"}
-    ]},
-    {"root": "E", "quality": "7", "positions": [
-      {"frets": "020100", "fingers": "020100", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open E7"}
-    ]},
-    {"root": "F", "quality": "7", "positions": [
-      {"frets": "131211", "fingers": "131211", "barres": [1], "sources": ["manual", "chords-db"], "name": "E7-shape barre"}
-    ]},
-    {"root": "G", "quality": "7", "positions": [
-      {"frets": "320001", "fingers": "320001", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open G7"}
-    ]},
-    {"root": "A", "quality": "7", "positions": [
-      {"frets": "x02020", "fingers": "002030", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open A7"}
-    ]},
-    {"root": "B", "quality": "7", "positions": [
-      {"frets": "x21202", "fingers": "021304", "sources": ["manual", "chords-db"], "name": "open-ish B7"}
-    ]},
-
-    {"root": "C", "quality": "maj7", "positions": [
-      {"frets": "x32000", "fingers": "032000", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Cmaj7"}
-    ]},
-    {"root": "F", "quality": "maj7", "positions": [
-      {"frets": "xx3210", "fingers": "003210", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Fmaj7"}
-    ]},
-    {"root": "A", "quality": "maj7", "positions": [
-      {"frets": "x02120", "fingers": "002130", "sources": ["manual", "chords-db"], "name": "open Amaj7"}
-    ]},
-
-    {"root": "C", "quality": "m7", "positions": [
-      {"frets": "x35343", "fingers": "013121", "barres": [3], "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "Am7-shape barre"}
-    ]},
-    {"root": "D", "quality": "m7", "positions": [
-      {"frets": "xx0211", "fingers": "000211", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Dm7"}
-    ]},
-    {"root": "E", "quality": "m7", "positions": [
-      {"frets": "020000", "fingers": "020000", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Em7"}
-    ]},
-    {"root": "A", "quality": "m7", "positions": [
-      {"frets": "x02010", "fingers": "002010", "sources": ["manual", "chords-db", "guitar-chords-db-json"], "name": "open Am7"}
-    ]},
-    {"root": "B", "quality": "m7b5", "positions": [
-      {"frets": "x2323x", "fingers": "013240", "sources": ["manual", "chords-db"], "name": "Bm7b5"}
-    ]},
-    {"root": "B", "quality": "dim", "positions": [
-      {"frets": "x2313x", "fingers": "012340", "sources": ["manual", "chords-db"], "name": "Bdim"}
-    ]},
-    {"root": "C", "quality": "dim", "positions": [
-      {"frets": "x3424x", "fingers": "013240", "sources": ["manual"], "name": "Cdim"}
-    ]}
+    {
+      "root": "C",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "x32010",
+          "fingers": "032010",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open C"
+        },
+        {
+          "frets": "x35553",
+          "fingers": "013331",
+          "barres": [
+            3
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "A-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "D",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "xx0232",
+          "fingers": "000132",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open D"
+        },
+        {
+          "frets": "x57775",
+          "fingers": "013331",
+          "barres": [
+            5
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "A-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "E",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "022100",
+          "fingers": "023100",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open E"
+        }
+      ]
+    },
+    {
+      "root": "F",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "133211",
+          "fingers": "134211",
+          "barres": [
+            1
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "E-shape barre"
+        },
+        {
+          "frets": "xx3211",
+          "fingers": "003211",
+          "barres": [
+            1
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "small F"
+        }
+      ]
+    },
+    {
+      "root": "G",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "320003",
+          "fingers": "210003",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open G"
+        },
+        {
+          "frets": "320033",
+          "fingers": "210034",
+          "sources": [
+            "manual"
+          ],
+          "name": "open G four-finger"
+        }
+      ]
+    },
+    {
+      "root": "A",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "x02220",
+          "fingers": "001230",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open A"
+        },
+        {
+          "frets": "577655",
+          "fingers": "134211",
+          "barres": [
+            5
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "E-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "B",
+      "quality": "M",
+      "positions": [
+        {
+          "frets": "x24442",
+          "fingers": "013331",
+          "barres": [
+            2
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "A-shape barre"
+        },
+        {
+          "frets": "799877",
+          "fingers": "134211",
+          "barres": [
+            7
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "E-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "C",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "x35543",
+          "fingers": "013421",
+          "barres": [
+            3
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "A-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "D",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "xx0231",
+          "fingers": "000231",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Dm"
+        },
+        {
+          "frets": "x57765",
+          "fingers": "013421",
+          "barres": [
+            5
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "A-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "E",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "022000",
+          "fingers": "023000",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Em"
+        }
+      ]
+    },
+    {
+      "root": "F",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "133111",
+          "fingers": "134111",
+          "barres": [
+            1
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "E-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "G",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "355333",
+          "fingers": "134111",
+          "barres": [
+            3
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "E-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "A",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "x02210",
+          "fingers": "002310",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Am"
+        },
+        {
+          "frets": "577555",
+          "fingers": "134111",
+          "barres": [
+            5
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "E-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "B",
+      "quality": "m",
+      "positions": [
+        {
+          "frets": "x24432",
+          "fingers": "013421",
+          "barres": [
+            2
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "A-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "C",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "x32310",
+          "fingers": "032410",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open C7"
+        },
+        {
+          "frets": "x35353",
+          "fingers": "013141",
+          "barres": [
+            3
+          ],
+          "sources": [
+            "manual"
+          ],
+          "name": "A7-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "D",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "xx0212",
+          "fingers": "000213",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open D7"
+        }
+      ]
+    },
+    {
+      "root": "E",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "020100",
+          "fingers": "020100",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open E7"
+        }
+      ]
+    },
+    {
+      "root": "F",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "131211",
+          "fingers": "131211",
+          "barres": [
+            1
+          ],
+          "sources": [
+            "manual",
+            "chords-db"
+          ],
+          "name": "E7-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "G",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "320001",
+          "fingers": "320001",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open G7"
+        }
+      ]
+    },
+    {
+      "root": "A",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "x02020",
+          "fingers": "002030",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open A7"
+        }
+      ]
+    },
+    {
+      "root": "B",
+      "quality": "7",
+      "positions": [
+        {
+          "frets": "x21202",
+          "fingers": "021304",
+          "sources": [
+            "manual",
+            "chords-db"
+          ],
+          "name": "open-ish B7"
+        }
+      ]
+    },
+    {
+      "root": "C",
+      "quality": "maj7",
+      "positions": [
+        {
+          "frets": "x32000",
+          "fingers": "032000",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Cmaj7"
+        }
+      ]
+    },
+    {
+      "root": "F",
+      "quality": "maj7",
+      "positions": [
+        {
+          "frets": "xx3210",
+          "fingers": "003210",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Fmaj7"
+        }
+      ]
+    },
+    {
+      "root": "A",
+      "quality": "maj7",
+      "positions": [
+        {
+          "frets": "x02120",
+          "fingers": "002130",
+          "sources": [
+            "manual",
+            "chords-db"
+          ],
+          "name": "open Amaj7"
+        }
+      ]
+    },
+    {
+      "root": "C",
+      "quality": "m7",
+      "positions": [
+        {
+          "frets": "x35343",
+          "fingers": "013121",
+          "barres": [
+            3
+          ],
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "Am7-shape barre"
+        }
+      ]
+    },
+    {
+      "root": "D",
+      "quality": "m7",
+      "positions": [
+        {
+          "frets": "xx0211",
+          "fingers": "000211",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Dm7"
+        }
+      ]
+    },
+    {
+      "root": "E",
+      "quality": "m7",
+      "positions": [
+        {
+          "frets": "020000",
+          "fingers": "020000",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Em7"
+        }
+      ]
+    },
+    {
+      "root": "A",
+      "quality": "m7",
+      "positions": [
+        {
+          "frets": "x02010",
+          "fingers": "002010",
+          "sources": [
+            "manual",
+            "chords-db",
+            "guitar-chords-db-json"
+          ],
+          "name": "open Am7"
+        }
+      ]
+    },
+    {
+      "root": "B",
+      "quality": "m7b5",
+      "positions": [
+        {
+          "frets": "x2323x",
+          "fingers": "013240",
+          "sources": [
+            "manual",
+            "chords-db"
+          ],
+          "name": "Bm7b5"
+        }
+      ]
+    },
+    {
+      "root": "B",
+      "quality": "dim",
+      "positions": [
+        {
+          "frets": "x2343x",
+          "fingers": "012340",
+          "sources": [
+            "manual",
+            "chords-db"
+          ],
+          "name": "Bdim"
+        }
+      ]
+    },
+    {
+      "root": "C",
+      "quality": "dim",
+      "positions": [
+        {
+          "frets": "x3454x",
+          "fingers": "013240",
+          "sources": [
+            "manual"
+          ],
+          "name": "Cdim"
+        }
+      ]
+    }
   ]
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.3] - 2026-05-08
+
+### Added
+- **Guitar chord shape audit** — new `tests/test_chord_shapes.py` suite with 1,516 subtests:
+  - `CuratedShapeAuditTests` — every entry in `guitar_standard.json` is validated for chord-tone purity and root presence.
+  - `DiatonicVoicingCoverageTests` — all 12 keys × 9 heptatonic scales × triads and 7ths confirmed to have at least one valid voicing; catches any `?` quality regressions.
+  - `CanonicalShapeRankingTests` — canonical open shapes (C, D, Em, G7, …) must rank first.
+- **Console logging for Chord tab** — selecting or playing a diatonic chord now prints a fixed-column log line alongside the existing Progression tab logging.
+- **Sub oscillator note in log** — all event log lines now include a `sub:` column showing the sub oscillator MIDI note (e.g. `sub:C3`) when enabled, or `sub:--` when off.
+
+### Fixed
+- **Two bad curated guitar shapes** — `B dim x2313x` had G# (not in B dim); corrected to `x2343x`. `C dim x3424x` had A (not in C dim); corrected to `x3454x`. Both were silently rejected by the validator at runtime; the JSON data now matches what the validator accepts.
+
+### Changed
+- **Unified log format** — all play-event log lines (`[chord N]`, `[cell N]`) share a fixed-column formatter: tag, degree, chord name, context (oct/rot), note names, MIDI names, sub note. Fields no longer shift between chord-tab and progression-tab events.
+
 ## [0.5.2] - 2026-05-08
 
 ### Added
