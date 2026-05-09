@@ -604,6 +604,7 @@ _ICON_W, _ICON_H = 44, 46
 
 def _build_sync_section():
     with dpg.group(horizontal=True):
+        dpg.add_spacer(width=25)
         # Start button
         with dpg.drawlist(width=_ICON_W, height=_ICON_H, tag="midi_sync_start_btn"):
             dpg.draw_rectangle([0,0],[_ICON_W-1,_ICON_H-1],
@@ -657,7 +658,7 @@ def _build_sync_section():
             dpg.draw_text([152,16], "BPM", color=[85,85,108,255], size=13)
 
     dpg.add_spacer(height=4)
-
+    dpg.add_spacer(width=20)
     with dpg.table(header_row=True, borders_innerV=True,
                    policy=dpg.mvTable_SizingFixedFit):
         dpg.add_table_column(label="State",    width_fixed=True, init_width_or_weight=110)
@@ -735,8 +736,10 @@ def build_midi_tab():
             with dpg.group():
                 dpg.add_text("MIDI Input", color=COLOR_ACCENT)
                 dpg.add_separator()
-                dpg.add_spacer(height=6)
+                dpg.add_spacer(height=12)
+                
                 with dpg.group(horizontal=True):
+                    dpg.add_spacer(width=40)
                     with dpg.group():
                         with dpg.drawlist(width=22, height=64, tag="midi_pitch_canvas"):
                             dpg.draw_rectangle([0,0],[21,63],
@@ -780,7 +783,7 @@ def build_midi_tab():
     dpg.add_spacer(height=4)
     dpg.add_button(label="Clear", callback=reset_cc, width=60)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_cc_window", width=-1, height=140):
+    with dpg.child_window(tag="midi_cc_window", width=-1, height=275):
         pass
 
     # ── Log ───────────────────────────────────────────────────────────────────────
@@ -790,14 +793,20 @@ def build_midi_tab():
     dpg.add_spacer(height=4)
     with dpg.group(horizontal=True):
         dpg.add_checkbox(label="Notes",     tag="midi_filter_notes",     default_value=True)
+        dpg.add_spacer(width=4)
         dpg.add_checkbox(label="CC",        tag="midi_filter_cc",        default_value=True)
+        dpg.add_spacer(width=4)
         dpg.add_checkbox(label="PB",        tag="midi_filter_pb",        default_value=True)
+        dpg.add_spacer(width=4)
         dpg.add_checkbox(label="Clock",     tag="midi_filter_clock",     default_value=False)
+        dpg.add_spacer(width=4)
         dpg.add_checkbox(label="Tpt",       tag="midi_filter_transport", default_value=True)
+        dpg.add_spacer(width=4)
         dpg.add_checkbox(label="Pos",       tag="midi_filter_songpos",   default_value=True)
+        dpg.add_spacer(width=4)
         dpg.add_checkbox(label="SYS",       tag="midi_filter_sys",       default_value=True)
-        dpg.add_spacer(width=6)
-        dpg.add_checkbox(label="Hex",       tag="midi_raw_hex",          default_value=False)
+        dpg.add_spacer(width=275)
+        dpg.add_checkbox(label="Hex Display",   tag="midi_raw_hex",      default_value=False)
     dpg.add_spacer(height=4)
     with dpg.child_window(tag="midi_log_window", width=-1, height=120):
         pass
