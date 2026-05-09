@@ -16,6 +16,7 @@ from klo_chords.chords import (
     ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS, SCALE_TYPES,
     get_diatonic_chords, get_all_voicings,
     get_scale_notes, note_to_pc, pc_to_note, get_degree_for_root,
+    get_accidental_style,
 )
 from klo_chords.quality import quality_spelled, quality_symbol
 from klo_chords.fretboard import draw_fretboard, draw_mini_fretboard
@@ -346,8 +347,8 @@ def on_prog_cell_root_prev(sender=None, app_data=None):
         cell.root = "C"
         cell.quality = "M"
     else:
-        idx = NOTE_NAMES.index(cell.root) if cell.root in NOTE_NAMES else 0
-        cell.root = NOTE_NAMES[(idx - 1) % 12]
+        pc = (note_to_pc(cell.root) - 1) % 12
+        cell.root = pc_to_note(pc, get_accidental_style(_prog_key))
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -361,8 +362,8 @@ def on_prog_cell_root_next(sender=None, app_data=None):
         cell.root = "C"
         cell.quality = "M"
     else:
-        idx = NOTE_NAMES.index(cell.root) if cell.root in NOTE_NAMES else 0
-        cell.root = NOTE_NAMES[(idx + 1) % 12]
+        pc = (note_to_pc(cell.root) + 1) % 12
+        cell.root = pc_to_note(pc, get_accidental_style(_prog_key))
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -479,17 +480,24 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
 # ── Arrow key callback (progression tab) ─────────────────────────────────────────
 
 def on_prog_cell_arrow_press(sender, app_data, user_data):
-    """Arrow keys for the progression tab: Left/Right = inversion, Up/Down = quality."""
+    """Arrow keys for the progression tab: Left/Right = inversion (Shift = root), Up/Down = quality."""
     global _current_tab
     if _current_tab != "tab_progression":
         return
     if _prog_selected_idx is None:
         return
+    from klo_chords import dpg_keyboard
     action = str(user_data)
     if action == "inv_prev":
-        on_prog_cell_inversion_prev()
+        if dpg_keyboard.shift_is_down():
+            on_prog_cell_root_prev()
+        else:
+            on_prog_cell_inversion_prev()
     elif action == "inv_next":
-        on_prog_cell_inversion_next()
+        if dpg_keyboard.shift_is_down():
+            on_prog_cell_root_next()
+        else:
+            on_prog_cell_inversion_next()
     elif action == "quality_prev":
         on_prog_cell_quality_prev()
     elif action == "quality_next":
@@ -760,6 +768,12 @@ def on_keybinds_toggle(sender=None, app_data=None):
 def get_show_keybinds() -> bool:
     """Return whether keybind labels should be displayed on cells."""
     return _show_keybinds
+
+
+def init_show_keybinds(val: bool):
+    """Set keybinds state from saved prefs before DPG context exists."""
+    global _show_keybinds
+    _show_keybinds = val
 
 
 

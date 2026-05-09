@@ -14,6 +14,7 @@ from klo_chords.chord_shapes import get_ranked_voicings, shape_to_diagram
 # ── Note names ────────────────────────────────────────────────────────────────
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+KEY_NAMES  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 
 ENHARMONIC = {
     'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb',
@@ -203,7 +204,7 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
     Uses the note's letter name to determine the correct degree and
     accidental (flat/sharp). For example, in C Major:
         C -> I, D -> ii, E -> iii, F -> IV, G -> V, A -> vi, B -> vii\u00b0
-        Bb -> \u266dvii, F# -> \u266fIV, Db -> \u266dII
+        Bb -> bvii, F# -> #IV, Db -> bII
     """
     root_pc = note_to_pc(root)
     key_pc = note_to_pc(key)
@@ -232,9 +233,9 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
         if natural_name[0].upper() == letter:
             degree = degree_names[i] if i < len(degree_names) else f"^{i+1}"
             if has_flat:
-                return "\u266d" + degree
+                return "b" + degree
             elif has_sharp:
-                return "\u266f" + degree
+                return "#" + degree
             else:
                 return degree
 
@@ -253,9 +254,9 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
     degree = degree_names[best_i] if best_i < len(degree_names) else f"^{best_i+1}"
     scale_pc = scale_pitches[best_i]
     if (root_pc - scale_pc) % 12 <= 6:
-        return "\u266f" + degree
+        return "#" + degree
     else:
-        return "\u266d" + degree
+        return "b" + degree
 
 
 def _seventh_quality_from_intervals(intervals: List[int]) -> str:
@@ -482,13 +483,13 @@ if __name__ == "__main__":
         ("G", "C", "Major", "V"),
         ("A", "C", "Major", "vi"),
         ("B", "C", "Major", "vii\u00b0"),
-        ("Bb", "C", "Major", "\u266dvii"),
-        ("F#", "C", "Major", "\u266fIV"),
-        ("Db", "C", "Major", "\u266dII"),
-        ("G#", "C", "Major", "\u266fV"),
-        ("C#", "C", "Major", "\u266fI"),
-        ("Eb", "C", "Major", "\u266dIII"),
-        ("Ab", "C", "Major", "\u266dVI"),
+        ("Bb", "C", "Major", "bvii"),
+        ("F#", "C", "Major", "#IV"),
+        ("Db", "C", "Major", "bII"),
+        ("G#", "C", "Major", "#V"),
+        ("C#", "C", "Major", "#I"),
+        ("Eb", "C", "Major", "bIII"),
+        ("Ab", "C", "Major", "bVI"),
     ]
     for root, key, scale, expected in cases:
         result = get_degree_for_root(root, key, scale)

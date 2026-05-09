@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased] - 2026-05-09
+
+### Added
+- **Cmd+1/2/3/4 tab shortcuts** — switch between Chords, Progression, MIDI, and Settings tabs from the keyboard.
+- **Shift+Left/Right changes root note** — in the Progression tab, Left/Right alone cycles inversions; Shift+Left/Right steps the root note up or down by semitone.
+- **Conventional key names** — key dropdowns now show `C, Db, D, Eb, E, F, F#, G, Ab, A, Bb, B` instead of the all-sharps list.
+
+### Fixed
+- **Root-note stepping respects key accidentals** — Shift+Left/Right now spells the new root using the key's preferred accidental (e.g. Bb in a flat key, A# never appears in Bb major).
+- **"Show Keybinds" preference applied at boot** — keybind labels now appear on startup when the preference is checked, without needing to toggle it off and on.
+- **Unicode ♭/♯ glyphs in chord cells** — draw_text items on canvases now bind Noto Sans, enabling flat and sharp symbols to render correctly.
+
 ## [0.5.6] - 2026-05-08
 
 ### Added
