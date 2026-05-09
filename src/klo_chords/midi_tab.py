@@ -733,11 +733,6 @@ def build_midi_tab():
         dpg.add_table_column()
         with dpg.table_row():
             with dpg.group():
-                dpg.add_text("Sync", color=COLOR_ACCENT)
-                dpg.add_separator()
-                dpg.add_spacer(height=4)
-                _build_sync_section()
-            with dpg.group():
                 dpg.add_text("MIDI Input", color=COLOR_ACCENT)
                 dpg.add_separator()
                 dpg.add_spacer(height=6)
@@ -772,6 +767,11 @@ def build_midi_tab():
                             dpg.draw_rectangle([bx,0],[bx+_BW-1,_BH-1],
                                                fill=[20,20,20,255], color=[0,0,0,255],
                                                tag=f"midi_bkey_{pc}")
+            with dpg.group():
+                dpg.add_text("Sync", color=COLOR_ACCENT)
+                dpg.add_separator()
+                dpg.add_spacer(height=4)
+                _build_sync_section()
 
     # ── CC Monitor ────────────────────────────────────────────────────────────────
     dpg.add_spacer(height=8)
