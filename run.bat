@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 REM ────────────────────────────────────────────────────────────
-REM KLO Chords — run script (Windows)
+REM KLO Chords -run script (Windows)
 REM ────────────────────────────────────────────────────────────
 
 cd /d "%~dp0"
@@ -19,19 +19,19 @@ where conda >nul 2>nul
 if %ERRORLEVEL% equ 0 (
     conda env list | findstr /C:"%ENV_NAME% " >nul
     if !ERRORLEVEL! equ 0 (
-        echo [✓] Conda environment '%ENV_NAME%' found.
+        echo [*] Conda environment '%ENV_NAME%' found.
     ) else (
-        echo [!] Conda env '%ENV_NAME%' not found — creating it now...
+        echo [!] Conda env '%ENV_NAME%' not found -creating it now...
         call conda env create -f environment.yml
-        echo [✓] Conda environment '%ENV_NAME%' created.
+        echo [*] Conda environment '%ENV_NAME%' created.
     )
     call conda activate "%ENV_NAME%"
     set PY=python
 ) else (
-    echo [i] Conda not found — using system python.
+    echo [i] Conda not found -using system python.
     if exist ".venv\Scripts\activate.bat" (
         call .venv\Scripts\activate.bat
-        echo [✓] Activated local .venv
+        echo [*] Activated local .venv
     )
     set PY=python
 )
@@ -45,15 +45,15 @@ echo [i] Checking dependencies...
 if !ERRORLEVEL! neq 0 (
     echo [i] Installing dependencies from %REQUIREMENTS_FILE%...
     %PY% -m pip install -r "%REQUIREMENTS_FILE%" --quiet
-    echo [✓] Dependencies installed.
+    echo [*] Dependencies installed.
 ) else (
-    echo [✓] Dependencies OK.
+    echo [*] Dependencies OK.
 )
 
 REM ── 4. Install the package in editable mode ─────────────────
 echo [i] Installing klo-chords (editable)...
 %PY% -m pip install -e . --quiet
-echo [✓] Package installed.
+echo [*] Package installed.
 
 REM ── 5. Launch ───────────────────────────────────────────────
 echo [i] Starting KLO Chords...

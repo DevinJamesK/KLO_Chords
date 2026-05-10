@@ -2,6 +2,12 @@
 
 ## [0.5.7] - 2026-05-10
 
+### Fixed (ui-cleanup)
+- **MIDI port disconnection** — selecting "None" in the Input or Output port dropdown and clicking Connect now closes the open port. Previously there was no way to disconnect a device without restarting.
+- **Auto-connect defaults to off** — the "Auto-connect single device" checkbox is now unchecked by default.
+- **Undo stops playback when cell is removed** — undoing an action that clears a playing progression cell now stops audio and MIDI output immediately.
+- **run.bat garbled characters on Windows** — Unicode checkmark and em dash replaced with ASCII equivalents so the launcher script displays cleanly in Windows Command Prompt.
+
 ### Added
 - **MIDI output** — chord plays and note toggles now send MIDI note-on/off messages to the selected output port and channel in real time.
 - **MIDI log entries for chord output** — each note-on and note-off from chord play/stop events appears in the MIDI log, with full hex-display support.

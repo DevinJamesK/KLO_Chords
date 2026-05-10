@@ -183,6 +183,12 @@ def connect_input(*_):
     if not _driver:
         return
     name = dpg.get_value("midi_in_port")
+    if name == "None":
+        if _driver._in_port is not None:
+            _driver.midi_in.close_port()
+            _driver._in_port = None
+            _midi_log("SYS", "Input disconnected.")
+        return
     if _ins and name in _ins:
         idx = _ins.index(name)
         if _driver._in_port is not None:
@@ -195,6 +201,13 @@ def connect_output(*_):
     if not _driver:
         return
     name = dpg.get_value("midi_out_port")
+    if name == "None":
+        if _driver._out_port is not None:
+            _driver.midi_out.close_port()
+            _driver._out_port = None
+            _reset_output_controls()
+            _midi_log("SYS", "Output disconnected.")
+        return
     if _outs and name in _outs:
         idx = _outs.index(name)
         if _driver._out_port is not None:
@@ -214,11 +227,11 @@ def _auto_connect():
         return
     if len(_ins) == 1 and _driver._in_port is None:
         _driver.open_input(0, callback=_on_midi_in)
-        dpg.configure_item("midi_in_port", items=_ins, default_value=_ins[0])
+        dpg.configure_item("midi_in_port", items=["None"] + _ins, default_value=_ins[0])
         _midi_log("SYS", f"Auto-connected input: {_ins[0]}")
     if len(_outs) == 1 and _driver._out_port is None:
         _driver.open_output(0)
-        dpg.configure_item("midi_out_port", items=_outs, default_value=_outs[0])
+        dpg.configure_item("midi_out_port", items=["None"] + _outs, default_value=_outs[0])
         _midi_log("SYS", f"Auto-connected output: {_outs[0]}")
 
 
@@ -230,7 +243,7 @@ def _process_port_change(new_ins, new_outs):
             _driver.midi_in.close_port()
             _driver._in_port = None
             if dpg.does_item_exist("midi_in_port"):
-                dpg.configure_item("midi_in_port", items=["(none)"], default_value="(none)")
+                dpg.configure_item("midi_in_port", items=["None"], default_value="None")
             _midi_log("SYS", "Input disconnected.")
     if _driver._out_port is not None:
         old = _outs[_driver._out_port] if _driver._out_port < len(_outs) else None
@@ -239,13 +252,13 @@ def _process_port_change(new_ins, new_outs):
             _driver._out_port = None
             _reset_output_controls()
             if dpg.does_item_exist("midi_out_port"):
-                dpg.configure_item("midi_out_port", items=["(none)"], default_value="(none)")
+                dpg.configure_item("midi_out_port", items=["None"], default_value="None")
             _midi_log("SYS", "Output disconnected.")
     _ins, _outs = new_ins, new_outs
     if dpg.does_item_exist("midi_in_port"):
-        dpg.configure_item("midi_in_port", items=_ins or ["(none)"])
+        dpg.configure_item("midi_in_port", items=["None"] + _ins)
     if dpg.does_item_exist("midi_out_port"):
-        dpg.configure_item("midi_out_port", items=_outs or ["(none)"])
+        dpg.configure_item("midi_out_port", items=["None"] + _outs)
     _auto_connect()
 
 
@@ -841,7 +854,7 @@ def build_midi_tab():
         dpg.add_text("Ports", color=COLOR_ACCENT)
         dpg.add_spacer(width=415)
         dpg.add_checkbox(label="Auto-connect single device",
-                        tag="midi_auto_connect", default_value=True)
+                        tag="midi_auto_connect", default_value=False)
         dpg.add_spacer(width=20)
         dpg.add_button(label="Panic All Channels", callback=panic_all, width=-20)
     dpg.add_separator()
@@ -856,8 +869,8 @@ def build_midi_tab():
                 with dpg.group(horizontal=True):
                     dpg.add_spacer(width=20)
                     dpg.add_text("Input", color=COLOR_TEXT_DIM)
-                    dpg.add_combo(_ins or ["(none)"], tag="midi_in_port",
-                                  default_value=_ins[0] if _ins else "(none)", width=200)
+                    dpg.add_combo(["None"] + _ins, tag="midi_in_port",
+                                  default_value="None", width=200)
                     dpg.add_spacer(width=12)
                     dpg.add_text("Channel", color=COLOR_TEXT_DIM)
                     dpg.add_combo(_CHANNEL_OPTIONS, tag="midi_in_channel",
@@ -871,8 +884,8 @@ def build_midi_tab():
                 with dpg.group(horizontal=True):
                     dpg.add_spacer(width=20)
                     dpg.add_text("Output", color=COLOR_TEXT_DIM)
-                    dpg.add_combo(_outs or ["(none)"], tag="midi_out_port",
-                                  default_value=_outs[0] if _outs else "(none)", width=200)
+                    dpg.add_combo(["None"] + _outs, tag="midi_out_port",
+                                  default_value="None", width=200)
                     dpg.add_spacer(width=12)
                     dpg.add_text("Channel", color=COLOR_TEXT_DIM)
                     dpg.add_combo(_CHANNEL_OPTIONS, tag="midi_out_channel",

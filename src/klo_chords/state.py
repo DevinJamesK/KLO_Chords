@@ -1811,6 +1811,10 @@ def on_undo(sender=None, app_data=None):
     from klo_chords.undo_manager import get_undo_manager
     um = get_undo_manager()
     um.undo()
+    if _prog_sounding_idx is not None and _prog_cells[_prog_sounding_idx].is_empty():
+        stop_prog_sound_for_idx(_prog_sounding_idx)
+        from klo_chords.midi_tab import stop_midi_notes
+        stop_midi_notes()
     _rebuild_progression_grid()
 
 
