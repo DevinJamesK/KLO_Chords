@@ -16,6 +16,7 @@ from klo_chords.chords import (
     ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS, SCALE_TYPES,
     get_diatonic_chords, get_all_voicings,
     get_scale_notes, note_to_pc, pc_to_note, get_degree_for_root,
+    get_accidental_style,
 )
 from klo_chords.quality import quality_spelled, quality_symbol
 from klo_chords.fretboard import draw_fretboard, draw_mini_fretboard
@@ -75,7 +76,8 @@ _prog_sevenths  = False
 _prog_cells:    List[ProgCell] = [ProgCell() for _ in range(PROG_CELLS_TOTAL)]
 _prog_selected_idx: Optional[int] = None
 
-_current_tab          = "tab_chords"
+_current_tab          = "tab_chords"   # shortcut-active tab (never "tab_midi")
+_visual_tab           = "tab_chords"   # what's actually shown
 _speaker_frame_count  = 0
 _prog_sounding_idx: Optional[int] = None
 
@@ -131,6 +133,7 @@ def _fmt_event(tag: str, degree: str, chord_name: str, context: str,
 def _play_current_chord():
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         ci = _current_chords[_selected_chord_idx]
+        was_playing = is_playing()
         play_chord_notes(ci.notes, root_note=ci.root)
         base_oct = get_sound_settings()["base_octave"]
         from klo_chords.sound import _stack_root_position
@@ -143,6 +146,12 @@ def _play_current_chord():
         q = ci.quality if ci.quality != "M" else ""
         tag = f"[chord {_selected_chord_idx:2d}]"
         print(_fmt_event(tag, ci.degree, ci.root + q, f"oct={base_oct}", ci.notes, midi_names, sub_name))
+        from klo_chords.midi_tab import send_chord_midi, stop_midi_notes
+        if was_playing and not is_playing():
+            stop_midi_notes()
+        else:
+            all_midis = midis + ([sub] if sub is not None else [])
+            send_chord_midi(all_midis)
 
 
 def _play_prog_cell(idx: int):
@@ -164,7 +173,14 @@ def _play_prog_cell(idx: int):
                 degree = get_degree_for_root(cell.root, _prog_key, _prog_scale)
                 tag = f"[cell  {idx:2d}]"
                 print(_fmt_event(tag, degree, cell.root + q, f"rot={cell.rotation}", notes, midi_names, sub_name))
+                was_playing = is_playing()
                 play_progression_notes(notes, base_octave=eff_oct, root_pc=root_pc)
+                from klo_chords.midi_tab import send_chord_midi, stop_midi_notes
+                if was_playing and not is_playing():
+                    stop_midi_notes()
+                else:
+                    all_midis = midis + ([sub] if sub is not None else [])
+                    send_chord_midi(all_midis)
                 _prog_sounding_idx = idx
 
 
@@ -186,8 +202,17 @@ def _log_progression_row(row: int):
 # ── Tab switching ────────────────────────────────────────────────────────────────
 
 def on_tab_change(sender, app_data):
-    global _current_tab
-    stop_current()
+    global _current_tab, _visual_tab
+    prev_visual = _visual_tab
+    _visual_tab = app_data
+    if app_data == "tab_midi":
+        return
+    coming_from_midi = prev_visual == "tab_midi"
+    returning_to_same = app_data == _current_tab
+    if not (coming_from_midi and returning_to_same):
+        stop_current()
+        from klo_chords.midi_tab import stop_midi_notes
+        stop_midi_notes()
     _current_tab = app_data
 
 
@@ -346,8 +371,8 @@ def on_prog_cell_root_prev(sender=None, app_data=None):
         cell.root = "C"
         cell.quality = "M"
     else:
-        idx = NOTE_NAMES.index(cell.root) if cell.root in NOTE_NAMES else 0
-        cell.root = NOTE_NAMES[(idx - 1) % 12]
+        pc = (note_to_pc(cell.root) - 1) % 12
+        cell.root = pc_to_note(pc, get_accidental_style(_prog_key))
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -361,8 +386,8 @@ def on_prog_cell_root_next(sender=None, app_data=None):
         cell.root = "C"
         cell.quality = "M"
     else:
-        idx = NOTE_NAMES.index(cell.root) if cell.root in NOTE_NAMES else 0
-        cell.root = NOTE_NAMES[(idx + 1) % 12]
+        pc = (note_to_pc(cell.root) + 1) % 12
+        cell.root = pc_to_note(pc, get_accidental_style(_prog_key))
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx)
@@ -479,17 +504,24 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
 # ── Arrow key callback (progression tab) ─────────────────────────────────────────
 
 def on_prog_cell_arrow_press(sender, app_data, user_data):
-    """Arrow keys for the progression tab: Left/Right = inversion, Up/Down = quality."""
+    """Arrow keys for the progression tab: Left/Right = inversion (Shift = root), Up/Down = quality."""
     global _current_tab
     if _current_tab != "tab_progression":
         return
     if _prog_selected_idx is None:
         return
+    from klo_chords import dpg_keyboard
     action = str(user_data)
     if action == "inv_prev":
-        on_prog_cell_inversion_prev()
+        if dpg_keyboard.shift_is_down():
+            on_prog_cell_root_prev()
+        else:
+            on_prog_cell_inversion_prev()
     elif action == "inv_next":
-        on_prog_cell_inversion_next()
+        if dpg_keyboard.shift_is_down():
+            on_prog_cell_root_next()
+        else:
+            on_prog_cell_inversion_next()
     elif action == "quality_prev":
         on_prog_cell_quality_prev()
     elif action == "quality_next":
@@ -762,10 +794,18 @@ def get_show_keybinds() -> bool:
     return _show_keybinds
 
 
+def init_show_keybinds(val: bool):
+    """Set keybinds state from saved prefs before DPG context exists."""
+    global _show_keybinds
+    _show_keybinds = val
+
+
 
 def on_stop(sender=None, app_data=None):
     """Stop any currently playing chord (spacebar handler)."""
     stop_current()
+    from klo_chords.midi_tab import stop_midi_notes
+    stop_midi_notes()
 
 
 def _update_volume_theme(muted: bool):

@@ -803,6 +803,7 @@ def stop_current():
     _last_root_midi = None
     _lowest_midi = None
     _engine.release_all()
+    _engine._note_history = []
 
 
 def release_note(notes: List[str]):

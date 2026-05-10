@@ -8,6 +8,15 @@ from pathlib import Path
 
 PACKAGE = "klo_chords"
 
+_draw_font = None
+
+def set_draw_font(font_id) -> None:
+    global _draw_font
+    _draw_font = font_id
+
+def get_draw_font():
+    return _draw_font
+
 
 def _frozen_base() -> Path | None:
     """
@@ -47,8 +56,8 @@ def _asset_path(subdir: str, filename: str) -> str:
 
 
 def font_path() -> str:
-    """Return the path to the bundled Verdana font."""
-    return _asset_path("fonts", "verdana.ttf")
+    """Return the path to the bundled Noto Sans font."""
+    return _asset_path("fonts", "NotoSans-Regular.ttf")
 
 
 def font_path_fallback() -> str:

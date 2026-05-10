@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.5.7] - 2026-05-10
+
+### Added
+- **MIDI output** — chord plays and note toggles now send MIDI note-on/off messages to the selected output port and channel in real time.
+- **MIDI log entries for chord output** — each note-on and note-off from chord play/stop events appears in the MIDI log, with full hex-display support.
+- **`stop_midi_notes()`** — sends note-offs for all currently sounding MIDI notes and logs each one; called on spacebar, tab switch, transport stop, and app close.
+- **`send_chord_midi()`** — releases the previous MIDI chord before sending note-ons for the new one; mirrors the toggle-off behavior of the audio engine.
+- **Program Change panel** — single-row UI: mode combo (Program/Bank-Select), optional Bank MSB/LSB inputs, Prev/Program/Next controls, and Send button.
+- **Cmd+1/2/3/4 tab shortcuts** — switch between Chords, Progression, MIDI, and Settings tabs from the keyboard.
+- **Shift+Left/Right changes root note** — in the Progression tab, Left/Right alone cycles inversions; Shift+Left/Right steps the root note up or down by semitone.
+- **Conventional key names** — key dropdowns now show `C, Db, D, Eb, E, F, F#, G, Ab, A, Bb, B` instead of the all-sharps list.
+
+### Fixed
+- **MIDI devices not appearing in dropdowns** — port polling now starts from an empty baseline so the first device scan always triggers a UI update.
+- **MIDI toggle sync** — MIDI note-offs are sent when the audio engine toggles a chord off (same note re-triggered), not just when switching tabs or pressing spacebar.
+- **MIDI tab doesn't steal shortcut focus** — switching to the MIDI tab no longer changes the active shortcut context; chords and progressions continue to respond to keyboard shortcuts while MIDI settings are adjusted.
+- **Returning from MIDI tab doesn't stop sound** — switching back to the tab that was playing leaves audio running; only switching to a *different* tab stops it.
+- **Root-note stepping respects key accidentals** — Shift+Left/Right now spells the new root using the key's preferred accidental (Bb in a flat key, never A# in Bb major).
+- **Green play bar after Spacebar + re-click** — `stop_current()` now clears the internal note history so re-clicking the same chord starts fresh rather than toggling off silently.
+- **"Show Keybinds" preference applied at boot** — keybind labels now appear on startup when the preference is checked, without needing to toggle it.
+- **Unicode ♭/♯ glyphs in chord cells** — canvas `draw_text` items now bind Noto Sans, enabling flat and sharp symbols to render.
+
+### Changed
+- **Port layout condensed** — Input and Output sections each fit on one row: label, port combo, channel selector, and Connect button.
+- **All Notes Off on close** — `cleanup()` sends All Notes Off on all 16 MIDI channels before closing the output port.
+
 ## [0.5.6] - 2026-05-08
 
 ### Added

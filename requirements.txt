@@ -1,3 +1,4 @@
 dearpygui
 sounddevice
 numpy
+python-rtmidi

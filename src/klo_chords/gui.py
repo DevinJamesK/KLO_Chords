@@ -17,11 +17,12 @@ _DISPLAY_SCALE = 2.0 if platform.system() == "Darwin" else 1.0
 
 import klo_chords.prefs as prefs
 
-from klo_chords.chords import NOTE_NAMES, SCALE_TYPES
+from klo_chords.chords import KEY_NAMES, SCALE_TYPES
 from klo_chords.theme import (
     COLOR_ACCENT, COLOR_BG_LIGHT, COLOR_TEXT_DIM, COLOR_TEXT,
     COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     font_path, font_path_fallback, icon_path,
+    set_draw_font,
 )
 from klo_chords.piano import (
     build_piano_keys, build_multi_octave_piano,
@@ -50,13 +51,14 @@ from klo_chords.state import (
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
     on_prog_show_suggestions, on_prog_cell_shift_click,
     on_paste_mode_change, on_paste_shape_change,
-    on_keybinds_toggle, get_show_keybinds,
+    on_keybinds_toggle, get_show_keybinds, init_show_keybinds,
     on_sub_oscillator_toggle, on_reset_prefs,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
 
 
 from klo_chords.sound import get_settings as get_sound_settings
+import klo_chords.midi_tab as midi_tab
 from klo_chords.quality import quality_symbol
 
 SCALE_NAMES = list(SCALE_TYPES.keys())
@@ -153,7 +155,7 @@ def _build_toolbar():
         dpg.add_spacer(width=8)
         dpg.add_checkbox(label="Show Keybinds",
                          tag="toolbar_show_keybinds",
-                         default_value=True,
+                         default_value=get_show_keybinds(),
                          callback=on_keybinds_toggle)
     dpg.add_spacer(height=8)
 
@@ -167,7 +169,7 @@ def _build_chord_tab():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
         dpg.add_text("Key")
-        dpg.add_combo(items=NOTE_NAMES, default_value="C",
+        dpg.add_combo(items=KEY_NAMES, default_value="C",
                         tag="key_combo", width=50,
                         callback=on_key_change)
         dpg.add_spacer(width=10)
@@ -300,7 +302,7 @@ def _build_progression_tab():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
         dpg.add_text("Key")
-        dpg.add_combo(items=NOTE_NAMES, default_value="C",
+        dpg.add_combo(items=KEY_NAMES, default_value="C",
                       tag="prog_key_combo", width=50,
                       callback=on_prog_key_change)
         dpg.add_spacer(width=10)
@@ -627,6 +629,7 @@ def build_ui():
         _default_font = None
         if os.path.exists(path):
             _default_font = dpg.add_font(path, _font_px)
+            set_draw_font(_default_font)
         fallback = font_path_fallback()
         if os.path.exists(fallback):
             _fallback_font = dpg.add_font(fallback, _font_px)
@@ -647,6 +650,9 @@ def build_ui():
 
             with dpg.tab(label=" Progression ", tag="tab_progression"):
                 _build_progression_tab()
+
+            with dpg.tab(label="    MIDI     ", tag="tab_midi"):
+                midi_tab.build_midi_tab()
 
             with dpg.tab(label="  Settings   ", tag="tab_sound"):
                 _build_sound_tab()
@@ -712,6 +718,7 @@ def build_ui():
         dpg.bind_item_theme("prog_clear_btn", clear_theme)
 
     # ── Initialize ──────────────────────────────────────────────────────────────
+    midi_tab.init()
     build_piano_keys("piano_canvas")
     build_multi_octave_piano("prog_piano_canvas")
     _refresh_chords()
@@ -754,6 +761,15 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_C, callback=_on_key_with_ctrl, user_data="copy")
         dpg.add_key_press_handler(key=dpg.mvKey_V, callback=_on_key_with_ctrl, user_data="paste")
         dpg.add_key_press_handler(key=dpg.mvKey_K, callback=_on_key_with_ctrl, user_data="keybinds")
+        # Cmd/Ctrl+1-4 = switch tabs
+        _TAB_KEYS = [
+            (dpg.mvKey_1, "tab_chords"),
+            (dpg.mvKey_2, "tab_progression"),
+            (dpg.mvKey_3, "tab_midi"),
+            (dpg.mvKey_4, "tab_sound"),
+        ]
+        for key, tab_tag in _TAB_KEYS:
+            dpg.add_key_press_handler(key=key, callback=_on_tab_shortcut, user_data=tab_tag)
         # Delete key
         dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
 
@@ -765,12 +781,22 @@ def build_ui():
     while dpg.is_dearpygui_running():
         dpg_keyboard.poll()
         _refresh_speaker_indicators()
+        midi_tab.drain_ui_events()
         dpg.render_dearpygui_frame()
 
+    midi_tab.cleanup()
     dpg.destroy_context()
 
 
 # ── Keyboard shortcut helpers ────────────────────────────────────────────────────
+
+
+def _on_tab_shortcut(sender, app_data, user_data):
+    from klo_chords import dpg_keyboard
+    if not dpg_keyboard.toggle_is_down():
+        return
+    dpg.set_value("main_tab_bar", user_data)
+    on_tab_change(None, user_data)
 
 
 def _on_key_with_ctrl(sender, app_data, user_data):
@@ -824,6 +850,7 @@ def _apply_preferences():
                        prefs_data.get("vel_max", 100))
     set_base_octave(prefs_data.get("base_octave", 3))
     set_sub_oscillator(prefs_data.get("sub_oscillator", False))
+    init_show_keybinds(prefs_data.get("show_keybinds", True))
     # Apply saved audio device
     saved_device = prefs_data.get("audio_device", "system_default")
     if saved_device != "system_default":

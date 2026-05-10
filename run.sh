@@ -11,6 +11,15 @@ cd "$SCRIPT_DIR"
 ENV_NAME="klo_music"
 REQUIREMENTS_FILE="requirements.txt"
 
+# ── macOS: fix C++ stdlib headers missing from CLT (Apple Clang 15+) ────────
+if [[ "$(uname)" == "Darwin" ]]; then
+    _SDK="$(xcrun --show-sdk-path 2>/dev/null || true)"
+    if [[ -n "$_SDK" ]]; then
+        export CXXFLAGS="${CXXFLAGS:-} -I${_SDK}/usr/include/c++/v1 -isysroot ${_SDK}"
+        export CFLAGS="${CFLAGS:-} -isysroot ${_SDK}"
+    fi
+fi
+
 # ── 1. Pick a Python interpreter ────────────────────────────
 echo "== KLO Chords Launcher =="
 
@@ -69,7 +78,7 @@ fi
 
 # ── 4. Install the package in editable mode (so assets resolve) ──
 echo "[i] Installing klo-chords (editable)..."
-$PY -m pip install -e . --quiet
+$PY -m pip install -e .
 echo "[✓] Package installed."
 
 # ── 5. Launch ───────────────────────────────────────────────

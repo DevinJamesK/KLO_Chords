@@ -11,6 +11,7 @@ from klo_chords.quality import quality_symbol
 from klo_chords.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_BG_LIGHT,
+    get_draw_font,
 )
 
 # ── Keybind labels for chord cells ──────────────────────────────────────────────
@@ -43,6 +44,16 @@ PROG_QUALITY_MAP = {
 PROG_QUALITY_REVERSE_MAP = {v: k for k, v in PROG_QUALITY_MAP.items()}
 
 
+def _draw_text_with_font(pos, text, **kwargs):
+    item = dpg.draw_text(pos, text, **kwargs)
+    font = get_draw_font()
+    if font is not None:
+        try:
+            dpg.bind_item_font(item, font)
+        except Exception:
+            pass
+    return item
+
 
 def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
                      selected: bool = False, show_keybind: bool = False):
@@ -72,17 +83,17 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
                        fill=COLOR_ACTIVE_SPEAKER, color=[0, 0, 0, 0],
                        show=False,
                        tag="chord_play_bar_" + str(idx), parent=canvas_tag)
-    dpg.draw_text([8, 10], title,
+    _draw_text_with_font([8, 10], title,
                   tag="chord_title_" + str(idx),
                   color=title_col, size=24, parent=canvas_tag)
-    dpg.draw_text([8, 40], notes,
+    _draw_text_with_font([8, 40], notes,
                   color=COLOR_TEXT_DIM, size=18, parent=canvas_tag)
 
     # Keybind label in top‑right corner
     if show_keybind and idx < len(KEYBIND_LABELS):
         lbl = KEYBIND_LABELS[idx]
         lbl_w = len(lbl) * 8  # rough width estimate
-        dpg.draw_text([CHORD_BOX_W - 8 - lbl_w, 4], lbl,
+        _draw_text_with_font([CHORD_BOX_W - 8 - lbl_w, 4], lbl,
                       color=COLOR_TEXT_DIM, size=12, parent=canvas_tag)
 
 
@@ -119,11 +130,11 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     if show_keybind and idx < len(KEYBIND_LABELS):
         lbl = KEYBIND_LABELS[idx]
         lbl_w = len(lbl) * 7
-        dpg.draw_text([PROG_CELL_W - 8 - lbl_w, 3], lbl,
+        _draw_text_with_font([PROG_CELL_W - 8 - lbl_w, 3], lbl,
                       color=COLOR_TEXT_DIM, size=10, parent=canvas_tag)
 
     if cell.is_empty():
-        dpg.draw_text([PROG_CELL_W // 2 - 22, PROG_CELL_H // 2 - 8], "Empty",
+        _draw_text_with_font([PROG_CELL_W // 2 - 22, PROG_CELL_H // 2 - 8], "Empty",
                       color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
         return
 
@@ -134,20 +145,20 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
         degree = get_degree_for_root(cell.root, key, scale)
     else:
         degree = "?"
-    dpg.draw_text([5, 3], degree,
+    _draw_text_with_font([5, 3], degree,
                   tag=f"prog_degree_{idx}",
                   color=COLOR_ACCENT, size=14, parent=canvas_tag)
 
     # Chord name
     q = quality_symbol(cell.quality).strip()
     name = cell.root + (" " + q if q else "")
-    dpg.draw_text([5, 20], name,
+    _draw_text_with_font([5, 20], name,
                   tag=f"prog_name_{idx}",
                   color=COLOR_TEXT, size=16, parent=canvas_tag)
 
     # Notes
     notes_str = " ".join(cell.get_notes())
-    dpg.draw_text([5, 44], notes_str,
+    _draw_text_with_font([5, 44], notes_str,
                   color=COLOR_TEXT_DIM, size=13, parent=canvas_tag)
 
 
