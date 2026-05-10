@@ -89,6 +89,13 @@ _sync_song_position    = 0
 
 _CHANNEL_OPTIONS = ["All"] + [str(i) for i in range(16)]
 
+# Program Change state
+_PC_MODES = ["GM", "Roland", "Yamaha"]
+_pc_mode    = "GM"
+_pc_bank_msb = 0
+_pc_bank_lsb = 0
+_pc_program  = 0
+
 
 # ── MidiDriver ─────────────────────────────────────────────────────────────────
 
@@ -153,6 +160,9 @@ def init():
 def cleanup():
     _stop_polling.set()
     if _driver:
+        if _driver._out_port is not None:
+            for ch in range(16):
+                _driver.stop_all(ch)
         _driver.close()
 
 
@@ -240,7 +250,7 @@ def _process_port_change(new_ins, new_outs):
 
 
 def _poll_ports():
-    last_ins, last_outs = _ins, _outs
+    last_ins, last_outs = [], []
     while not _stop_polling.wait(1):
         try:
             new_ins  = _driver.midi_in.get_ports()
@@ -379,6 +389,7 @@ def send_sync_stop(*_):
     if not _output_ready():
         return
     _driver.send([MIDI_STOP])
+    stop_midi_notes()
     _sync_transport_state = "Stopped"
     _update_sync_display()
     _midi_log("Tx", _fmt([MIDI_STOP]), "transport")
@@ -580,6 +591,134 @@ def panic_all(*_):
     _midi_log("SYS", "Panic: all notes off on all 16 channels.")
 
 
+# ── Program Change ─────────────────────────────────────────────────────────────
+
+def _pc_channel() -> int:
+    val = dpg.get_value("midi_out_channel") if dpg.does_item_exist("midi_out_channel") else "0"
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return 0
+
+
+def _send_program_change():
+    global _pc_bank_msb, _pc_bank_lsb, _pc_program
+    if not _output_ready():
+        return
+    ch = _pc_channel()
+    if _pc_mode == "Roland":
+        _driver.send_cc(0,  _pc_bank_msb, ch)
+        _driver.send_cc(32, 0,            ch)
+    elif _pc_mode == "Yamaha":
+        _driver.send_cc(0,  _pc_bank_msb, ch)
+        _driver.send_cc(32, _pc_bank_lsb, ch)
+    _driver.send([PROGRAM_CHANGE | ch, _pc_program])
+    _midi_log("Tx", f"PC | mode={_pc_mode} bank={_pc_bank_msb}/{_pc_bank_lsb} prog={_pc_program + 1}", "other")
+    if dpg.does_item_exist("midi_pc_program"):
+        dpg.set_value("midi_pc_program", _pc_program + 1)
+
+
+def pc_next(*_):
+    global _pc_program, _pc_bank_msb
+    if _pc_mode == "GM":
+        _pc_program = (_pc_program + 1) % 128
+    else:
+        _pc_program += 1
+        if _pc_program > 127:
+            _pc_program = 0
+            _pc_bank_msb = min(_pc_bank_msb + 1, 127)
+            if dpg.does_item_exist("midi_pc_bank_msb"):
+                dpg.set_value("midi_pc_bank_msb", _pc_bank_msb)
+    _send_program_change()
+
+
+def pc_prev(*_):
+    global _pc_program, _pc_bank_msb
+    if _pc_mode == "GM":
+        _pc_program = (_pc_program - 1) % 128
+    else:
+        _pc_program -= 1
+        if _pc_program < 0:
+            _pc_program = 127
+            _pc_bank_msb = max(_pc_bank_msb - 1, 0)
+            if dpg.does_item_exist("midi_pc_bank_msb"):
+                dpg.set_value("midi_pc_bank_msb", _pc_bank_msb)
+    _send_program_change()
+
+
+def _on_pc_mode_change(sender, app_data):
+    global _pc_mode
+    _pc_mode = app_data
+    gm = _pc_mode == "GM"
+    for tag in ("midi_pc_bank_msb_grp", "midi_pc_bank_lsb_grp"):
+        if dpg.does_item_exist(tag):
+            dpg.configure_item(tag, show=not gm)
+    if dpg.does_item_exist("midi_pc_bank_lsb_grp"):
+        dpg.configure_item("midi_pc_bank_lsb_grp", show=_pc_mode == "Yamaha")
+
+
+def _on_pc_bank_msb_change(sender, app_data):
+    global _pc_bank_msb
+    _pc_bank_msb = max(0, min(127, int(app_data)))
+
+
+def _on_pc_bank_lsb_change(sender, app_data):
+    global _pc_bank_lsb
+    _pc_bank_lsb = max(0, min(127, int(app_data)))
+
+
+def _on_pc_program_change(sender, app_data):
+    global _pc_program
+    _pc_program = max(0, min(127, int(app_data) - 1))
+
+
+# ── Chord output ───────────────────────────────────────────────────────────────
+
+_sounding_midi_notes: list = []   # notes sent in the last send_chord_midi call
+
+
+def stop_midi_notes():
+    """Send note-offs for all currently sounding MIDI notes and clear the list."""
+    global _sounding_midi_notes
+    if not _driver or _driver._out_port is None:
+        return
+    ch = 0
+    if dpg.does_item_exist("midi_out_channel"):
+        val = dpg.get_value("midi_out_channel")
+        try:
+            ch = int(val)
+        except (ValueError, TypeError):
+            ch = 0
+    for note in _sounding_midi_notes:
+        _driver.note_off(note, ch)
+    _sounding_midi_notes = []
+
+
+def send_chord_midi(midi_notes: list, velocity: int = 100):
+    """Send note-offs for the previous chord and note-ons for the new one.
+
+    Uses the channel selected in the MIDI tab output combo (0 if no UI yet).
+    Does nothing if no output port is connected.
+    """
+    global _sounding_midi_notes
+    if not _driver or _driver._out_port is None:
+        return
+
+    ch = 0
+    if dpg.does_item_exist("midi_out_channel"):
+        val = dpg.get_value("midi_out_channel")
+        try:
+            ch = int(val)
+        except (ValueError, TypeError):
+            ch = 0
+
+    for note in _sounding_midi_notes:
+        _driver.note_off(note, ch)
+    _sounding_midi_notes = list(midi_notes)
+    for note in midi_notes:
+        _driver.note_on(note, velocity, ch)
+
+
 # ── Event drain (call each frame) ──────────────────────────────────────────────
 
 def drain_ui_events():
@@ -604,7 +743,7 @@ _ICON_W, _ICON_H = 44, 46
 
 def _build_sync_section():
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=25)
+        dpg.add_spacer(width=20)
         # Start button
         with dpg.drawlist(width=_ICON_W, height=_ICON_H, tag="midi_sync_start_btn"):
             dpg.draw_rectangle([0,0],[_ICON_W-1,_ICON_H-1],
@@ -648,7 +787,7 @@ def _build_sync_section():
             dpg.add_item_clicked_handler(callback=send_sync_stop)
         dpg.bind_item_handler_registry("midi_sync_stop_btn", "midi_sync_stop_hreg")
 
-        dpg.add_spacer(width=6)
+        dpg.add_spacer(width=16)
 
         with dpg.drawlist(width=190, height=_ICON_H, tag="midi_bpm_canvas"):
             dpg.draw_rectangle([0,0],[189,_ICON_H-1],
@@ -658,23 +797,24 @@ def _build_sync_section():
             dpg.draw_text([152,16], "BPM", color=[85,85,108,255], size=13)
 
     dpg.add_spacer(height=4)
-    dpg.add_spacer(width=20)
-    with dpg.table(header_row=True, borders_innerV=True,
-                   policy=dpg.mvTable_SizingFixedFit):
-        dpg.add_table_column(label="State",    width_fixed=True, init_width_or_weight=110)
-        dpg.add_table_column(label="Clocks",   width_fixed=True, init_width_or_weight=65)
-        dpg.add_table_column(label="Beats",    width_fixed=True, init_width_or_weight=50)
-        dpg.add_table_column(label="Song Pos", width_fixed=True, init_width_or_weight=130)
-        with dpg.table_row():
-            with dpg.group(horizontal=True):
-                with dpg.drawlist(width=14, height=14):
-                    dpg.draw_circle([7,7], 5, fill=[150,48,48,255],
-                                    color=[0,0,0,0], tag="midi_sync_state_dot")
-                dpg.add_spacer(width=4)
-                dpg.add_text("Stopped", tag="midi_sync_state")
-            dpg.add_text("0", tag="midi_sync_clock_count")
-            dpg.add_text("0", tag="midi_sync_beats")
-            dpg.add_text(_sync_pos_text(0), tag="midi_sync_song_pos")
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        with dpg.table(header_row=True, borders_innerV=True,
+                    policy=dpg.mvTable_SizingFixedFit, width=-20):
+            dpg.add_table_column(label="State",    width_fixed=True, init_width_or_weight=110)
+            dpg.add_table_column(label="Clocks",   width_fixed=True, init_width_or_weight=65)
+            dpg.add_table_column(label="Beats",    width_fixed=True, init_width_or_weight=50)
+            dpg.add_table_column(label="Song Pos", width_fixed=True, init_width_or_weight=130)
+            with dpg.table_row():
+                with dpg.group(horizontal=True):
+                    with dpg.drawlist(width=14, height=14):
+                        dpg.draw_circle([7,7], 5, fill=[150,48,48,255],
+                                        color=[0,0,0,0], tag="midi_sync_state_dot")
+                    dpg.add_spacer(width=4)
+                    dpg.add_text("Stopped", tag="midi_sync_state")
+                dpg.add_text("0", tag="midi_sync_clock_count")
+                dpg.add_text("0", tag="midi_sync_beats")
+                dpg.add_text(_sync_pos_text(0), tag="midi_sync_song_pos")
 
 
 def build_midi_tab():
@@ -687,14 +827,14 @@ def build_midi_tab():
 
     # ── Ports ─────────────────────────────────────────────────────────────────────
     
-    dpg.add_spacer(height=6)
+    dpg.add_spacer(height=2)
     with dpg.group(horizontal=True):
         dpg.add_text("Ports", color=COLOR_ACCENT)
-        dpg.add_spacer(width=400)
+        dpg.add_spacer(width=415)
         dpg.add_checkbox(label="Auto-connect single device",
                         tag="midi_auto_connect", default_value=True)
         dpg.add_spacer(width=20)
-        dpg.add_button(label="Panic All Channels", callback=panic_all, width=150)
+        dpg.add_button(label="Panic All Channels", callback=panic_all, width=-20)
     dpg.add_separator()
 
     with dpg.table(header_row=False, borders_innerV=True,
@@ -703,29 +843,74 @@ def build_midi_tab():
         dpg.add_table_column()
         with dpg.table_row():
             with dpg.group():
-                dpg.add_text("Input", color=COLOR_TEXT_DIM)
-                dpg.add_combo(_ins or ["(none)"], tag="midi_in_port",
-                              default_value=_ins[0] if _ins else "(none)", width=-1)
+                dpg.add_spacer(height=4)
                 with dpg.group(horizontal=True):
-                    dpg.add_text("Channel  ")
+                    dpg.add_spacer(width=20)
+                    dpg.add_text("Input", color=COLOR_TEXT_DIM)
+                    dpg.add_combo(_ins or ["(none)"], tag="midi_in_port",
+                                  default_value=_ins[0] if _ins else "(none)", width=200)
+                    dpg.add_spacer(width=12)
+                    dpg.add_text("Channel", color=COLOR_TEXT_DIM)
                     dpg.add_combo(_CHANNEL_OPTIONS, tag="midi_in_channel",
-                                  default_value="All", width=-1)
-                dpg.add_button(label="Connect Input", callback=connect_input, width=-1)
-            with dpg.group():
-                dpg.add_text("Output", color=COLOR_TEXT_DIM)
-                dpg.add_combo(_outs or ["(none)"], tag="midi_out_port",
-                              default_value=_outs[0] if _outs else "(none)", width=-1)
+                                  default_value="All", width=-20)
                 with dpg.group(horizontal=True):
-                    dpg.add_text("Channel  ")
+                    dpg.add_spacer(width=20)
+                    dpg.add_button(label="Connect Input", callback=connect_input, width=-20)
+                dpg.add_spacer(height=4)
+            with dpg.group():
+                dpg.add_spacer(height=4)
+                with dpg.group(horizontal=True):
+                    dpg.add_spacer(width=20)
+                    dpg.add_text("Output", color=COLOR_TEXT_DIM)
+                    dpg.add_combo(_outs or ["(none)"], tag="midi_out_port",
+                                  default_value=_outs[0] if _outs else "(none)", width=200)
+                    dpg.add_spacer(width=12)
+                    dpg.add_text("Channel", color=COLOR_TEXT_DIM)
                     dpg.add_combo(_CHANNEL_OPTIONS, tag="midi_out_channel",
-                                  default_value="All", width=-1)
-                dpg.add_button(label="Connect Output", callback=connect_output, width=-1)
-
-
-
-    dpg.add_spacer(height=6)
+                                  default_value="All", width=-20)
+                with dpg.group(horizontal=True):
+                    dpg.add_spacer(width=20)
+                    dpg.add_button(label="Connect Output", callback=connect_output, width=-20)
+                dpg.add_spacer(height=4)
     dpg.add_separator()
-    dpg.add_spacer(height=6)
+
+    # ── Program Change ────────────────────────────────────────────────────────────
+    dpg.add_spacer(height=4)
+    dpg.add_text("Program Change", color=COLOR_ACCENT)
+    dpg.add_separator()
+    dpg.add_spacer(height=4)
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        dpg.add_combo(_PC_MODES, default_value="GM", tag="midi_pc_mode",
+                      width=90, callback=_on_pc_mode_change)
+        
+        with dpg.group(horizontal=True, tag="midi_pc_bank_lsb_grp", show=False):
+            dpg.add_spacer(width=12)
+            dpg.add_text("LSB")
+            dpg.add_spacer(width=4)
+            dpg.add_input_int(default_value=0, tag="midi_pc_bank_lsb",
+                              min_value=0, max_value=127, width=80,
+                              callback=_on_pc_bank_lsb_change)
+        dpg.add_spacer(width=30)
+        dpg.add_button(label="< Prev", callback=pc_prev, width=65)
+        dpg.add_spacer(width=4)
+        dpg.add_button(label="Next >", callback=pc_next, width=65)
+        dpg.add_spacer(width=30)
+        with dpg.group(horizontal=True, tag="midi_pc_bank_msb_grp", show=False):
+            dpg.add_spacer(width=12)
+            dpg.add_text("Bank", color=COLOR_TEXT_DIM)
+            dpg.add_input_int(default_value=0, tag="midi_pc_bank_msb",
+                              min_value=0, max_value=127, width=80,
+                              callback=_on_pc_bank_msb_change)
+        dpg.add_text("Prog", color=COLOR_TEXT_DIM)
+        dpg.add_input_int(default_value=1, tag="midi_pc_program",
+                    min_value=1, max_value=128, width=100,
+                    callback=_on_pc_program_change)
+        dpg.add_spacer(width=20)
+        dpg.add_button(label="Send", callback=_send_program_change, width=-20)
+    dpg.add_spacer(height=3)
+    dpg.add_separator()
+    dpg.add_spacer(height=4)
 
     # ── Sync | MIDI Input ─────────────────────────────────────────────────────────
     with dpg.table(header_row=False, borders_innerV=True,
@@ -773,17 +958,17 @@ def build_midi_tab():
             with dpg.group():
                 dpg.add_text("Sync", color=COLOR_ACCENT)
                 dpg.add_separator()
-                dpg.add_spacer(height=4)
+                dpg.add_spacer(height=6)
                 _build_sync_section()
 
     # ── CC Monitor ────────────────────────────────────────────────────────────────
-    dpg.add_spacer(height=8)
+    dpg.add_spacer(height=4)
     dpg.add_text("CC Monitor", color=COLOR_ACCENT)
     dpg.add_separator()
     dpg.add_spacer(height=4)
     dpg.add_button(label="Clear", callback=reset_cc, width=60)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_cc_window", width=-1, height=275):
+    with dpg.child_window(tag="midi_cc_window", width=-1, height=250):
         pass
 
     # ── Log ───────────────────────────────────────────────────────────────────────
@@ -808,7 +993,7 @@ def build_midi_tab():
         dpg.add_spacer(width=275)
         dpg.add_checkbox(label="Hex Display",   tag="midi_raw_hex",      default_value=False)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_log_window", width=-1, height=120):
+    with dpg.child_window(tag="midi_log_window", width=-1, height=-1):
         pass
 
     _auto_connect()
