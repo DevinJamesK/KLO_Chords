@@ -262,6 +262,7 @@ def on_next_voicing(sender=None, app_data=None):
         return
     _current_voicing_idx = (_current_voicing_idx + 1) % len(voicings)
     draw_fretboard(chord, _current_voicing_idx)
+    draw_mini_fretboard("tab_canvas_" + str(_selected_chord_idx), chord, _current_voicing_idx)
     _update_voicing_label(chord)
 
 
@@ -275,6 +276,7 @@ def on_prev_voicing(sender=None, app_data=None):
         return
     _current_voicing_idx = (_current_voicing_idx - 1) % len(voicings)
     draw_fretboard(chord, _current_voicing_idx)
+    draw_mini_fretboard("tab_canvas_" + str(_selected_chord_idx), chord, _current_voicing_idx)
     _update_voicing_label(chord)
 
 
@@ -879,9 +881,13 @@ def _update_inversion_display():
     chord = _current_chords[_selected_chord_idx] if (_selected_chord_idx is not None and _selected_chord_idx < len(_current_chords)) else None
     if chord:
         root_pc = note_to_pc(chord.root)
-        bass_pc = midi_notes[0] % 12
-        dpg.set_value("detail_inversion", _get_inversion_name(root_pc, bass_pc))
-        dpg.set_value("detail_sounding_notes", "  ".join(note_names))
+        sub_on = get_sound_settings().get("sub_oscillator", False)
+        chord_notes = midi_notes[1:] if sub_on and len(midi_notes) > 1 else midi_notes
+        bass_pc = chord_notes[0] % 12 if chord_notes else root_pc
+        inv_name = _get_inversion_name(root_pc, bass_pc)
+        notes_str = "  ".join(note_names)
+        dpg.set_value("detail_inversion", f"{inv_name}  ({notes_str})")
+        dpg.set_value("detail_sounding_notes", "")
     else:
         dpg.set_value("detail_inversion", "")
         dpg.set_value("detail_sounding_notes", "")

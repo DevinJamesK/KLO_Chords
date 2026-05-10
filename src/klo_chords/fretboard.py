@@ -46,14 +46,14 @@ def _centered_text(x: float, y: float, text: str, size: int, color, parent: str)
 
 # ── Mini fretboard (thumbnail in chord list) ──────────────────────────────────
 
-def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
+def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo, voicing_idx: int = 0):
     """Draw a small 115x90 fretboard preview inside *canvas_tag*."""
     if not dpg.does_item_exist(canvas_tag):
         return
     dpg.delete_item(canvas_tag, children_only=True)
 
     W, H = 115, 90
-    diagram = get_guitar_diagram(chord)
+    diagram = get_guitar_diagram(chord, voicing_idx)
 
     if diagram is None:
         dpg.draw_text([W // 2 - 28, H // 2 - 5], "no diagram",
