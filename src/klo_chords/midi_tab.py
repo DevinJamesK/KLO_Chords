@@ -677,6 +677,10 @@ def _on_pc_program_change(sender, app_data):
 _sounding_midi_notes: list = []   # notes sent in the last send_chord_midi call
 
 
+def _hex_on() -> bool:
+    return dpg.does_item_exist("midi_raw_hex") and dpg.get_value("midi_raw_hex")
+
+
 def stop_midi_notes():
     """Send note-offs for all currently sounding MIDI notes and clear the list."""
     global _sounding_midi_notes
@@ -691,6 +695,8 @@ def stop_midi_notes():
             ch = 0
     for note in _sounding_midi_notes:
         _driver.note_off(note, ch)
+        msg = [NOTE_OFF | ch, note, 0]
+        _midi_log("Tx", _fmt_raw(msg) if _hex_on() else _fmt(msg), "note")
     _sounding_midi_notes = []
 
 
@@ -715,8 +721,11 @@ def send_chord_midi(midi_notes: list, velocity: int = 100):
     for note in _sounding_midi_notes:
         _driver.note_off(note, ch)
     _sounding_midi_notes = list(midi_notes)
+    hex_mode = _hex_on()
     for note in midi_notes:
         _driver.note_on(note, velocity, ch)
+        msg = [NOTE_ON | ch, note, velocity]
+        _midi_log("Tx", _fmt_raw(msg) if hex_mode else _fmt(msg), "note")
 
 
 # ── Event drain (call each frame) ──────────────────────────────────────────────
