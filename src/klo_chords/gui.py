@@ -770,8 +770,9 @@ def build_ui():
         ]
         for key, tab_tag in _TAB_KEYS:
             dpg.add_key_press_handler(key=key, callback=_on_tab_shortcut, user_data=tab_tag)
-        # Delete key
+        # Delete key — mvKey_Delete is Forward Delete; mvKey_Back is the main Delete key on macOS
         dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
+        dpg.add_key_press_handler(key=dpg.mvKey_Back, callback=on_prog_delete_selection)
 
 
     from klo_chords import dpg_keyboard

@@ -553,8 +553,17 @@ def on_key_press(sender, app_data, user_data):
     elif _current_tab == "tab_progression":
         idx = user_data
         if idx < PROG_CELLS_TOTAL and idx < len(_prog_cells):
-            _select_prog_cell(idx)
-            _play_prog_cell(idx)
+            if dpg_keyboard.shift_is_down():
+                if idx in _prog_selected_set or idx == _get_prog_selected_idx():
+                    _prog_selected_set.discard(idx)
+                    if _get_prog_selected_idx() == idx:
+                        _clear_prog_selected_idx()
+                else:
+                    _prog_selected_set.add(idx)
+                _rebuild_progression_grid()
+            else:
+                _select_prog_cell(idx)
+                _play_prog_cell(idx)
 
 
 # ── Sound setting callbacks ──────────────────────────────────────────────────────
