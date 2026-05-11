@@ -72,7 +72,7 @@ _current_chord_pcs:   Set[int] = set()
 # ── Progression state ───────────────────────────────────────────────────────────
 _prog_key       = "C"
 _prog_scale     = "Major"
-_prog_sevenths  = False
+_prog_sevenths  = True
 _prog_cells:    List[ProgCell] = [ProgCell() for _ in range(PROG_CELLS_TOTAL)]
 _prog_selected_idx: Optional[int] = None
 
@@ -986,7 +986,18 @@ def _update_prog_piano(cell: ProgCell):
     root_pc = note_to_pc(cell.root) if cell.root else 0
     midi_notes = _stack_root_position(pcs, eff_oct, root_pc)
 
-    bass_midi = min(midi_notes) if midi_notes else -1
+    # When sub-oscillator is on and this cell is sounding, the lowest live note
+    # is the root copy below the chord. Strip it (index 0 of sorted live notes)
+    # so the inversion name reflects the chord, not the sub — same pattern as
+    # _update_inversion_display in the Chords tab.
+    sub_on = get_sound_settings().get("sub_oscillator", False)
+    if sub_on and is_playing() and _prog_sounding_idx == _prog_selected_idx:
+        live = get_current_midi_notes()
+        chord_midi = live[1:] if live and len(live) > 1 else (live or midi_notes)
+    else:
+        chord_midi = midi_notes
+
+    bass_midi = chord_midi[0] if chord_midi else -1
 
     # Display octave always matches the effective octave.
     if dpg.does_item_exist("prog_detail_octave"):
@@ -999,7 +1010,6 @@ def _update_prog_piano(cell: ProgCell):
     else:
         start_octave = 3
 
-
     if dpg.does_item_exist("prog_piano_canvas"):
         dpg.delete_item("prog_piano_canvas", children_only=True)
         build_multi_octave_piano("prog_piano_canvas", start_octave=start_octave)
@@ -1009,7 +1019,7 @@ def _update_prog_piano(cell: ProgCell):
 
     inv_name = _get_inversion_name(root_pc, bass_midi % 12)
     if dpg.does_item_exist("prog_detail_inv_name"):
-        notes_str = "  ".join(_midi_to_note_name(m) for m in midi_notes)
+        notes_str = "  ".join(_midi_to_note_name(m) for m in chord_midi)
         dpg.set_value("prog_detail_inv_name", f"{inv_name}  ({notes_str})")
 
 
@@ -1222,7 +1232,9 @@ def _refresh_speaker_indicators():
     if playing and _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         midi_notes = get_current_midi_notes()
         if midi_notes:
-            bass_pc = midi_notes[0] % 12
+            sub_on = get_sound_settings().get("sub_oscillator", False)
+            chord_notes = midi_notes[1:] if sub_on and len(midi_notes) > 1 else midi_notes
+            bass_pc = chord_notes[0] % 12 if chord_notes else -1
             update_piano_keys(_current_chord_pcs, _current_scale_pcs, bass_pc=bass_pc)
     elif not playing:
         update_piano_keys(_current_chord_pcs, _current_scale_pcs, bass_pc=-1)
@@ -1966,6 +1978,8 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
     dpg.add_spacer(width=6, parent=hdr)
     dpg.add_button(label=">", width=25, height=22,
                    callback=lambda: _sugg_nav(1), parent=hdr)
+
+    dpg.add_spacer(height=4, parent=sg)
 
     # Card row for the current category
     row_grp = dpg.add_group(parent=sg, horizontal=True)

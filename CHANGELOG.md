@@ -33,15 +33,19 @@
 - **All Notes Off on close** — `cleanup()` sends All Notes Off on all 16 MIDI channels before closing the output port.
 
 ### Added (midi-tab)
-- **Suggestions always visible** — removed the "Show/Hide Suggestions" toggle; the suggestions panel appears automatically whenever a progression cell is selected and updates when selection changes.
-- **Paged suggestions by category** — suggestions are grouped into pages (Safe, Borrowed, Secondary Dominant, Chromatic Mediant, Advanced) with `<` / `>` navigation arrows and a page counter.
-- **Fixed-width category chip** — the category label is a 220 px chip with per-category color text on a dark background so arrow positions never shift with content changes.
-- **"Suggested Chords" section header** — accent-colored heading with separator above the panel, matching the "Cell Detail" style.
-- **Auto voice-leading on apply** — applying a suggestion automatically selects the octave and voicing rotation that minimizes voice movement relative to the nearest non-empty neighbor cell (left → up → nearest by distance).
-- **Now-playing bar on suggestion cards** — green play bar appears on the active suggestion card while it is sounding, matching the progression grid cell indicator.
+- **Chord suggestions panel** — selecting any progression cell reveals a full panel of contextually relevant chord suggestions directly below the cell detail area. Suggestions are derived from the current key and scale and are awareness of what chords are already present in the progression.
+- **Five suggestion categories** — chords are organized into pages: *Safe* (diatonic chords that always fit the key), *Borrowed* (chords pulled from parallel modes for color), *Secondary Dominant* (V7 chords that tonicize scale degrees), *Chromatic Mediant* (major-third root relationships for dramatic contrast), and *Advanced* (Neapolitan, augmented sixth, and other extended chromatic options).
+- **Category navigation** — `<` / `>` buttons page through categories; a page counter (e.g. `2/5`) tracks position. Each category label is a color-coded chip so categories are visually distinct at a glance.
+- **One-click apply with auto voice-leading** — clicking a suggestion card writes the chord into the selected cell and automatically chooses the octave and voicing rotation that minimizes voice movement from the nearest non-empty neighbor cell. Neighbor priority: left cell → cell above → nearest occupied cell by distance. No manual inversion hunting needed.
+- **Live preview** — clicking a suggestion card immediately plays the chord so you can audition it in context before committing. The suggestion panel updates whenever a different cell is selected.
+- **Now-playing bar on suggestion cards** — a green play bar appears on the active suggestion card while it is sounding, matching the progression grid cell indicator.
+- **"Suggested Chords" section header** — accent-colored heading above the panel consistent with the "Cell Detail" section style.
+- **Include 7th defaults to on** — the "Include 7th" checkbox on the Progression tab now starts checked so suggestions and chord fills use seventh chords by default.
 
 ### Fixed (midi-tab)
 - **Setting changes stop playback** — changing octave, root, quality, or inversion on a playing progression cell was toggling sound off because toggle-mode matches note names without octave context. `reset_note_history()` is now called before each forced replay so the transition is seamless.
+- **Inversion detail always showed "Root Position" with bass root note on** — when "Add Bass Root Note" was enabled, the lowest sounding note (the added root copy below the chord) was being used as the bass for inversion detection, making every chord report Root Position. The sub note is now stripped from the bass calculation, matching the same fix already applied to the Chords tab.
+- **Suggestion card spacing** — added a small gap between the category navigation row and the chord cards below it.
 
 ## [0.5.6] - 2026-05-08
 

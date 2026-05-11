@@ -312,7 +312,7 @@ def _build_progression_tab():
         dpg.add_spacer(width=10)
         dpg.add_checkbox(label="Include 7th",
                          tag="prog_sevenths_toggle",
-                         default_value=False,
+                         default_value=True,
                          callback=on_prog_sevenths_toggle)
         dpg.add_spacer(width=82)
         dpg.add_button(label="Fill Chords", width=100,
