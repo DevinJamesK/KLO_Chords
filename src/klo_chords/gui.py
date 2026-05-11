@@ -49,7 +49,6 @@ from klo_chords.state import (
     on_tab_change,
     on_fretboard_mode_change, on_mute_toggle, on_stop,
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
-    on_prog_show_suggestions, on_prog_cell_shift_click,
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds, init_show_keybinds,
     on_sub_oscillator_toggle, on_reset_prefs,
@@ -401,12 +400,7 @@ def _build_progression_tab():
         dpg.bind_item_theme(tag, _chip_theme)
 
     with dpg.group(tag="prog_cell_detail_group", show=True):
-        with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
-            dpg.add_text("Selected: ", color=COLOR_TEXT_DIM)
-            dpg.add_text("None", tag="prog_detail_pos", color=COLOR_ACCENT)
-
-        dpg.add_spacer(height=4)
+        dpg.add_text("None", tag="prog_detail_pos", show=False)
 
         _piano_pad = 20
 
@@ -463,9 +457,7 @@ def _build_progression_tab():
             dpg.add_input_text(tag="prog_detail_inv_name", default_value="",
                                readonly=True, width=260, no_horizontal_scroll=True)
             dpg.bind_item_theme("prog_detail_inv_name", _plain_text_theme)
-            dpg.add_spacer(width=25)
-            dpg.add_button(label="Suggestions", tag="prog_suggest_btn",
-                           width=120, height=25, callback=on_prog_show_suggestions)
+
 
         # ── Multi-octave piano for cell detail (centered) ─────────────────
         dpg.add_spacer(height=8)

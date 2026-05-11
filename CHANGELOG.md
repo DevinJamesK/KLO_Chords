@@ -32,6 +32,17 @@
 - **Port layout condensed** — Input and Output sections each fit on one row: label, port combo, channel selector, and Connect button.
 - **All Notes Off on close** — `cleanup()` sends All Notes Off on all 16 MIDI channels before closing the output port.
 
+### Added (midi-tab)
+- **Suggestions always visible** — removed the "Show/Hide Suggestions" toggle; the suggestions panel appears automatically whenever a progression cell is selected and updates when selection changes.
+- **Paged suggestions by category** — suggestions are grouped into pages (Safe, Borrowed, Secondary Dominant, Chromatic Mediant, Advanced) with `<` / `>` navigation arrows and a page counter.
+- **Fixed-width category chip** — the category label is a 220 px chip with per-category color text on a dark background so arrow positions never shift with content changes.
+- **"Suggested Chords" section header** — accent-colored heading with separator above the panel, matching the "Cell Detail" style.
+- **Auto voice-leading on apply** — applying a suggestion automatically selects the octave and voicing rotation that minimizes voice movement relative to the nearest non-empty neighbor cell (left → up → nearest by distance).
+- **Now-playing bar on suggestion cards** — green play bar appears on the active suggestion card while it is sounding, matching the progression grid cell indicator.
+
+### Fixed (midi-tab)
+- **Setting changes stop playback** — changing octave, root, quality, or inversion on a playing progression cell was toggling sound off because toggle-mode matches note names without octave context. `reset_note_history()` is now called before each forced replay so the transition is seamless.
+
 ## [0.5.6] - 2026-05-08
 
 ### Added

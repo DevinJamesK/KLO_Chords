@@ -154,7 +154,7 @@ def _play_current_chord():
             send_chord_midi(all_midis)
 
 
-def _play_prog_cell(idx: int):
+def _play_prog_cell(idx: int, force: bool = False):
     global _prog_sounding_idx
     if 0 <= idx < len(_prog_cells):
         cell = _prog_cells[idx]
@@ -162,6 +162,9 @@ def _play_prog_cell(idx: int):
             notes = cell.get_notes()
             if notes:
                 from klo_chords.sound import _stack_root_position
+                if force:
+                    from klo_chords.sound import reset_note_history
+                    reset_note_history()
                 pcs = [note_to_pc(n) for n in notes]
                 root_pc = note_to_pc(cell.root)
                 eff_oct = cell.effective_octave()
@@ -377,7 +380,7 @@ def on_prog_cell_root_prev(sender=None, app_data=None):
         cell.root = pc_to_note(pc, get_accidental_style(_prog_key))
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def on_prog_cell_root_next(sender=None, app_data=None):
@@ -392,7 +395,7 @@ def on_prog_cell_root_next(sender=None, app_data=None):
         cell.root = pc_to_note(pc, get_accidental_style(_prog_key))
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def on_prog_cell_quality_prev(sender=None, app_data=None):
@@ -409,7 +412,7 @@ def on_prog_cell_quality_prev(sender=None, app_data=None):
         cell.quality = PROG_QUALITY_MAP.get(new_display, "M")
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def on_prog_cell_quality_next(sender=None, app_data=None):
@@ -426,7 +429,7 @@ def on_prog_cell_quality_next(sender=None, app_data=None):
         cell.quality = PROG_QUALITY_MAP.get(new_display, "M")
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def _cell_in_midi_range(cell: ProgCell) -> bool:
@@ -455,7 +458,7 @@ def on_prog_cell_inversion_prev(sender=None, app_data=None):
         return
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def on_prog_cell_inversion_next(sender=None, app_data=None):
@@ -472,7 +475,7 @@ def on_prog_cell_inversion_next(sender=None, app_data=None):
         return
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def on_prog_cell_octave_prev(sender=None, app_data=None):
@@ -486,7 +489,7 @@ def on_prog_cell_octave_prev(sender=None, app_data=None):
     cell.base_octave = max(0, cell.base_octave - 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 def on_prog_cell_octave_next(sender=None, app_data=None):
@@ -500,7 +503,7 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
     cell.base_octave = min(8, cell.base_octave + 1)
     _refresh_prog_cell(_prog_selected_idx)
     _update_prog_detail(_prog_selected_idx)
-    _play_prog_cell(_prog_selected_idx)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
 # ── Arrow key callback (progression tab) ─────────────────────────────────────────
@@ -1060,6 +1063,7 @@ def _select_prog_cell(idx: int):
     _prog_selected_idx = idx
     _rebuild_progression_grid()
     _update_prog_detail(idx)
+    _refresh_suggestion_panel()
 
 
 def _get_prog_selected_idx():
@@ -1197,6 +1201,17 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
+            except Exception:
+                pass
+
+    sugg_playing = (playing
+                    and _prog_sounding_idx == _prog_selected_idx
+                    and _sugg_playing_card_idx is not None)
+    for i in range(_sugg_card_count):
+        bar_tag = f"prog_play_bar_{_SUGG_IDX_BASE + i}"
+        if dpg.does_item_exist(bar_tag):
+            try:
+                dpg.configure_item(bar_tag, show=(sugg_playing and i == _sugg_playing_card_idx))
             except Exception:
                 pass
 
@@ -1828,97 +1843,265 @@ def on_redo(sender=None, app_data=None):
 
 # ── Suggestion panel integration ───────────────────────────────────────────────
 
-_last_suggestions_showing = False
+_SUGG_IDX_BASE          = 500   # well above the 32 grid-cell indices
+_sugg_card_count        = 0
+_sugg_current_cat_idx:  int       = 0
+_sugg_last_suggestions: list      = []
+_sugg_playing_card_idx: Optional[int] = None
+
+_CATS_ORDERED = ["safe", "borrowed", "secondary_dominant", "chromatic_mediant", "advanced"]
 
 
-def on_prog_show_suggestions(sender=None, app_data=None):
-    """Show chord suggestions for the selected empty cell."""
-    global _last_suggestions_showing
+def _get_sugg_cat_groups(suggestions):
+    cat_groups: dict = {}
+    for s in suggestions:
+        cat_groups.setdefault(s.category, []).append(s)
+    available = [c for c in _CATS_ORDERED if c in cat_groups]
+    return available, cat_groups
+
+
+_sugg_cat_text_themes: dict = {}
+
+def _get_cat_text_theme(color):
+    from klo_chords.theme import COLOR_CHORD_BG
+    key = tuple(color)
+    if key not in _sugg_cat_text_themes:
+        with dpg.theme() as t:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        COLOR_CHORD_BG)
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, COLOR_CHORD_BG)
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  COLOR_CHORD_BG)
+                dpg.add_theme_color(dpg.mvThemeCol_Text,          list(color))
+                dpg.add_theme_color(dpg.mvThemeCol_Border,        [65, 65, 88, 255])
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
+                dpg.add_theme_style(dpg.mvStyleVar_FramePadding,  6, 3)
+        _sugg_cat_text_themes[key] = t
+    return _sugg_cat_text_themes[key]
+
+_CAT_COLORS = {
+    "safe":               [80,  200, 120, 255],
+    "borrowed":           [220, 200,  60, 255],
+    "secondary_dominant": [240, 160,  40, 255],
+    "chromatic_mediant":  [160, 100, 220, 255],
+    "advanced":           [120, 120, 120, 255],
+}
+_CAT_NAMES = {
+    "safe":               "Safe",
+    "borrowed":           "Borrowed",
+    "secondary_dominant": "Secondary Dominant",
+    "chromatic_mediant":  "Chromatic Mediant",
+    "advanced":           "Advanced",
+}
+
+
+def _refresh_suggestion_panel():
+    global _sugg_playing_card_idx
     if _prog_selected_idx is None:
         return
-
     from klo_chords.chord_suggestions import get_suggestions
     suggestions = get_suggestions(
         _prog_cells, _prog_selected_idx, _prog_key, _prog_scale,
         include_sevenths=_prog_sevenths
     )
+    _sugg_playing_card_idx = None
 
+    from klo_chords.chord_box import PROG_CELL_H
+    panel_h = PROG_CELL_H + 44
+    p = "prog_cell_detail_group"
     if not dpg.does_item_exist("suggestion_panel"):
-        dpg.add_child_window(tag="suggestion_panel", width=-1, height=180,
-                              parent="prog_cell_detail_group",
-                              before="prog_detail_pos",
-                              border=True)
+        dpg.add_spacer(height=2, parent=p, tag="suggestion_header_spacer")
+        dpg.add_text(" Suggested Chords", color=COLOR_ACCENT, parent=p,
+                     tag="suggestion_header_text")
+        dpg.add_separator(parent=p, tag="suggestion_separator")
+        dpg.add_spacer(height=6, parent=p, tag="suggestion_spacer_btm")
+        dpg.add_child_window(tag="suggestion_panel", width=-1, height=panel_h,
+                              parent=p, border=False, horizontal_scrollbar=True)
+        with dpg.theme() as _sugg_panel_theme:
+            with dpg.theme_component(dpg.mvChildWindow):
+                dpg.add_theme_style(dpg.mvStyleVar_WindowPadding, 0, 4)
+        dpg.bind_item_theme("suggestion_panel", _sugg_panel_theme)
     else:
         dpg.delete_item("suggestion_panel", children_only=True)
-        dpg.configure_item("suggestion_panel", show=True)
+        dpg.configure_item("suggestion_panel", height=panel_h)
 
-    with dpg.group(parent="suggestion_panel", tag="suggestion_group"):
-        dpg.add_text("Chord Suggestions", color=COLOR_ACCENT)
-        dpg.add_separator()
-        dpg.add_spacer(height=4)
-
-        cat_colors = {
-            "safe": [80, 200, 120, 255],       # green
-            "borrowed": [220, 200, 60, 255],    # amber
-            "secondary_dominant": [240, 160, 40, 255],  # orange
-            "chromatic_mediant": [160, 100, 220, 255],  # purple
-            "advanced": [120, 120, 120, 255],   # gray
-        }
-
-        current_cat = None
-        for s in suggestions:
-            if s.category != current_cat:
-                current_cat = s.category
-                color = cat_colors.get(current_cat, [200, 200, 200, 255])
-                cat_name = current_cat.replace("_", " ").title()
-                dpg.add_text(f"  {cat_name}", color=color)
-
-            if s.hidden:
-                # Advanced chords hidden by default
-                continue
-
-            tag = f"sugg_btn_{s.root}_{s.quality}"
-            with dpg.group(horizontal=True, tag=tag + "_group"):
-                dpg.add_spacer(width=12)
-                dpg.add_button(
-                    label=s.display_name(),
-                    width=200, height=22,
-                    tag=tag,
-                    callback=_make_suggestion_callback(s),
-                )
-                if s.resolution_target:
-                    dpg.add_text(f"→ {s.resolution_target}",
-                                 color=[180, 200, 220, 255])
-
-        # Toggle for advanced chords
-        dpg.add_spacer(height=4)
-        dpg.add_button(label="Show Advanced...",
-                       tag="show_advanced_btn",
-                       callback=lambda: _toggle_advanced(),
-                       width=160)
+    _build_suggestion_cards(suggestions, cat_idx=0)
 
 
-def _make_suggestion_callback(sug):
-    """Create a safe callback that captures the suggestion object."""
+def _build_suggestion_cards(suggestions, cat_idx: int = 0):
+    """Populate suggestion_panel with one category page of chord-cell-style cards."""
+    global _sugg_card_count, _sugg_current_cat_idx, _sugg_last_suggestions
+    from klo_chords.chords import ProgCell
+    from klo_chords.chord_box import draw_prog_cell, PROG_CELL_W, PROG_CELL_H
+
+    for i in range(_sugg_card_count):
+        hreg = f"sugg_hreg_{i}"
+        if dpg.does_item_exist(hreg):
+            dpg.delete_item(hreg)
+    _sugg_card_count = 0
+
+    _sugg_last_suggestions = suggestions
+    available_cats, cat_groups = _get_sugg_cat_groups(suggestions)
+    if not available_cats:
+        return
+
+    _sugg_current_cat_idx = min(cat_idx, len(available_cats) - 1)
+    current_cat = available_cats[_sugg_current_cat_idx]
+    visible = cat_groups[current_cat]
+    color = _CAT_COLORS.get(current_cat, [200, 200, 200, 255])
+    cat_label = _CAT_NAMES.get(current_cat, current_cat.replace("_", " ").title())
+
+    card_info = []
+    sg = dpg.add_group(parent="suggestion_panel", tag="suggestion_group")
+
+    # Category navigation header — plain buttons matching detail arrow style
+    hdr = dpg.add_group(parent=sg, horizontal=True)
+    dpg.add_spacer(width=20, parent=hdr)
+    dpg.add_button(label="<", width=25, height=22,
+                   callback=lambda: _sugg_nav(-1), parent=hdr)
+    dpg.add_spacer(width=6, parent=hdr)
+    lbl_btn = dpg.add_button(
+        label=f"{cat_label}   {_sugg_current_cat_idx + 1}/{len(available_cats)}",
+        width=220, height=22, parent=hdr)
+    dpg.bind_item_theme(lbl_btn, _get_cat_text_theme(color))
+    dpg.add_spacer(width=6, parent=hdr)
+    dpg.add_button(label=">", width=25, height=22,
+                   callback=lambda: _sugg_nav(1), parent=hdr)
+
+    # Card row for the current category
+    row_grp = dpg.add_group(parent=sg, horizontal=True)
+    dpg.add_spacer(width=20, parent=row_grp)
+    for s in visible:
+        i = len(card_info)
+        canvas_tag = f"sugg_canvas_{i}"
+
+        cell = ProgCell()
+        cell.root = s.root
+        cell.quality = s.quality
+        cell.rotation = 0
+        cell.base_octave = 3
+        cell.voicing_idx = 0
+
+        dpg.add_drawlist(tag=canvas_tag,
+                         width=PROG_CELL_W, height=PROG_CELL_H,
+                         parent=row_grp)
+        draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
+                       selected=False, key=_prog_key, scale=_prog_scale,
+                       show_keybind=False)
+        dpg.add_spacer(width=6, parent=row_grp)
+        card_info.append((canvas_tag, s))
+
+    # Register click handlers outside any group context
+    for i, (canvas_tag, s) in enumerate(card_info):
+        hreg_tag = f"sugg_hreg_{i}"
+        with dpg.item_handler_registry(tag=hreg_tag):
+            dpg.add_item_clicked_handler(callback=_make_suggestion_callback(s, i))
+        dpg.bind_item_handler_registry(canvas_tag, hreg_tag)
+
+    _sugg_card_count = len(card_info)
+
+
+def _sugg_nav(direction: int):
+    global _sugg_current_cat_idx, _sugg_playing_card_idx
+    if not dpg.does_item_exist("suggestion_panel") or not _sugg_last_suggestions:
+        return
+    available_cats, _ = _get_sugg_cat_groups(_sugg_last_suggestions)
+    if not available_cats:
+        return
+    new_idx = (_sugg_current_cat_idx + direction) % len(available_cats)
+    _sugg_playing_card_idx = None
+    dpg.delete_item("suggestion_panel", children_only=True)
+    _build_suggestion_cards(_sugg_last_suggestions, cat_idx=new_idx)
+
+
+def _make_suggestion_callback(sug, card_idx: int):
     def callback(sender=None, app_data=None):
+        global _sugg_playing_card_idx
+        _sugg_playing_card_idx = card_idx
         _apply_suggestion(sug)
     return callback
 
 
+def _best_voice_leading(root: str, quality: str, base_oct: int,
+                        prev_cell) -> tuple:
+    """Return (rotation, octave) that minimises voice-leading distance from prev_cell."""
+    from klo_chords.chords import QUALITY_INTERVALS
+    from klo_chords.sound import _stack_root_position
+
+    if prev_cell is None or prev_cell.is_empty():
+        return 0, base_oct
+
+    prev_notes = prev_cell.get_notes()
+    if not prev_notes:
+        return 0, base_oct
+
+    prev_pcs   = [note_to_pc(n) for n in prev_notes]
+    prev_root  = note_to_pc(prev_cell.root)
+    prev_midis = _stack_root_position(prev_pcs, prev_cell.effective_octave(), prev_root)
+
+    intervals  = QUALITY_INTERVALS.get(quality, [0, 4, 7])
+    n_rot      = len(intervals)
+    root_pc    = note_to_pc(root)
+
+    best_rot, best_oct = 0, base_oct
+    best_dist = float("inf")
+
+    for oct in range(max(0, base_oct - 1), min(9, base_oct + 2)):
+        for rot in range(n_rot):
+            temp = ProgCell()
+            temp.root, temp.quality = root, quality
+            temp.rotation, temp.base_octave, temp.voicing_idx = rot, oct, 0
+            notes = temp.get_notes()
+            if not notes:
+                continue
+            pcs   = [note_to_pc(n) for n in notes]
+            midis = _stack_root_position(pcs, oct, root_pc)
+            if not all(0 <= m <= 127 for m in midis):
+                continue
+            dist = sum(min(abs(m - p) for p in prev_midis) for m in midis)
+            if dist < best_dist:
+                best_dist, best_rot, best_oct = dist, rot, oct
+
+    return best_rot, best_oct
+
+
 def _apply_suggestion(sug):
-    """Apply a suggestion to the currently selected cell."""
+    """Apply suggestion to the selected cell, play a preview, keep panel open."""
     if _prog_selected_idx is None:
         return
     from klo_chords.undo_manager import get_undo_manager
     um = get_undo_manager()
     old_cell = copy.deepcopy(_prog_cells[_prog_selected_idx])
 
+    cur = _prog_cells[_prog_selected_idx]
+    base_oct = cur.base_octave if not cur.is_empty() else 3
+
+    def _non_empty(idx):
+        return 0 <= idx < PROG_CELLS_TOTAL and not _prog_cells[idx].is_empty()
+
+    left_idx = _prog_selected_idx - 1
+    up_idx   = _prog_selected_idx - PROG_COLS
+    if _non_empty(left_idx):
+        ref = _prog_cells[left_idx]
+    elif _non_empty(up_idx):
+        ref = _prog_cells[up_idx]
+    else:
+        ref = None
+        for dist in range(1, PROG_CELLS_TOTAL):
+            for candidate in (_prog_selected_idx - dist, _prog_selected_idx + dist):
+                if _non_empty(candidate):
+                    ref = _prog_cells[candidate]
+                    break
+            if ref is not None:
+                break
+
+    best_rot, best_oct = _best_voice_leading(sug.root, sug.quality, base_oct, ref)
+
     def do_apply():
         cell = _prog_cells[_prog_selected_idx]
-        cell.root = sug.root
-        cell.quality = sug.quality
-        cell.rotation = 0
-        cell.base_octave = 3
+        cell.root       = sug.root
+        cell.quality    = sug.quality
+        cell.rotation   = best_rot
+        cell.base_octave = best_oct
         cell.voicing_idx = 0
 
     def undo_apply():
@@ -1927,83 +2110,6 @@ def _apply_suggestion(sug):
     um.do(do_apply, undo_apply, description=f"apply {sug.display_name()}")
     _rebuild_progression_grid()
     _update_prog_detail(_prog_selected_idx)
-    # Hide suggestion panel
-    if dpg.does_item_exist("suggestion_panel"):
-        dpg.configure_item("suggestion_panel", show=False)
+    _play_prog_cell(_prog_selected_idx, force=True)
 
 
-def _toggle_advanced():
-    """Toggle visibility of advanced chord suggestions."""
-    if not dpg.does_item_exist("suggestion_group"):
-        return
-    # Simple toggle: show/hide all advanced items
-    # We just rebuild the suggestions with hidden=False
-    # This is a quick approach
-    if dpg.does_item_exist("show_advanced_btn"):
-        label = dpg.get_item_label("show_advanced_btn")
-        if label == "Show Advanced...":
-            dpg.set_item_label("show_advanced_btn", "Hide Advanced")
-            # Show all hidden suggestions — rebuild is simplest
-            _rebuild_suggestions_with_advanced(True)
-        else:
-            dpg.set_item_label("show_advanced_btn", "Show Advanced...")
-            _rebuild_suggestions_with_advanced(False)
-
-
-def _rebuild_suggestions_with_advanced(show_advanced: bool):
-    """Rebuild the suggestion panel, optionally showing advanced chords."""
-    if _prog_selected_idx is None:
-        return
-
-    from klo_chords.chord_suggestions import get_suggestions
-    suggestions = get_suggestions(
-        _prog_cells, _prog_selected_idx, _prog_key, _prog_scale,
-        include_sevenths=_prog_sevenths
-    )
-
-    if not dpg.does_item_exist("suggestion_panel"):
-        return
-    dpg.delete_item("suggestion_panel", children_only=True)
-    dpg.configure_item("suggestion_panel", show=True)
-
-    with dpg.group(parent="suggestion_panel", tag="suggestion_group"):
-        dpg.add_text("Chord Suggestions", color=COLOR_ACCENT)
-        dpg.add_separator()
-        dpg.add_spacer(height=4)
-
-        cat_colors = {
-            "safe": [80, 200, 120, 255],
-            "borrowed": [220, 200, 60, 255],
-            "secondary_dominant": [240, 160, 40, 255],
-            "chromatic_mediant": [160, 100, 220, 255],
-            "advanced": [120, 120, 120, 255],
-        }
-
-        current_cat = None
-        for s in suggestions:
-            if s.category != current_cat:
-                current_cat = s.category
-                color = cat_colors.get(current_cat, [200, 200, 200, 255])
-                cat_name = current_cat.replace("_", " ").title()
-                dpg.add_text(f"  {cat_name}", color=color)
-
-            if s.hidden and not show_advanced:
-                continue
-
-            with dpg.group(horizontal=True):
-                dpg.add_spacer(width=12)
-                dpg.add_button(
-                    label=s.display_name(),
-                    width=200, height=22,
-                    callback=_make_suggestion_callback(s),
-                )
-                if s.resolution_target:
-                    dpg.add_text(f"→ {s.resolution_target}",
-                                 color=[180, 200, 220, 255])
-
-        dpg.add_spacer(height=4)
-        lbl = "Hide Advanced" if show_advanced else "Show Advanced..."
-        dpg.add_button(label=lbl,
-                       tag="show_advanced_btn",
-                       callback=lambda: _toggle_advanced(),
-                       width=160)

@@ -796,6 +796,11 @@ def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int 
     _engine.play_notes(freqs, amps, notes)
 
 
+def reset_note_history():
+    """Clear toggle history so the next play is not treated as a toggle-off."""
+    _engine._note_history = []
+
+
 def stop_current():
     global _current_notes, _sub_osc_freq, _last_root_midi, _lowest_midi
     _current_notes = []
