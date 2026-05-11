@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.8] - 2026-05-11
+
+### Added
+- **Suggestion keybind labels** — each suggestion card shows its keyboard shortcut (`opt + 1`–`opt + 9` on macOS, `alt + 1`–`alt + 9` on Windows/Linux) in the top-right corner, matching the style used in the progression grid.
+- **`Alt/Opt + #` plays suggestion** — pressing `Alt`/`Option` + a number key plays (or toggles off) the corresponding suggestion card without affecting selection.
+- **`Shift + Alt/Opt + #` range-selects suggestions** — extends the selection from the anchor card to the numbered card, same behavior as Shift+click in the main grid.
+- **`Cmd/Ctrl + Alt/Opt + #` toggle-selects suggestions** — adds or removes the numbered card from the current selection, same as Cmd/Ctrl+click.
+- **Suggestion multi-select** — Shift+click for range select, Cmd/Ctrl+click to toggle individual cards on and off within an existing selection.
+- **Copy from suggestions** — `Ctrl/Cmd+C` when suggestion cards are selected copies them with proper voice-leading (rotation and octave) computed via chained `_best_voice_leading`, so pasting into the grid produces smooth transitions.
+- **Progression Import/Export** — Export and Import buttons (`.kloc` format, JSON) save and restore the full grid including key, scale, sevenths setting, and all cell data. Native file dialogs: Finder save/open sheets on macOS (via `osascript`), tkinter subprocess on Windows/Linux to avoid NSApplication conflicts.
+
+### Fixed
+- **Suggestion toggle-off** — clicking an already-playing suggestion card correctly stops playback; previously the toggle check could fail if voice-leading produced different parameters on the second click.
+- **Inversion display race condition** — progression cell inversion label now always reads from `_stack_root_position` output instead of `get_current_midi_notes()`, eliminating the stale-chord flash when applying a suggestion.
+- **Sub-oscillator skipped in inversion detection** — when "Add Bass Root Note" is enabled, the extra sub-bass note is stripped before detecting the bass pitch class, so chords no longer always report Root Position.
+
 ## [0.5.7] - 2026-05-10
 
 ### Fixed (ui-cleanup)

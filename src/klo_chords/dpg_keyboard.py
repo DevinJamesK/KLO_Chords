@@ -25,6 +25,7 @@ import sys
 _ctrl_held  = False
 _shift_held = False
 _super_held = False
+_alt_held   = False
 
 # ── macOS Command key codes (from DPG key handler, not GLFW) ─────────────────
 # On macOS, DPG reports Cmd press as 527 and release as 663.
@@ -53,6 +54,11 @@ def mod_is_down() -> bool:
     Use this for cross-platform modifier+click operations (e.g. toggle selection).
     """
     return _ctrl_held or _super_held
+
+
+def alt_is_down() -> bool:
+    """Return True if Alt/Option key is currently held."""
+    return _alt_held
 
 
 def toggle_is_down() -> bool:
@@ -88,7 +94,8 @@ def setup():
 
 
 def poll():
-    """Call once per frame to update Ctrl/Shift key state via DPG is_key_down()."""
-    global _ctrl_held, _shift_held
+    """Call once per frame to update Ctrl/Shift/Alt key state via DPG is_key_down()."""
+    global _ctrl_held, _shift_held, _alt_held
     _ctrl_held  = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
     _shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
+    _alt_held   = dpg.is_key_down(dpg.mvKey_LAlt) or dpg.is_key_down(dpg.mvKey_RAlt)

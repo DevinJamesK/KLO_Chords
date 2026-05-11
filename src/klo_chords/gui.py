@@ -34,7 +34,7 @@ from klo_chords.state import (
     on_key_change, on_scale_change, on_sevenths_toggle,
     on_next_voicing, on_prev_voicing, on_key_press,
     on_prog_key_change, on_prog_scale_change, on_prog_sevenths_toggle,
-    on_prog_fill, on_prog_clear_all, on_prog_cell_click,
+    on_prog_fill, on_prog_clear_all, on_prog_export, on_prog_import, on_prog_cell_click,
     on_prog_cell_root_prev, on_prog_cell_root_next,
     on_prog_cell_quality_prev, on_prog_cell_quality_next,
     on_prog_cell_inversion_prev, on_prog_cell_inversion_next,
@@ -361,14 +361,20 @@ def _build_progression_tab():
         dpg.add_spacer(width=6)
         dpg.add_combo(items=["Insert", "Replace", "Swap"],
                       default_value="Replace",
-                      tag="paste_mode_combo", width=100,
+                      tag="paste_mode_combo", width=108,
                       callback=on_paste_mode_change)
-        dpg.add_spacer(width=20)
-        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=8)
+        dpg.add_text("Paste Shape", color=COLOR_TEXT_DIM)
         dpg.add_combo(items=["Linear", "Preserve Shape"],
                       default_value="Preserve Shape",
-                      tag="paste_shape_combo", width=150,
+                      tag="paste_shape_combo", width=120,
                       callback=on_paste_shape_change)
+        dpg.add_spacer(width=120)
+        dpg.add_button(label="Export", width=100,
+                       tag="prog_export_btn", callback=on_prog_export)
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Import", width=100,
+                       tag="prog_import_btn", callback=on_prog_import)
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
@@ -708,6 +714,26 @@ def build_ui():
                                     [255, 255, 255, 255])   # white text
                 dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
         dpg.bind_item_theme("prog_clear_btn", clear_theme)
+
+    if dpg.does_item_exist("prog_export_btn"):
+        with dpg.theme() as export_theme:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        [60, 130, 80, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,  [75, 160, 100, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,   [40, 100, 60, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_Text,           [255, 255, 255, 255])
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
+        dpg.bind_item_theme("prog_export_btn", export_theme)
+
+    if dpg.does_item_exist("prog_import_btn"):
+        with dpg.theme() as import_theme:
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        [60, 130, 80, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,  [75, 160, 100, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,   [40, 100, 60, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_Text,           [255, 255, 255, 255])
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
+        dpg.bind_item_theme("prog_import_btn", import_theme)
 
     # ── Initialize ──────────────────────────────────────────────────────────────
     midi_tab.init()

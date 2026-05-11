@@ -339,6 +339,116 @@ def on_prog_clear_all(sender=None, app_data=None):
     _select_prog_cell(0)
 
 
+import platform as _platform
+import subprocess as _subprocess
+import sys as _sys
+
+
+def _native_save_path(title: str, default_name: str, ext: str) -> str:
+    """Return a save path from the OS-native dialog, or '' if cancelled."""
+    if _platform.system() == "Darwin":
+        script = (
+            f'POSIX path of (choose file name with prompt "{title}"'
+            f' default name "{default_name}")'
+        )
+        r = _subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        path = r.stdout.strip()
+        if path and not path.endswith(ext):
+            path += ext
+        return path
+    code = (
+        "import tkinter as tk; from tkinter import filedialog\n"
+        "root = tk.Tk(); root.withdraw()\n"
+        f"p = filedialog.asksaveasfilename(title={title!r}, defaultextension={ext!r},\n"
+        f"    filetypes=[('KLO Chords','*{ext}'),('All files','*.*')],\n"
+        f"    initialfile={default_name!r})\n"
+        "root.destroy(); print(p or '', end='')\n"
+    )
+    r = _subprocess.run([_sys.executable, "-c", code], capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def _native_open_path(title: str, ext: str) -> str:
+    """Return an open path from the OS-native dialog, or '' if cancelled."""
+    if _platform.system() == "Darwin":
+        script = f'POSIX path of (choose file with prompt "{title}")'
+        r = _subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+        return r.stdout.strip()
+    code = (
+        "import tkinter as tk; from tkinter import filedialog\n"
+        "root = tk.Tk(); root.withdraw()\n"
+        f"p = filedialog.askopenfilename(title={title!r},\n"
+        f"    filetypes=[('KLO Chords','*{ext}'),('All files','*.*')])\n"
+        "root.destroy(); print(p or '', end='')\n"
+    )
+    r = _subprocess.run([_sys.executable, "-c", code], capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def on_prog_export(sender=None, app_data=None):
+    """Export the progression grid to a .kloc file via native save dialog."""
+    import json
+    path = _native_save_path("Export Progression", "progression.kloc", ".kloc")
+    if not path:
+        return
+    data = {
+        "version": 1,
+        "key": _prog_key,
+        "scale": _prog_scale,
+        "sevenths": _prog_sevenths,
+        "cells": [
+            {
+                "root": cell.root,
+                "quality": cell.quality,
+                "rotation": cell.rotation,
+                "base_octave": cell.base_octave,
+                "voicing_idx": cell.voicing_idx,
+            }
+            for cell in _prog_cells
+        ],
+    }
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def on_prog_import(sender=None, app_data=None):
+    """Import a .kloc progression file via native open dialog."""
+    import json
+    path = _native_open_path("Import Progression", ".kloc")
+    if not path:
+        return
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except Exception:
+        return
+    global _prog_key, _prog_scale, _prog_sevenths
+    if "key" in data:
+        _prog_key = data["key"]
+        if dpg.does_item_exist("prog_key_combo"):
+            dpg.set_value("prog_key_combo", _prog_key)
+    if "scale" in data:
+        _prog_scale = data["scale"]
+        if dpg.does_item_exist("prog_scale_combo"):
+            dpg.set_value("prog_scale_combo", _prog_scale)
+    if "sevenths" in data:
+        _prog_sevenths = data["sevenths"]
+        if dpg.does_item_exist("prog_sevenths_toggle"):
+            dpg.set_value("prog_sevenths_toggle", _prog_sevenths)
+    stop_current()
+    for i, cell_data in enumerate(data.get("cells", [])):
+        if i >= PROG_CELLS_TOTAL:
+            break
+        cell = _prog_cells[i]
+        cell.root = cell_data.get("root")
+        cell.quality = cell_data.get("quality", "M")
+        cell.rotation = cell_data.get("rotation", 0)
+        cell.base_octave = cell_data.get("base_octave", 3)
+        cell.voicing_idx = cell_data.get("voicing_idx", 0)
+    _rebuild_progression_grid()
+    _select_prog_cell(0)
+
+
 
 
 def on_prog_cell_click(sender, app_data, user_data):
@@ -544,8 +654,35 @@ def _get_degree_for_col(col: int) -> str:
 
 def on_key_press(sender, app_data, user_data):
     global _current_tab
-    # Don't fire if platform-native modifier is held (conflicts with shortcuts)
     from klo_chords import dpg_keyboard
+    # Alt+key: play/select suggestion cards
+    # Shift+Alt → range select, Cmd/Ctrl+Alt → single toggle, Alt alone → play
+    if dpg_keyboard.alt_is_down():
+        if _current_tab == "tab_progression" and dpg.does_item_exist("suggestion_panel"):
+            card_idx = user_data
+            available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
+            if available_cats:
+                visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
+                if card_idx < len(visible):
+                    global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
+                    if dpg_keyboard.shift_is_down():
+                        _sugg_range_select(card_idx)
+                    elif dpg_keyboard.toggle_is_down():
+                        _toggle_suggestion_selection(card_idx)
+                    else:
+                        if card_idx == _sugg_playing_card_idx and is_playing():
+                            stop_current()
+                            from klo_chords.midi_tab import stop_midi_notes
+                            stop_midi_notes()
+                            _sugg_playing_card_idx = None
+                        else:
+                            _sugg_selected_set = {card_idx}
+                            _sugg_selection_anchor = card_idx
+                            _sugg_playing_card_idx = card_idx
+                            _apply_suggestion(visible[card_idx])
+                            _rebuild_sugg_selection_highlights()
+        return
+    # Don't fire if platform-native modifier is held (conflicts with shortcuts)
     if dpg_keyboard.toggle_is_down():
         return
     if _current_tab == "tab_chords":
@@ -997,7 +1134,9 @@ def _update_prog_piano(cell: ProgCell):
     else:
         chord_midi = midi_notes
 
-    bass_midi = chord_midi[0] if chord_midi else -1
+    # Always use _stack_root_position output for inversion — live notes carry
+    # the sub bass note and may still reflect the previous chord at call time.
+    bass_midi = midi_notes[0] if midi_notes else -1
 
     # Display octave always matches the effective octave.
     if dpg.does_item_exist("prog_detail_octave"):
@@ -1005,8 +1144,7 @@ def _update_prog_piano(cell: ProgCell):
 
     # Calculate the octave range so all notes fit in the 2-octave display
     if midi_notes:
-        lowest_midi = min(midi_notes)
-        start_octave = (lowest_midi // 12) + 1
+        start_octave = (min(midi_notes) // 12) + 1
     else:
         start_octave = 3
 
@@ -1019,7 +1157,7 @@ def _update_prog_piano(cell: ProgCell):
 
     inv_name = _get_inversion_name(root_pc, bass_midi % 12)
     if dpg.does_item_exist("prog_detail_inv_name"):
-        notes_str = "  ".join(_midi_to_note_name(m) for m in chord_midi)
+        notes_str = "  ".join(_midi_to_note_name(m) for m in midi_notes)
         dpg.set_value("prog_detail_inv_name", f"{inv_name}  ({notes_str})")
 
 
@@ -1341,8 +1479,29 @@ _prog_clipboard: List[dict] = []
 
 
 def on_prog_copy(sender=None, app_data=None):
-    """Copy selected cell(s) to clipboard."""
+    """Copy selected cell(s) or selected suggestions to clipboard."""
     global _prog_clipboard
+    # If suggestions are selected, copy those with chained voice-leading
+    if _sugg_selected_set and _sugg_last_suggestions:
+        available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
+        if available_cats:
+            visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
+            ref = _prog_cells[_prog_selected_idx] if _prog_selected_idx is not None else None
+            _prog_clipboard = []
+            for i in sorted(_sugg_selected_set):
+                if i >= len(visible):
+                    continue
+                s = visible[i]
+                base_oct = ref.base_octave if ref and not ref.is_empty() else 3
+                best_rot, best_oct = _best_voice_leading(s.root, s.quality, base_oct, ref)
+                _prog_clipboard.append({
+                    "root": s.root, "quality": s.quality,
+                    "rotation": best_rot, "base_octave": best_oct, "voicing_idx": 0,
+                })
+                ref = ProgCell()
+                ref.root, ref.quality = s.root, s.quality
+                ref.rotation, ref.base_octave = best_rot, best_oct
+            return
     sel = _get_selection()
     if not sel:
         return
@@ -1855,11 +2014,13 @@ def on_redo(sender=None, app_data=None):
 
 # ── Suggestion panel integration ───────────────────────────────────────────────
 
-_SUGG_IDX_BASE          = 500   # well above the 32 grid-cell indices
-_sugg_card_count        = 0
-_sugg_current_cat_idx:  int       = 0
-_sugg_last_suggestions: list      = []
-_sugg_playing_card_idx: Optional[int] = None
+_SUGG_IDX_BASE           = 500   # well above the 32 grid-cell indices
+_sugg_card_count         = 0
+_sugg_current_cat_idx:   int          = 0
+_sugg_last_suggestions:  list         = []
+_sugg_playing_card_idx:  Optional[int] = None
+_sugg_selected_set:      Set[int]     = set()   # card indices of selected suggestions
+_sugg_selection_anchor:  Optional[int] = None   # anchor for Shift range-select
 
 _CATS_ORDERED = ["safe", "borrowed", "secondary_dominant", "chromatic_mediant", "advanced"]
 
@@ -1907,7 +2068,9 @@ _CAT_NAMES = {
 
 
 def _refresh_suggestion_panel():
-    global _sugg_playing_card_idx
+    global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
+    _sugg_selected_set = set()
+    _sugg_selection_anchor = None
     if _prog_selected_idx is None:
         return
     from klo_chords.chord_suggestions import get_suggestions
@@ -1998,9 +2161,11 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         dpg.add_drawlist(tag=canvas_tag,
                          width=PROG_CELL_W, height=PROG_CELL_H,
                          parent=row_grp)
+        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        sugg_lbl = f"{_mod} + {i + 1}" if i < 9 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=False)
+                       show_keybind=True, keybind_label=sugg_lbl)
         dpg.add_spacer(width=6, parent=row_grp)
         card_info.append((canvas_tag, s))
 
@@ -2014,8 +2179,50 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
     _sugg_card_count = len(card_info)
 
 
+def _toggle_suggestion_selection(card_idx: int):
+    """Cmd/Ctrl: toggle a single card in/out of selection."""
+    global _sugg_selected_set, _sugg_selection_anchor
+    if card_idx in _sugg_selected_set:
+        _sugg_selected_set.discard(card_idx)
+    else:
+        _sugg_selected_set.add(card_idx)
+        _sugg_selection_anchor = card_idx
+    _rebuild_sugg_selection_highlights()
+
+
+def _sugg_range_select(card_idx: int):
+    """Shift: select all cards between the anchor and card_idx."""
+    global _sugg_selected_set, _sugg_selection_anchor
+    anchor = _sugg_selection_anchor if _sugg_selection_anchor is not None else card_idx
+    lo, hi = min(anchor, card_idx), max(anchor, card_idx)
+    _sugg_selected_set = set(range(lo, hi + 1))
+    _rebuild_sugg_selection_highlights()
+
+
+def _rebuild_sugg_selection_highlights():
+    from klo_chords.chords import ProgCell
+    from klo_chords.chord_box import draw_prog_cell
+    available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
+    if not available_cats:
+        return
+    current_cat = available_cats[_sugg_current_cat_idx]
+    for i, s in enumerate(cat_groups.get(current_cat, [])):
+        canvas_tag = f"sugg_canvas_{i}"
+        if not dpg.does_item_exist(canvas_tag):
+            continue
+        cell = ProgCell()
+        cell.root, cell.quality = s.root, s.quality
+        cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
+        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        sugg_lbl = f"{_mod} + {i + 1}" if i < 9 else ""
+        draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
+                       selected=(i in _sugg_selected_set),
+                       key=_prog_key, scale=_prog_scale,
+                       show_keybind=True, keybind_label=sugg_lbl)
+
+
 def _sugg_nav(direction: int):
-    global _sugg_current_cat_idx, _sugg_playing_card_idx
+    global _sugg_current_cat_idx, _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
     if not dpg.does_item_exist("suggestion_panel") or not _sugg_last_suggestions:
         return
     available_cats, _ = _get_sugg_cat_groups(_sugg_last_suggestions)
@@ -2023,15 +2230,33 @@ def _sugg_nav(direction: int):
         return
     new_idx = (_sugg_current_cat_idx + direction) % len(available_cats)
     _sugg_playing_card_idx = None
+    _sugg_selected_set = set()
+    _sugg_selection_anchor = None
     dpg.delete_item("suggestion_panel", children_only=True)
     _build_suggestion_cards(_sugg_last_suggestions, cat_idx=new_idx)
 
 
 def _make_suggestion_callback(sug, card_idx: int):
     def callback(sender=None, app_data=None):
-        global _sugg_playing_card_idx
-        _sugg_playing_card_idx = card_idx
-        _apply_suggestion(sug)
+        global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
+        from klo_chords import dpg_keyboard
+        if dpg_keyboard.shift_is_down():
+            _sugg_range_select(card_idx)
+        elif dpg_keyboard.toggle_is_down():
+            _toggle_suggestion_selection(card_idx)
+        else:
+            # Toggle off if this card is already sounding
+            if card_idx == _sugg_playing_card_idx and is_playing():
+                stop_current()
+                from klo_chords.midi_tab import stop_midi_notes
+                stop_midi_notes()
+                _sugg_playing_card_idx = None
+                return
+            _sugg_selected_set = {card_idx}
+            _sugg_selection_anchor = card_idx
+            _sugg_playing_card_idx = card_idx
+            _apply_suggestion(sug)
+            _rebuild_sugg_selection_highlights()
     return callback
 
 

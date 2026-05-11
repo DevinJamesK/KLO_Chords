@@ -16,7 +16,8 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 - **Arrow key editing** — `←/→` cycles inversion, `↑/↓` cycles quality.
 - **Multi-select** — `Shift+Click` range select, `Ctrl/Cmd+Click` toggle. Copy/Paste with Replace, Insert, Swap, and Preserve-Shape modes.
 - **Undo/Redo** — `Ctrl+Z` / `Ctrl+Y`, full history.
-- **Chord suggestions** — categorized suggestions (diatonic, borrowed, secondary dominants, chromatic mediants) for any selected cell.
+- **Chord suggestions** — categorized suggestions (diatonic, borrowed, secondary dominants, chromatic mediants) for any selected cell. Shift+click for range select, Cmd/Ctrl+click to toggle individual cards. `Ctrl/Cmd+C` copies selected suggestion cards with voice-leading data.
+- **Progression Import/Export** — save and restore the full grid as a `.kloc` file via native OS file dialogs.
 
 ### MIDI Tab
 - **MIDI output** — chord plays and note toggles send real-time MIDI note-on/off to the selected device and channel.
@@ -55,7 +56,18 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 | Row 2 | `A`–`K` |
 | Row 3 | `Z`–`,` |
 
-`Ctrl` + cell key = select without playing. `Shift+←/→` = step root note. `←/→` = cycle inversion. `↑/↓` = cycle quality. `Ctrl+↑/↓` = move row. `Delete` = clear selected.
+`Ctrl` + cell key = select without playing. `Shift` + cell key = toggle-select cell. `Shift+←/→` = step root note. `←/→` = cycle inversion. `↑/↓` = cycle quality. `Ctrl+↑/↓` = move row. `Delete` = clear selected.
+
+**Suggestion panel** (visible when a progression cell is selected):
+
+| Shortcut | Action |
+|---|---|
+| `Alt/Opt + 1–9` | Play / toggle off that suggestion card |
+| `Shift + Alt/Opt + 1–9` | Range-select from anchor to card |
+| `Cmd/Ctrl + Alt/Opt + 1–9` | Toggle-select individual card |
+| `Shift+Click` | Range-select cards |
+| `Cmd/Ctrl+Click` | Toggle-select card |
+| `Ctrl/Cmd+C` | Copy selected cards with voice-leading |
 
 ## Quick Start
 
