@@ -1304,7 +1304,7 @@ def _refresh_progression():
         if _prog_cells[i].root is not None:
             _prog_cells[i].clear()
     _rebuild_progression_grid()
-    _log_progression_row(0)
+    _log_progression_row(0, _prog_cells, PROG_COLS)
     # Auto-select the first cell so arrow buttons work immediately
     if _prog_cells and not _prog_cells[0].is_empty():
         _select_prog_cell(0)
