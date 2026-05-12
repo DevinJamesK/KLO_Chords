@@ -51,7 +51,7 @@ def _asset_path(subdir: str, filename: str) -> str:
     """Return the path to a bundled asset file."""
     base = _frozen_base()
     if base is not None:
-        return str(base / "assets" / subdir / filename)
+        return str(base / "klo_chords" / "assets" / subdir / filename)
     return str(resources.files(PACKAGE).joinpath("assets", subdir, filename))
 
 
