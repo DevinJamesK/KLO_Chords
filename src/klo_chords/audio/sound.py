@@ -19,7 +19,7 @@ from typing import List
 import sounddevice as sd
 import numpy as np
 
-from klo_chords.chords import note_to_pc
+from klo_chords.core.chords import note_to_pc
 
 SAMPLE_RATE = 44100
 BLOCK_SIZE  = 512          # fallback; overridden by _get_blocksize() at stream creation

@@ -15,21 +15,21 @@ import os
 # draw_text() uses explicit pixel sizes and is unaffected by global font scale.
 _DISPLAY_SCALE = 2.0 if platform.system() == "Darwin" else 1.0
 
-import klo_chords.prefs as prefs
+import klo_chords.core.prefs as prefs
 
-from klo_chords.chords import KEY_NAMES, SCALE_TYPES
-from klo_chords.theme import (
+from klo_chords.core.chords import KEY_NAMES, SCALE_TYPES
+from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_BG_LIGHT, COLOR_TEXT_DIM, COLOR_TEXT,
     COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     font_path, font_path_fallback, icon_path,
     set_draw_font,
 )
-from klo_chords.piano import (
+from klo_chords.rendering.piano import (
     build_piano_keys, build_multi_octave_piano,
     PIANO_CANVAS_W, PIANO_CANVAS_H,
     PROG_PIANO_CANVAS_W, PROG_PIANO_CANVAS_H, PROG_PIANO_OCTAVES,
 )
-from klo_chords.chord_box import PROG_CELL_W, PROG_CELL_H, PROG_QUALITY_NAMES
+from klo_chords.rendering.chord_box import PROG_CELL_W, PROG_CELL_H, PROG_QUALITY_NAMES
 from klo_chords.state import (
     on_key_change, on_scale_change, on_sevenths_toggle,
     on_next_voicing, on_prev_voicing, on_key_press,
@@ -56,9 +56,9 @@ from klo_chords.state import (
 )
 
 
-from klo_chords.sound import get_settings as get_sound_settings
-import klo_chords.midi_tab as midi_tab
-from klo_chords.quality import quality_symbol
+from klo_chords.audio.sound import get_settings as get_sound_settings
+import klo_chords.audio.midi_engine as midi_tab
+from klo_chords.core.quality import quality_symbol
 
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
@@ -505,7 +505,7 @@ def _build_sound_tab():
             dpg.add_spacer(width=20)
             dpg.add_text("Audio Device:")
             dpg.add_spacer(width=4)
-            from klo_chords.sound import get_audio_devices, get_device_name
+            from klo_chords.audio.sound import get_audio_devices, get_device_name
             devices = get_audio_devices()
             device_names = [d["name"] for d in devices]
             saved_device = get_device_name()
@@ -801,7 +801,7 @@ def build_ui():
         dpg.add_key_press_handler(key=dpg.mvKey_Back, callback=on_prog_delete_selection)
 
 
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     dpg_keyboard.setup()
 
     # ── Main loop ──────────────────────────────────────────────────────────────
@@ -819,7 +819,7 @@ def build_ui():
 
 
 def _on_tab_shortcut(sender, app_data, user_data):
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     if not dpg_keyboard.toggle_is_down():
         return
     dpg.set_value("main_tab_bar", user_data)
@@ -828,7 +828,7 @@ def _on_tab_shortcut(sender, app_data, user_data):
 
 def _on_key_with_ctrl(sender, app_data, user_data):
     """Handle key presses that require platform-native modifier (Ctrl on Win, Cmd on Mac)."""
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     if not dpg_keyboard.toggle_is_down():
         return
     action = user_data
@@ -859,7 +859,7 @@ def main():
 def _apply_preferences():
     """Read preferences.json and push values into the sound engine."""
     prefs_data = prefs.load()
-    from klo_chords.sound import (
+    from klo_chords.audio.sound import (
         set_volume, set_enabled, set_mode,
         set_audio_quality, set_legato, set_playback_mode,
         set_random_velocity, set_velocity_range, set_base_octave,

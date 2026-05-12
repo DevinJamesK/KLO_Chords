@@ -9,9 +9,9 @@ Supports two display modes:
 import dearpygui.dearpygui as dpg
 from typing import List, Tuple, Optional
 
-from klo_chords.chords import ChordInfo, get_guitar_diagram, note_to_pc, pc_to_note
-from klo_chords.chord_shapes import OPEN_STRING_PCS
-from klo_chords.theme import (
+from klo_chords.core.chords import ChordInfo, get_guitar_diagram, note_to_pc, pc_to_note
+from klo_chords.core.chord_shapes import OPEN_STRING_PCS
+from klo_chords.rendering.theme import (
     COLOR_BG_LIGHT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_STRING, COLOR_FRET, COLOR_DOT, COLOR_ROOT_DOT,
     COLOR_MUTED, COLOR_OPEN,

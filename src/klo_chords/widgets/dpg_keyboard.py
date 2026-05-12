@@ -11,7 +11,7 @@ tracked via key press/release handlers since is_key_down() doesn't report it.
 On Windows/Linux, the Super/Win key is not used.
 
 Usage in build_ui():
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     dpg_keyboard.setup()
     # ... then in the main loop:
     while dpg.is_dearpygui_running():

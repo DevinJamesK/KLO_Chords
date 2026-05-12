@@ -10,27 +10,27 @@ from typing import List, Optional, Set
 
 import dearpygui.dearpygui as dpg
 
-import klo_chords.prefs as prefs
+import klo_chords.core.prefs as prefs
 
-from klo_chords.chords import (
+from klo_chords.core.chords import (
     ChordInfo, ProgCell, NOTE_NAMES, QUALITY_INTERVALS, SCALE_TYPES,
     get_diatonic_chords, get_all_voicings,
     get_scale_notes, note_to_pc, pc_to_note, get_degree_for_root,
     get_accidental_style,
 )
-from klo_chords.quality import quality_spelled, quality_symbol
-from klo_chords.fretboard import draw_fretboard, draw_mini_fretboard
-from klo_chords.chord_box import (
+from klo_chords.core.quality import quality_spelled, quality_symbol
+from klo_chords.rendering.fretboard import draw_fretboard, draw_mini_fretboard
+from klo_chords.rendering.chord_box import (
     draw_chord_label, draw_prog_cell,
     PROG_QUALITY_MAP, PROG_QUALITY_REVERSE_MAP, PROG_QUALITY_NAMES,
 )
-from klo_chords.piano import (
+from klo_chords.rendering.piano import (
     update_piano_keys, update_multi_octave_piano, clear_multi_octave_piano,
     build_multi_octave_piano,
     PROG_PIANO_OCTAVES,
 )
 
-from klo_chords.sound import (
+from klo_chords.audio.sound import (
     play_chord_notes, play_progression_notes, stop_current, reset_voice_leading,
     set_base_octave, set_playback_mode, set_legato, set_volume,
     set_mute, is_muted,
@@ -39,24 +39,19 @@ from klo_chords.sound import (
     get_settings as get_sound_settings,
     get_audio_devices, set_device, get_device_name,
 )
-from klo_chords.theme import (
+from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_CHORD_BORDER,
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER,
 )
 
-# ── Constants ──────────────────────────────────────────────────────────────────
-PROG_COLS = 8
-PROG_ROWS = 4
-PROG_CELLS_TOTAL = PROG_COLS * PROG_ROWS  # 32
-
-
-def _midi_to_note_name(midi: int) -> str:
-    """Convert MIDI note number to name+octave, e.g. 60 -> 'C4'."""
-    pc = midi % 12
-    octave = midi // 12 - 1
-    name = pc_to_note(pc)
-    return f"{name}{octave}"
+from klo_chords.core.constants import PROG_COLS, PROG_ROWS, PROG_CELLS_TOTAL
+from klo_chords.helpers.console_logging import (
+    midi_to_note_name as _midi_to_note_name,
+    sub_midi as _sub_midi,
+    fmt_event as _fmt_event,
+    log_progression_row as _log_progression_row,
+)
 
 
 # ── Global state ────────────────────────────────────────────────────────────────
@@ -96,36 +91,8 @@ def state() -> dict:
     )
 
 
-# ── Console logging ───────────────────────────────────────────────────────────────
-# Fixed-column format so fields stay aligned across all log lines.
-#
-# Event lines:
-#   [chord  3]  IV     Fmaj7     oct=3   F    A    C    E    F4   A4   C5   E5    sub:F3
-#   [cell   7]  IV     F         rot=0   F    A    C         F3   A3   C4         sub:--
-#
-# Row summary lines:
-#   [row 0]  0:C      1:Dm     2:Em     3:F      4:G      5:Am     6:Bdim   7:--
-
-_NOTE_COL_W  = 4   # width of each note name cell  ("Bb  " / "C#  ")
-_MIDI_COL_W  = 5   # width of each MIDI name cell  ("Bb3  " / "C#4  ")
-_MAX_NOTES   = 4   # triads=3, 7ths=4
-
-
-def _sub_midi(root_pc: int, midi_notes: list) -> Optional[int]:
-    """Return the sub oscillator MIDI note, or None when disabled/unavailable."""
-    if not get_sound_settings().get("sub_oscillator") or not midi_notes:
-        return None
-    lowest = min(midi_notes)
-    sub = root_pc + 12 * ((lowest - 1 - root_pc) // 12)
-    return max(0, sub)
-
-
-def _fmt_event(tag: str, degree: str, chord_name: str, context: str,
-               notes: list, midi_names: list, sub_name: str = "") -> str:
-    note_str = "".join(n.ljust(_NOTE_COL_W) for n in notes).ljust(_NOTE_COL_W * _MAX_NOTES)
-    midi_str = "".join(n.ljust(_MIDI_COL_W) for n in midi_names).ljust(_MIDI_COL_W * _MAX_NOTES)
-    sub_col  = f"sub:{sub_name}" if sub_name else "sub:--"
-    return f"{tag:<11}  {degree:<6}  {chord_name:<10}  {context:<7}  {note_str}  {midi_str}  {sub_col}"
+# Console logging helpers have been extracted to klo_chords.helpers.console_logging.
+# Aliased imports (_midi_to_note_name, _sub_midi, _fmt_event, _log_progression_row) at top of file.
 
 
 # ── Play helpers ─────────────────────────────────────────────────────────────────
@@ -136,17 +103,17 @@ def _play_current_chord():
         was_playing = is_playing()
         play_chord_notes(ci.notes, root_note=ci.root)
         base_oct = get_sound_settings()["base_octave"]
-        from klo_chords.sound import _stack_root_position
+        from klo_chords.audio.sound import _stack_root_position
         pcs = [note_to_pc(n) for n in ci.notes]
         root_pc = note_to_pc(ci.root)
         midis = _stack_root_position(pcs, base_oct, root_pc)
         midi_names = [_midi_to_note_name(m) for m in midis]
-        sub = _sub_midi(root_pc, midis)
+        sub = _sub_midi(root_pc, midis, get_sound_settings())
         sub_name = _midi_to_note_name(sub) if sub is not None else ""
         q = ci.quality if ci.quality != "M" else ""
         tag = f"[chord {_selected_chord_idx:2d}]"
         print(_fmt_event(tag, ci.degree, ci.root + q, f"oct={base_oct}", ci.notes, midi_names, sub_name))
-        from klo_chords.midi_tab import send_chord_midi, stop_midi_notes
+        from klo_chords.audio.midi_engine import send_chord_midi, stop_midi_notes
         if was_playing and not is_playing():
             stop_midi_notes()
         else:
@@ -161,16 +128,16 @@ def _play_prog_cell(idx: int, force: bool = False):
         if not cell.is_empty():
             notes = cell.get_notes()
             if notes:
-                from klo_chords.sound import _stack_root_position
+                from klo_chords.audio.sound import _stack_root_position
                 if force:
-                    from klo_chords.sound import reset_note_history
+                    from klo_chords.audio.sound import reset_note_history
                     reset_note_history()
                 pcs = [note_to_pc(n) for n in notes]
                 root_pc = note_to_pc(cell.root)
                 eff_oct = cell.effective_octave()
                 midis = _stack_root_position(pcs, eff_oct, root_pc)
                 midi_names = [_midi_to_note_name(m) for m in midis]
-                sub = _sub_midi(root_pc, midis)
+                sub = _sub_midi(root_pc, midis, get_sound_settings())
                 sub_name = _midi_to_note_name(sub) if sub is not None else ""
                 q = cell.quality if cell.quality != "M" else ""
                 degree = get_degree_for_root(cell.root, _prog_key, _prog_scale)
@@ -178,28 +145,13 @@ def _play_prog_cell(idx: int, force: bool = False):
                 print(_fmt_event(tag, degree, cell.root + q, f"rot={cell.rotation}", notes, midi_names, sub_name))
                 was_playing = is_playing()
                 play_progression_notes(notes, base_octave=eff_oct, root_pc=root_pc)
-                from klo_chords.midi_tab import send_chord_midi, stop_midi_notes
+                from klo_chords.audio.midi_engine import send_chord_midi, stop_midi_notes
                 if was_playing and not is_playing():
                     stop_midi_notes()
                 else:
                     all_midis = midis + ([sub] if sub is not None else [])
                     send_chord_midi(all_midis)
                 _prog_sounding_idx = idx
-
-
-def _log_progression_row(row: int):
-    start = row * PROG_COLS
-    cells = _prog_cells[start:start + PROG_COLS]
-    col_w = 9
-    entries = []
-    for i, cell in enumerate(cells):
-        if cell.is_empty():
-            label = "--"
-        else:
-            q = "" if cell.quality == "M" else cell.quality
-            label = cell.root + q
-        entries.append(f"{start + i}:{label}".ljust(col_w))
-    print(f"[row {row}]  " + " ".join(entries))
 
 
 # ── Tab switching ────────────────────────────────────────────────────────────────
@@ -214,7 +166,7 @@ def on_tab_change(sender, app_data):
     returning_to_same = app_data == _current_tab
     if not (coming_from_midi and returning_to_same):
         stop_current()
-        from klo_chords.midi_tab import stop_midi_notes
+        from klo_chords.audio.midi_engine import stop_midi_notes
         stop_midi_notes()
     _current_tab = app_data
 
@@ -458,7 +410,7 @@ def on_prog_import(sender=None, app_data=None):
 def on_prog_cell_click(sender, app_data, user_data):
     idx = user_data
     if 0 <= idx < len(_prog_cells):
-        from klo_chords import dpg_keyboard
+        from klo_chords.widgets import dpg_keyboard
         shift  = dpg_keyboard.shift_is_down()
         toggle = dpg_keyboard.toggle_is_down()  # Cmd on macOS, Ctrl otherwise
         if shift and toggle:
@@ -551,7 +503,7 @@ def _cell_in_midi_range(cell: ProgCell) -> bool:
     notes = cell.get_notes()
     if not notes:
         return True
-    from klo_chords.sound import _stack_root_position
+    from klo_chords.audio.sound import _stack_root_position
     pcs = [note_to_pc(n) for n in notes]
     root_pc = note_to_pc(cell.root) if cell.root else 0
     midi_notes = _stack_root_position(pcs, cell.effective_octave(), root_pc)
@@ -629,7 +581,7 @@ def on_prog_cell_arrow_press(sender, app_data, user_data):
         return
     if _prog_selected_idx is None:
         return
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     action = str(user_data)
     if action == "inv_prev":
         if dpg_keyboard.shift_is_down():
@@ -658,7 +610,7 @@ def _get_degree_for_col(col: int) -> str:
 
 def on_key_press(sender, app_data, user_data):
     global _current_tab
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     # Alt+key: play/select suggestion cards
     # Shift+Alt → range select, Cmd/Ctrl+Alt → single toggle, Alt alone → play
     if dpg_keyboard.alt_is_down():
@@ -678,7 +630,7 @@ def on_key_press(sender, app_data, user_data):
                         else:
                             if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
                                 stop_current()
-                                from klo_chords.midi_tab import stop_midi_notes
+                                from klo_chords.audio.midi_engine import stop_midi_notes
                                 stop_midi_notes()
                                 _sugg_playing_card_idx = None
                             else:
@@ -697,7 +649,7 @@ def on_key_press(sender, app_data, user_data):
                         else:
                             if card_idx == _sugg_playing_card_idx and is_playing():
                                 stop_current()
-                                from klo_chords.midi_tab import stop_midi_notes
+                                from klo_chords.audio.midi_engine import stop_midi_notes
                                 stop_midi_notes()
                                 _sugg_playing_card_idx = None
                             else:
@@ -740,7 +692,7 @@ def on_key_press(sender, app_data, user_data):
 def _save_prefs():
     """Collect current sound/UI state and persist to preferences.json."""
     s = get_sound_settings()
-    from klo_chords.fretboard import get_fretboard_mode
+    from klo_chords.rendering.fretboard import get_fretboard_mode
     prefs.save({
         "sound_enabled":   s.get("enabled", True),
         "volume":          int(round(s.get("volume", 0.75) * 100)),
@@ -760,7 +712,7 @@ def _save_prefs():
 
 
 def on_sound_enable_toggle(sender, app_data):
-    from klo_chords.sound import set_enabled
+    from klo_chords.audio.sound import set_enabled
     set_enabled(app_data)
     _save_prefs()
 
@@ -786,7 +738,7 @@ def on_audio_quality_change(sender, app_data):
     """Handle Audio Quality combo change. app_data is 'Smooth', 'Responsive', or 'Legacy'."""
     quality_map = {"Smooth": "smooth", "Responsive": "responsive", "Legacy": "legacy"}
     internal = quality_map.get(app_data, "smooth")
-    from klo_chords.sound import set_audio_quality
+    from klo_chords.audio.sound import set_audio_quality
     set_audio_quality(internal)
     _save_prefs()
 
@@ -805,19 +757,19 @@ def on_audio_device_change(sender, app_data):
 
 
 def on_random_velocity_toggle(sender, app_data):
-    from klo_chords.sound import set_random_velocity
+    from klo_chords.audio.sound import set_random_velocity
     set_random_velocity(app_data)
     _save_prefs()
 
 
 def on_vel_min_change(sender, app_data):
-    from klo_chords.sound import set_velocity_range
+    from klo_chords.audio.sound import set_velocity_range
     set_velocity_range(app_data, _get_vel_max())
     _save_prefs()
 
 
 def on_vel_max_change(sender, app_data):
-    from klo_chords.sound import set_velocity_range
+    from klo_chords.audio.sound import set_velocity_range
     set_velocity_range(_get_vel_min(), app_data)
     _save_prefs()
 
@@ -844,7 +796,7 @@ def on_legato_toggle(sender, app_data):
 
 
 def on_sub_oscillator_toggle(sender, app_data):
-    from klo_chords.sound import set_sub_oscillator
+    from klo_chords.audio.sound import set_sub_oscillator
     set_sub_oscillator(app_data)
     _save_prefs()
 
@@ -857,7 +809,7 @@ def on_reset_prefs(sender=None, app_data=None):
     except OSError:
         pass
     d = prefs.DEFAULTS
-    from klo_chords.sound import (
+    from klo_chords.audio.sound import (
         set_volume, set_enabled, set_mode, set_audio_quality,
         set_legato, set_playback_mode, set_random_velocity,
         set_velocity_range, set_base_octave, set_sub_oscillator,
@@ -900,7 +852,7 @@ def on_reset_prefs(sender=None, app_data=None):
     global _show_keybinds
     _show_keybinds = d["show_keybinds"]
 
-    from klo_chords.fretboard import set_fretboard_mode
+    from klo_chords.rendering.fretboard import set_fretboard_mode
     set_fretboard_mode("note" if d["show_note_names"] else "fret")
 
     _rebuild_chord_list()
@@ -931,7 +883,7 @@ def on_mute_toggle(sender=None, app_data=None):
             dpg.set_value("volume_slider", 0)
         else:
             # Restore to stored volume percentage
-            from klo_chords.sound import get_settings
+            from klo_chords.audio.sound import get_settings
             vol = get_settings()["volume"]
             dpg.set_value("volume_slider", int(round(vol * 100)))
     _update_volume_theme(is_muted())
@@ -939,7 +891,7 @@ def on_mute_toggle(sender=None, app_data=None):
 
 def on_fretboard_mode_change(sender, app_data):
     """Toggle fretboard between fret numbers and note names."""
-    from klo_chords.fretboard import set_fretboard_mode, get_fretboard_mode
+    from klo_chords.rendering.fretboard import set_fretboard_mode, get_fretboard_mode
     mode = get_fretboard_mode()
     new_mode = "note" if mode == "fret" else "fret"
     set_fretboard_mode(new_mode)
@@ -984,7 +936,7 @@ def init_show_keybinds(val: bool):
 def on_stop(sender=None, app_data=None):
     """Stop any currently playing chord (spacebar handler)."""
     stop_current()
-    from klo_chords.midi_tab import stop_midi_notes
+    from klo_chords.audio.midi_engine import stop_midi_notes
     stop_midi_notes()
 
 
@@ -1145,7 +1097,7 @@ def _update_prog_piano(cell: ProgCell):
             dpg.set_value("prog_detail_inv_name", "")
         return
 
-    from klo_chords.sound import _stack_root_position
+    from klo_chords.audio.sound import _stack_root_position
 
     eff_oct = cell.effective_octave()
     pcs = [note_to_pc(n) for n in notes]
@@ -1197,7 +1149,7 @@ def _update_prog_detail(idx: int):
     cell = _prog_cells[idx] if idx < len(_prog_cells) else ProgCell()
     row = idx // PROG_COLS + 1
     col = idx % PROG_COLS + 1
-    from klo_chords.chords import get_degree_for_root
+    from klo_chords.core.chords import get_degree_for_root
     real_degree = get_degree_for_root(cell.root, _prog_key, _prog_scale) if cell.root and not cell.is_empty() else "?"
     dpg.set_value("prog_detail_pos", f"R{row}, C{col} ({real_degree})")
 
@@ -1583,7 +1535,7 @@ def on_prog_paste(sender=None, app_data=None):
 
 def on_prog_delete_selection(sender=None, app_data=None):
     """Delete all selected cells (with undo)."""
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     sel = _get_selection()
     if not sel:
@@ -1621,7 +1573,7 @@ def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
         # Target empty — just fill it (no shift needed)
         old_tgt = copy.deepcopy(_prog_cells[tgt_idx])
         if with_undo:
-            from klo_chords.undo_manager import get_undo_manager
+            from klo_chords.core.undo_manager import get_undo_manager
             um = get_undo_manager()
             def do_fill():
                 _prog_cells[tgt_idx].root = src_data.root
@@ -1648,7 +1600,7 @@ def _do_insert(src_idx: int, tgt_idx: int, with_undo: bool = False):
                 range(tgt_idx, PROG_CELLS_TOTAL)]
 
     if with_undo:
-        from klo_chords.undo_manager import get_undo_manager
+        from klo_chords.core.undo_manager import get_undo_manager
         um = get_undo_manager()
 
         def do_insert():
@@ -1698,7 +1650,7 @@ def _do_replace(src_idx: int, tgt_idx: int, with_undo: bool = False):
     old_tgt = copy.deepcopy(_prog_cells[tgt_idx])
 
     if with_undo:
-        from klo_chords.undo_manager import get_undo_manager
+        from klo_chords.core.undo_manager import get_undo_manager
         um = get_undo_manager()
 
         def do_replace():
@@ -1733,7 +1685,7 @@ def _do_swap(src_idx: int, tgt_idx: int, with_undo: bool = False):
     old_tgt = copy.deepcopy(_prog_cells[tgt_idx])
 
     if with_undo:
-        from klo_chords.undo_manager import get_undo_manager
+        from klo_chords.core.undo_manager import get_undo_manager
         um = get_undo_manager()
 
         def do_swap():
@@ -1778,7 +1730,7 @@ def _do_paste(clipboard_data: list, mode: str):
     target = _prog_selected_idx if _prog_selected_idx is not None else 0
     shape = get_paste_shape()
 
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
 
     if mode == "replace":
@@ -1973,7 +1925,7 @@ def _paste_swap_backward(data: list, target: int):
 
 def on_prog_move_up(sender=None, app_data=None):
     """Move selection up one row."""
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     sel = sorted(_get_selection())
     if not sel or sel[0] < PROG_COLS:
@@ -1997,7 +1949,7 @@ def on_prog_move_up(sender=None, app_data=None):
 
 def on_prog_move_down(sender=None, app_data=None):
     """Move selection down one row."""
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     sel = sorted(_get_selection(), reverse=True)
     if not sel or sel[-1] >= PROG_CELLS_TOTAL - PROG_COLS:
@@ -2042,19 +1994,19 @@ def get_paste_mode() -> str:
 
 def on_undo(sender=None, app_data=None):
     """Ctrl+Z handler."""
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     um.undo()
     if _prog_sounding_idx is not None and _prog_cells[_prog_sounding_idx].is_empty():
         stop_prog_sound_for_idx(_prog_sounding_idx)
-        from klo_chords.midi_tab import stop_midi_notes
+        from klo_chords.audio.midi_engine import stop_midi_notes
         stop_midi_notes()
     _rebuild_progression_grid()
 
 
 def on_redo(sender=None, app_data=None):
     """Ctrl+Y handler."""
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     um.redo()
     _rebuild_progression_grid()
@@ -2089,7 +2041,7 @@ def _get_sugg_cat_groups(suggestions):
 _sugg_cat_text_themes: dict = {}
 
 def _get_cat_text_theme(color):
-    from klo_chords.theme import COLOR_CHORD_BG
+    from klo_chords.rendering.theme import COLOR_CHORD_BG
     key = tuple(color)
     if key not in _sugg_cat_text_themes:
         with dpg.theme() as t:
@@ -2126,7 +2078,7 @@ def _refresh_suggestion_panel():
     _sugg_selection_anchor = None
     if _prog_selected_idx is None:
         return
-    from klo_chords.chord_suggestions import get_suggestions, Suggestion
+    from klo_chords.core.chord_suggestions import get_suggestions, Suggestion
     suggestions = get_suggestions(
         _prog_cells, _prog_selected_idx, _prog_key, _prog_scale,
         include_sevenths=_prog_sevenths
@@ -2143,7 +2095,7 @@ def _refresh_suggestion_panel():
         )
         suggestions = [orig] + suggestions
 
-    from klo_chords.chord_box import PROG_CELL_H
+    from klo_chords.rendering.chord_box import PROG_CELL_H
     panel_h = PROG_CELL_H + 44
     p = "prog_cell_detail_group"
     if not dpg.does_item_exist("suggestion_panel"):
@@ -2168,8 +2120,8 @@ def _refresh_suggestion_panel():
 def _build_suggestion_cards(suggestions, cat_idx: int = 0):
     """Populate suggestion_panel with one category page of chord-cell-style cards."""
     global _sugg_card_count, _sugg_orig_card_count, _sugg_current_cat_idx, _sugg_last_suggestions
-    from klo_chords.chords import ProgCell
-    from klo_chords.chord_box import draw_prog_cell, PROG_CELL_W, PROG_CELL_H
+    from klo_chords.core.chords import ProgCell
+    from klo_chords.rendering.chord_box import draw_prog_cell, PROG_CELL_W, PROG_CELL_H
 
     for i in range(_sugg_card_count):
         hreg = f"sugg_hreg_{i}"
@@ -2295,8 +2247,8 @@ def _sugg_range_select(card_idx: int):
 
 
 def _rebuild_sugg_selection_highlights():
-    from klo_chords.chords import ProgCell
-    from klo_chords.chord_box import draw_prog_cell
+    from klo_chords.core.chords import ProgCell
+    from klo_chords.rendering.chord_box import draw_prog_cell
     available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
     if not available_cats:
         return
@@ -2354,7 +2306,7 @@ def _sugg_nav(direction: int):
 def _make_orig_suggestion_callback(sug):
     def callback(sender=None, app_data=None):
         global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
-        from klo_chords import dpg_keyboard
+        from klo_chords.widgets import dpg_keyboard
         if dpg_keyboard.shift_is_down():
             _sugg_range_select(_SUGG_ORIG_CARD_IDX)
         elif dpg_keyboard.toggle_is_down():
@@ -2362,7 +2314,7 @@ def _make_orig_suggestion_callback(sug):
         else:
             if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
                 stop_current()
-                from klo_chords.midi_tab import stop_midi_notes
+                from klo_chords.audio.midi_engine import stop_midi_notes
                 stop_midi_notes()
                 _sugg_playing_card_idx = None
                 return
@@ -2377,7 +2329,7 @@ def _make_orig_suggestion_callback(sug):
 def _make_suggestion_callback(sug, card_idx: int):
     def callback(sender=None, app_data=None):
         global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
-        from klo_chords import dpg_keyboard
+        from klo_chords.widgets import dpg_keyboard
         if dpg_keyboard.shift_is_down():
             _sugg_range_select(card_idx)
         elif dpg_keyboard.toggle_is_down():
@@ -2386,7 +2338,7 @@ def _make_suggestion_callback(sug, card_idx: int):
             # Toggle off if this card is already sounding
             if card_idx == _sugg_playing_card_idx and is_playing():
                 stop_current()
-                from klo_chords.midi_tab import stop_midi_notes
+                from klo_chords.audio.midi_engine import stop_midi_notes
                 stop_midi_notes()
                 _sugg_playing_card_idx = None
                 return
@@ -2401,8 +2353,8 @@ def _make_suggestion_callback(sug, card_idx: int):
 def _best_voice_leading(root: str, quality: str, base_oct: int,
                         prev_cell) -> tuple:
     """Return (rotation, octave) that minimises voice-leading distance from prev_cell."""
-    from klo_chords.chords import QUALITY_INTERVALS
-    from klo_chords.sound import _stack_root_position
+    from klo_chords.core.chords import QUALITY_INTERVALS
+    from klo_chords.audio.sound import _stack_root_position
 
     if prev_cell is None or prev_cell.is_empty():
         return 0, base_oct
@@ -2445,7 +2397,7 @@ def _apply_suggestion(sug):
     """Apply suggestion to the selected cell, play a preview, keep panel open."""
     if _prog_selected_idx is None:
         return
-    from klo_chords.undo_manager import get_undo_manager
+    from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     old_cell = copy.deepcopy(_prog_cells[_prog_selected_idx])
 

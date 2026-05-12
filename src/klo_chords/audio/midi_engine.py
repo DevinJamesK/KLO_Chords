@@ -6,7 +6,7 @@ import time
 
 import dearpygui.dearpygui as dpg
 
-from klo_chords.theme import COLOR_ACCENT, COLOR_TEXT_DIM
+from klo_chords.rendering.theme import COLOR_ACCENT, COLOR_TEXT_DIM
 
 try:
     import rtmidi as _rtmidi

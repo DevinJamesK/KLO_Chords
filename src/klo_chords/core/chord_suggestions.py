@@ -8,7 +8,7 @@ neighboring cells, categorized by harmonic function.
 from typing import List, Optional, Tuple, Dict
 from dataclasses import dataclass, field
 
-from klo_chords.chords import (
+from klo_chords.core.chords import (
     ChordInfo, ProgCell, NOTE_NAMES, SCALE_TYPES,
     note_to_pc, pc_to_note, get_accidental_style,
     _spell_chord, get_diatonic_chords,
@@ -30,7 +30,7 @@ class Suggestion:
     is_original: bool = False  # True when this represents the cell's current chord
 
     def display_name(self) -> str:
-        from klo_chords.quality import quality_symbol
+        from klo_chords.core.quality import quality_symbol
         q = quality_symbol(self.quality).strip()
         name = self.root + (" " + q if q else "")
         if self.resolution_target:
@@ -53,7 +53,7 @@ def get_cell_context(
       - left, right, above, below: Optional[ProgCell]
       - has_left, has_right, etc.: bool
     """
-    from klo_chords.state import PROG_COLS
+    from klo_chords.core.constants import PROG_COLS
     cols = PROG_COLS
     n = len(cells)
     row = idx // cols
@@ -90,7 +90,7 @@ def get_suggestions(
     if neighbor_flags is None:
         neighbor_flags = {"left": True, "right": True}
 
-    from klo_chords.state import PROG_COLS
+    from klo_chords.core.constants import PROG_COLS
     cols = PROG_COLS
     n = len(cells)
     row = idx // cols
@@ -228,7 +228,7 @@ def _voice_leading_cost(chord: ChordInfo, neighbors: List[ProgCell]) -> int:
 
 def _build_chord_info(root: str, quality: str) -> ChordInfo:
     """Build a ChordInfo from root + quality."""
-    from klo_chords.chords import _build_chord_variant
+    from klo_chords.core.chords import _build_chord_variant
     return _build_chord_variant(root, quality)
 
 

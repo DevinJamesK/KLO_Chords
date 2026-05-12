@@ -6,9 +6,9 @@ Also provides the compact progression grid cell renderer.
 """
 
 import dearpygui.dearpygui as dpg
-from klo_chords.chords import ChordInfo, ProgCell
-from klo_chords.quality import quality_symbol
-from klo_chords.theme import (
+from klo_chords.core.chords import ChordInfo, ProgCell
+from klo_chords.core.quality import quality_symbol
+from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_BG_LIGHT,
     get_draw_font,
@@ -144,7 +144,7 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
 
 
     # Degree symbol — compute from actual cell root vs key/scale
-    from klo_chords.chords import get_degree_for_root
+    from klo_chords.core.chords import get_degree_for_root
     if cell.root is not None:
         degree = get_degree_for_root(cell.root, key, scale)
     else:
