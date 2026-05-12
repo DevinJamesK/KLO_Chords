@@ -662,25 +662,46 @@ def on_key_press(sender, app_data, user_data):
             card_idx = user_data
             available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
             if available_cats:
-                visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
-                if card_idx < len(visible):
-                    global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
-                    if dpg_keyboard.shift_is_down():
-                        _sugg_range_select(card_idx)
-                    elif dpg_keyboard.toggle_is_down():
-                        _toggle_suggestion_selection(card_idx)
-                    else:
-                        if card_idx == _sugg_playing_card_idx and is_playing():
-                            stop_current()
-                            from klo_chords.midi_tab import stop_midi_notes
-                            stop_midi_notes()
-                            _sugg_playing_card_idx = None
+                global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
+                if card_idx == _SUGG_ORIG_CARD_IDX:
+                    orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
+                    if orig_suggs:
+                        s = orig_suggs[0]
+                        if dpg_keyboard.shift_is_down():
+                            _sugg_range_select(_SUGG_ORIG_CARD_IDX)
+                        elif dpg_keyboard.toggle_is_down():
+                            _toggle_suggestion_selection(_SUGG_ORIG_CARD_IDX)
                         else:
-                            _sugg_selected_set = {card_idx}
-                            _sugg_selection_anchor = card_idx
-                            _sugg_playing_card_idx = card_idx
-                            _apply_suggestion(visible[card_idx])
-                            _rebuild_sugg_selection_highlights()
+                            if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
+                                stop_current()
+                                from klo_chords.midi_tab import stop_midi_notes
+                                stop_midi_notes()
+                                _sugg_playing_card_idx = None
+                            else:
+                                _sugg_selected_set = {_SUGG_ORIG_CARD_IDX}
+                                _sugg_selection_anchor = _SUGG_ORIG_CARD_IDX
+                                _sugg_playing_card_idx = _SUGG_ORIG_CARD_IDX
+                                _apply_suggestion(s)
+                                _rebuild_sugg_selection_highlights()
+                else:
+                    visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
+                    if 0 <= card_idx < len(visible):
+                        if dpg_keyboard.shift_is_down():
+                            _sugg_range_select(card_idx)
+                        elif dpg_keyboard.toggle_is_down():
+                            _toggle_suggestion_selection(card_idx)
+                        else:
+                            if card_idx == _sugg_playing_card_idx and is_playing():
+                                stop_current()
+                                from klo_chords.midi_tab import stop_midi_notes
+                                stop_midi_notes()
+                                _sugg_playing_card_idx = None
+                            else:
+                                _sugg_selected_set = {card_idx}
+                                _sugg_selection_anchor = card_idx
+                                _sugg_playing_card_idx = card_idx
+                                _apply_suggestion(visible[card_idx])
+                                _rebuild_sugg_selection_highlights()
         return
     # Don't fire if platform-native modifier is held (conflicts with shortcuts)
     if dpg_keyboard.toggle_is_down():
@@ -937,6 +958,10 @@ def on_keybinds_toggle(sender=None, app_data=None):
         dpg.set_value("toolbar_show_keybinds", _show_keybinds)
     _rebuild_chord_list()
     _rebuild_progression_grid()
+    if dpg.does_item_exist("suggestion_panel") and _sugg_last_suggestions:
+        dpg.delete_item("suggestion_panel", children_only=True)
+        _build_suggestion_cards(_sugg_last_suggestions, cat_idx=_sugg_current_cat_idx)
+        _rebuild_sugg_selection_highlights()
     _save_prefs()
 
 
@@ -1362,6 +1387,25 @@ def _refresh_speaker_indicators():
                 dpg.configure_item(bar_tag, show=(sugg_playing and i == _sugg_playing_card_idx))
             except Exception:
                 pass
+    _orig_sugg = next((s for s in _sugg_last_suggestions if s.category == "original"), None)
+    _cell_is_original = (
+        _orig_sugg is not None
+        and _prog_selected_idx is not None
+        and not _prog_cells[_prog_selected_idx].is_empty()
+        and _prog_cells[_prog_selected_idx].root == _orig_sugg.root
+        and _prog_cells[_prog_selected_idx].quality == _orig_sugg.quality
+    )
+    orig_bar_active = (playing
+                       and _prog_sounding_idx == _prog_selected_idx
+                       and (_cell_is_original
+                            or _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX))
+    for j in range(_sugg_orig_card_count):
+        bar_tag = f"prog_play_bar_{_SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j}"
+        if dpg.does_item_exist(bar_tag):
+            try:
+                dpg.configure_item(bar_tag, show=orig_bar_active)
+            except Exception:
+                pass
 
     if not playing:
         _prog_sounding_idx = None
@@ -1489,7 +1533,7 @@ def on_prog_copy(sender=None, app_data=None):
             ref = _prog_cells[_prog_selected_idx] if _prog_selected_idx is not None else None
             _prog_clipboard = []
             for i in sorted(_sugg_selected_set):
-                if i >= len(visible):
+                if i < 0 or i >= len(visible):
                     continue
                 s = visible[i]
                 base_oct = ref.base_octave if ref and not ref.is_empty() else 3
@@ -2016,11 +2060,16 @@ def on_redo(sender=None, app_data=None):
 
 _SUGG_IDX_BASE           = 500   # well above the 32 grid-cell indices
 _sugg_card_count         = 0
+_sugg_orig_card_count    = 0     # number of pinned original cards
 _sugg_current_cat_idx:   int          = 0
 _sugg_last_suggestions:  list         = []
 _sugg_playing_card_idx:  Optional[int] = None
 _sugg_selected_set:      Set[int]     = set()   # card indices of selected suggestions
 _sugg_selection_anchor:  Optional[int] = None   # anchor for Shift range-select
+
+_SUGG_ORIG_IDX_BASE      = 900   # index space for original-card play bars (separate from category cards)
+_SUGG_ORIG_CARD_IDX      = -1    # sentinel used in _sugg_playing_card_idx / _sugg_selected_set for the original card
+_COLOR_ORIG_BG           = [15, 42, 22, 255]   # dark green, distinct from COLOR_CHORD_BG
 
 _CATS_ORDERED = ["safe", "borrowed", "secondary_dominant", "chromatic_mediant", "advanced"]
 
@@ -2073,12 +2122,22 @@ def _refresh_suggestion_panel():
     _sugg_selection_anchor = None
     if _prog_selected_idx is None:
         return
-    from klo_chords.chord_suggestions import get_suggestions
+    from klo_chords.chord_suggestions import get_suggestions, Suggestion
     suggestions = get_suggestions(
         _prog_cells, _prog_selected_idx, _prog_key, _prog_scale,
         include_sevenths=_prog_sevenths
     )
     _sugg_playing_card_idx = None
+
+    cur = _prog_cells[_prog_selected_idx]
+    has_original = not cur.is_empty()
+    if has_original:
+        orig = Suggestion(
+            root=cur.root, quality=cur.quality,
+            category="original", label="Current",
+            voice_leading=0, is_original=True,
+        )
+        suggestions = [orig] + suggestions
 
     from klo_chords.chord_box import PROG_CELL_H
     panel_h = PROG_CELL_H + 44
@@ -2104,7 +2163,7 @@ def _refresh_suggestion_panel():
 
 def _build_suggestion_cards(suggestions, cat_idx: int = 0):
     """Populate suggestion_panel with one category page of chord-cell-style cards."""
-    global _sugg_card_count, _sugg_current_cat_idx, _sugg_last_suggestions
+    global _sugg_card_count, _sugg_orig_card_count, _sugg_current_cat_idx, _sugg_last_suggestions
     from klo_chords.chords import ProgCell
     from klo_chords.chord_box import draw_prog_cell, PROG_CELL_W, PROG_CELL_H
 
@@ -2112,7 +2171,12 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         hreg = f"sugg_hreg_{i}"
         if dpg.does_item_exist(hreg):
             dpg.delete_item(hreg)
+    for i in range(_sugg_orig_card_count):
+        hreg = f"sugg_orig_hreg_{i}"
+        if dpg.does_item_exist(hreg):
+            dpg.delete_item(hreg)
     _sugg_card_count = 0
+    _sugg_orig_card_count = 0
 
     _sugg_last_suggestions = suggestions
     available_cats, cat_groups = _get_sugg_cat_groups(suggestions)
@@ -2127,6 +2191,8 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
 
     card_info = []
     sg = dpg.add_group(parent="suggestion_panel", tag="suggestion_group")
+
+    orig_suggestions = [s for s in suggestions if s.category == "original"]
 
     # Category navigation header — plain buttons matching detail arrow style
     hdr = dpg.add_group(parent=sg, horizontal=True)
@@ -2144,9 +2210,27 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
 
     dpg.add_spacer(height=4, parent=sg)
 
-    # Card row for the current category
+    # Card row — original card(s) first, then current category cards
     row_grp = dpg.add_group(parent=sg, horizontal=True)
     dpg.add_spacer(width=20, parent=row_grp)
+    orig_info = []
+    for j, s in enumerate(orig_suggestions):
+        canvas_tag = f"sugg_orig_canvas_{j}"
+        cell = ProgCell()
+        cell.root = s.root
+        cell.quality = s.quality
+        cell.rotation = 0
+        cell.base_octave = 3
+        cell.voicing_idx = 0
+        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        dpg.add_drawlist(tag=canvas_tag, width=PROG_CELL_W, height=PROG_CELL_H,
+                         parent=row_grp)
+        draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
+                       selected=False, key=_prog_key, scale=_prog_scale,
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
+                       bg_color=_COLOR_ORIG_BG, center_keybind=True)
+        dpg.add_spacer(width=6, parent=row_grp)
+        orig_info.append((canvas_tag, s))
     for s in visible:
         i = len(card_info)
         canvas_tag = f"sugg_canvas_{i}"
@@ -2165,7 +2249,8 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         sugg_lbl = f"{_mod} + {i + 1}" if i < 9 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=True, keybind_label=sugg_lbl)
+                       show_keybind=get_show_keybinds(), keybind_label=sugg_lbl,
+                       center_keybind=True)
         dpg.add_spacer(width=6, parent=row_grp)
         card_info.append((canvas_tag, s))
 
@@ -2175,6 +2260,13 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         with dpg.item_handler_registry(tag=hreg_tag):
             dpg.add_item_clicked_handler(callback=_make_suggestion_callback(s, i))
         dpg.bind_item_handler_registry(canvas_tag, hreg_tag)
+
+    for j, (canvas_tag, s) in enumerate(orig_info):
+        hreg_tag = f"sugg_orig_hreg_{j}"
+        with dpg.item_handler_registry(tag=hreg_tag):
+            dpg.add_item_clicked_handler(callback=_make_orig_suggestion_callback(s))
+        dpg.bind_item_handler_registry(canvas_tag, hreg_tag)
+    _sugg_orig_card_count = len(orig_info)
 
     _sugg_card_count = len(card_info)
 
@@ -2218,7 +2310,22 @@ def _rebuild_sugg_selection_highlights():
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=(i in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
-                       show_keybind=True, keybind_label=sugg_lbl)
+                       show_keybind=get_show_keybinds(), keybind_label=sugg_lbl,
+                       center_keybind=True)
+    orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
+    for j, s in enumerate(orig_suggs):
+        canvas_tag = f"sugg_orig_canvas_{j}"
+        if not dpg.does_item_exist(canvas_tag):
+            continue
+        cell = ProgCell()
+        cell.root, cell.quality = s.root, s.quality
+        cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
+        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
+                       selected=(_SUGG_ORIG_CARD_IDX in _sugg_selected_set),
+                       key=_prog_key, scale=_prog_scale,
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
+                       bg_color=_COLOR_ORIG_BG, center_keybind=True)
 
 
 def _sugg_nav(direction: int):
@@ -2234,6 +2341,29 @@ def _sugg_nav(direction: int):
     _sugg_selection_anchor = None
     dpg.delete_item("suggestion_panel", children_only=True)
     _build_suggestion_cards(_sugg_last_suggestions, cat_idx=new_idx)
+
+
+def _make_orig_suggestion_callback(sug):
+    def callback(sender=None, app_data=None):
+        global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
+        from klo_chords import dpg_keyboard
+        if dpg_keyboard.shift_is_down():
+            _sugg_range_select(_SUGG_ORIG_CARD_IDX)
+        elif dpg_keyboard.toggle_is_down():
+            _toggle_suggestion_selection(_SUGG_ORIG_CARD_IDX)
+        else:
+            if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
+                stop_current()
+                from klo_chords.midi_tab import stop_midi_notes
+                stop_midi_notes()
+                _sugg_playing_card_idx = None
+                return
+            _sugg_selected_set = {_SUGG_ORIG_CARD_IDX}
+            _sugg_selection_anchor = _SUGG_ORIG_CARD_IDX
+            _sugg_playing_card_idx = _SUGG_ORIG_CARD_IDX
+            _apply_suggestion(sug)
+            _rebuild_sugg_selection_highlights()
+    return callback
 
 
 def _make_suggestion_callback(sug, card_idx: int):

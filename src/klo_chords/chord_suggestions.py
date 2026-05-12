@@ -22,11 +22,12 @@ class Suggestion:
     """A suggested chord for an empty cell."""
     root: str
     quality: str
-    category: str       # "safe", "borrowed", "secondary_dominant", "chromatic_mediant", "advanced"
+    category: str       # "safe", "borrowed", "secondary_dominant", "chromatic_mediant", "advanced", "original"
     label: str          # e.g. "V (G)"
     voice_leading: int  # total half-step distance from previous chord
     resolution_target: Optional[str] = None  # e.g. "resolves to IV" for secondary doms
     hidden: bool = False  # for "advanced" chords hidden by default
+    is_original: bool = False  # True when this represents the cell's current chord
 
     def display_name(self) -> str:
         from klo_chords.quality import quality_symbol
