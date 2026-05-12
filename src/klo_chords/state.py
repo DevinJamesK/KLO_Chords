@@ -356,16 +356,18 @@ def _native_save_path(title: str, default_name: str, ext: str) -> str:
         if path and not path.endswith(ext):
             path += ext
         return path
-    code = (
-        "import tkinter as tk; from tkinter import filedialog\n"
-        "root = tk.Tk(); root.withdraw()\n"
-        f"p = filedialog.asksaveasfilename(title={title!r}, defaultextension={ext!r},\n"
-        f"    filetypes=[('KLO Chords','*{ext}'),('All files','*.*')],\n"
-        f"    initialfile={default_name!r})\n"
-        "root.destroy(); print(p or '', end='')\n"
+    import tkinter as _tk
+    from tkinter import filedialog as _fd
+    root = _tk.Tk()
+    root.withdraw()
+    root.wm_attributes("-topmost", True)
+    path = _fd.asksaveasfilename(
+        title=title, defaultextension=ext,
+        filetypes=[("KLO Chords", f"*{ext}"), ("All files", "*.*")],
+        initialfile=default_name,
     )
-    r = _subprocess.run([_sys.executable, "-c", code], capture_output=True, text=True)
-    return r.stdout.strip()
+    root.destroy()
+    return path or ""
 
 
 def _native_open_path(title: str, ext: str) -> str:
@@ -374,15 +376,17 @@ def _native_open_path(title: str, ext: str) -> str:
         script = f'POSIX path of (choose file with prompt "{title}")'
         r = _subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
         return r.stdout.strip()
-    code = (
-        "import tkinter as tk; from tkinter import filedialog\n"
-        "root = tk.Tk(); root.withdraw()\n"
-        f"p = filedialog.askopenfilename(title={title!r},\n"
-        f"    filetypes=[('KLO Chords','*{ext}'),('All files','*.*')])\n"
-        "root.destroy(); print(p or '', end='')\n"
+    import tkinter as _tk
+    from tkinter import filedialog as _fd
+    root = _tk.Tk()
+    root.withdraw()
+    root.wm_attributes("-topmost", True)
+    path = _fd.askopenfilename(
+        title=title,
+        filetypes=[("KLO Chords", f"*{ext}"), ("All files", "*.*")],
     )
-    r = _subprocess.run([_sys.executable, "-c", code], capture_output=True, text=True)
-    return r.stdout.strip()
+    root.destroy()
+    return path or ""
 
 
 def on_prog_export(sender=None, app_data=None):
@@ -2228,7 +2232,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=False, key=_prog_key, scale=_prog_scale,
                        show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
-                       bg_color=_COLOR_ORIG_BG, center_keybind=True)
+                       bg_color=_COLOR_ORIG_BG)
         dpg.add_spacer(width=6, parent=row_grp)
         orig_info.append((canvas_tag, s))
     for s in visible:
@@ -2249,8 +2253,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         sugg_lbl = f"{_mod} + {i + 1}" if i < 9 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=sugg_lbl,
-                       center_keybind=True)
+                       show_keybind=get_show_keybinds(), keybind_label=sugg_lbl)
         dpg.add_spacer(width=6, parent=row_grp)
         card_info.append((canvas_tag, s))
 
@@ -2310,8 +2313,10 @@ def _rebuild_sugg_selection_highlights():
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=(i in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=sugg_lbl,
-                       center_keybind=True)
+                       show_keybind=get_show_keybinds(), keybind_label=sugg_lbl)
+        hreg_tag = f"sugg_hreg_{i}"
+        if dpg.does_item_exist(hreg_tag):
+            dpg.bind_item_handler_registry(canvas_tag, hreg_tag)
     orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
     for j, s in enumerate(orig_suggs):
         canvas_tag = f"sugg_orig_canvas_{j}"
@@ -2325,7 +2330,10 @@ def _rebuild_sugg_selection_highlights():
                        selected=(_SUGG_ORIG_CARD_IDX in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
                        show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
-                       bg_color=_COLOR_ORIG_BG, center_keybind=True)
+                       bg_color=_COLOR_ORIG_BG)
+        hreg_tag = f"sugg_orig_hreg_{j}"
+        if dpg.does_item_exist(hreg_tag):
+            dpg.bind_item_handler_registry(canvas_tag, hreg_tag)
 
 
 def _sugg_nav(direction: int):

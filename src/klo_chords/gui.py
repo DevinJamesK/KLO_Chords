@@ -622,15 +622,21 @@ def build_ui():
     dpg.configure_app()
 
     _font_px = int(16 * _DISPLAY_SCALE)
+    # draw_text sizes go up to 24px; bake the draw font at ≥24px to avoid upscaling.
+    # On Mac _font_px=32 already exceeds 24, so reuse it; on Windows bake separately.
+    _draw_px = max(_font_px, 24)
     with dpg.font_registry():
         path = font_path()
+        fallback = font_path_fallback()
         _default_font = None
         if os.path.exists(path):
             _default_font = dpg.add_font(path, _font_px)
-            set_draw_font(_default_font)
-        fallback = font_path_fallback()
-        if os.path.exists(fallback):
-            _fallback_font = dpg.add_font(fallback, _font_px)
+            _draw_fnt = dpg.add_font(path, _draw_px) if _draw_px != _font_px else _default_font
+            set_draw_font(_draw_fnt)
+        elif os.path.exists(fallback):
+            _default_font = dpg.add_font(fallback, _font_px)
+            _draw_fnt = dpg.add_font(fallback, _draw_px) if _draw_px != _font_px else _default_font
+            set_draw_font(_draw_fnt)
 
     with dpg.window(tag="main_win", no_close=True, no_collapse=True,
                     no_scrollbar=True, width=-1, height=-1):

@@ -15,6 +15,14 @@
 - **Suggestion toggle-off** — clicking an already-playing suggestion card correctly stops playback; previously the toggle check could fail if voice-leading produced different parameters on the second click.
 - **Inversion display race condition** — progression cell inversion label now always reads from `_stack_root_position` output instead of `get_current_midi_notes()`, eliminating the stale-chord flash when applying a suggestion.
 - **Sub-oscillator skipped in inversion detection** — when "Add Bass Root Note" is enabled, the extra sub-bass note is stripped before detecting the bass pitch class, so chords no longer always report Root Position.
+- **Import/Export in Windows .exe opened a new app instance** — file dialogs now use tkinter directly instead of spawning a subprocess; on Windows the frozen executable is `sys.executable`, so subprocess was relaunching the whole app.
+- **Font rendering on Windows .exe** — NotoSans-Regular.ttf is now bundled in the Windows build; the draw-font atlas is baked at ≥24 px so text drawn at sizes up to 24 px is never upscaled from a smaller atlas.
+- **Suggestion cards intermittently unclickable** — `_rebuild_sugg_selection_highlights` now explicitly re-binds each card's item handler registry after `draw_prog_cell` redraws the canvas, guarding against DPG silently dropping the binding when draw children are deleted.
+
+### Changed
+- **Keybind label sizes increased** — progression grid and suggestion cells: 10 → 12 px; chord tab cells: 12 → 14 px.
+- **Grid cell keybind labels right-aligned with margin** — labels sit 5 px from the right edge instead of flush against it.
+- **Suggestion cell keybind labels shifted right** — narrower per-character width estimate used for the longer "alt + N" labels so they appear closer to the right edge of the card.
 
 ## [0.5.7] - 2026-05-10
 
