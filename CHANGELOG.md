@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.9] - 2026-05-12
+
+### Changed
+
+- **Package reorganized into subdirectories** — moved pure logic modules into `core/` (chords, chord_shapes, chord_suggestions, quality, prefs, undo_manager, constants), audio/MIDI engines into `audio/` (sound, midi_engine), rendering modules into `rendering/` (theme, chord_box, fretboard, piano), and the keyboard polling helper into `widgets/` (dpg_keyboard). The entry-point `gui.py` was moved into `gui/app.py` to avoid a directory-vs-module name collision. All cross-package imports updated to the new paths.
+- **Console logging extracted** — `midi_to_note_name`, `sub_midi`, `fmt_event`, and `log_progression_row` moved from `state.py` into `helpers/console_logging.py` with explicit parameterized interfaces (`sub_midi` now takes a `sound_settings` dict instead of reaching into the global engine; `log_progression_row` accepts `cells` and `cols` instead of reading module globals).
+- **Entry-point updated** — `pyproject.toml` console script and `__main__.py` now reference `klo_chords.gui.app:main`.
+
+### Fixed
+
+- **Package shadowing** — the empty `gui/` and `state/` directories created during reorganization each contained an `__init__.py` that shadowed the same-named `.py` modules, causing `ImportError: cannot import name 'main'` on launch. `gui.py` was moved into the directory as `app.py` with a re-export `__init__.py`; the shadowing `state/__init__.py` was removed.
+
 ## [0.5.8] - 2026-05-11
 
 ### Added
