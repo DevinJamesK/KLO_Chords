@@ -62,7 +62,8 @@ _current_scale        = "Major"
 _current_chords:      List[ChordInfo] = []
 _include_sevenths     = False
 _selected_chord_idx:  Optional[int] = None
-_current_voicing_idx: int = 0
+_chord_voicing_indices: dict[int, int] = {}
+"""Per-chord voicing index so each chord remembers its own guitar tab position."""
 _current_scale_pcs:   Set[int] = set()
 _current_chord_pcs:   Set[int] = set()
 
@@ -88,7 +89,7 @@ def state() -> dict:
     return dict(
         key=_current_key, scale=_current_scale,
         chords=_current_chords, sevenths=_include_sevenths,
-        selected=_selected_chord_idx, voicing=_current_voicing_idx,
+        selected=_selected_chord_idx, voicing=_chord_voicing_indices.get(_selected_chord_idx, 0) if _selected_chord_idx is not None else 0,
         scale_pcs=_current_scale_pcs, chord_pcs=_current_chord_pcs,
     )
 
@@ -176,17 +177,17 @@ def on_tab_change(sender, app_data):
 # ── Chord tab callbacks ─────────────────────────────────────────────────────────
 
 def on_key_change(sender, app_data):
-    global _current_key, _current_voicing_idx
+    global _current_key, _chord_voicing_indices
     _current_key = app_data
-    _current_voicing_idx = 0
+    _chord_voicing_indices.clear()
     _refresh_chords()
 
 
 def on_scale_change(sender, app_data):
-    global _current_scale, _current_voicing_idx, _include_sevenths
+    global _current_scale, _chord_voicing_indices, _include_sevenths
     stop_audio()
     _current_scale = app_data
-    _current_voicing_idx = 0
+    _chord_voicing_indices.clear()
     is_heptatonic = len(SCALE_TYPES[app_data].intervals) == 7
     if not is_heptatonic:
         _include_sevenths = False
@@ -196,44 +197,44 @@ def on_scale_change(sender, app_data):
 
 
 def on_sevenths_toggle(sender, app_data):
-    global _include_sevenths, _current_voicing_idx
+    global _include_sevenths, _chord_voicing_indices
     _include_sevenths = app_data
-    _current_voicing_idx = 0
+    _chord_voicing_indices.clear()
     _refresh_chords()
 
 
 def on_chord_click(sender, app_data, user_data):
-    global _current_voicing_idx
-    _current_voicing_idx = 0
     _select_chord(user_data)
     _play_current_chord()
 
 
 def on_next_voicing(sender=None, app_data=None):
-    global _current_voicing_idx
+    global _chord_voicing_indices
     if _selected_chord_idx is None:
         return
     chord = _current_chords[_selected_chord_idx]
     voicings = get_all_voicings(chord)
     if len(voicings) <= 1:
         return
-    _current_voicing_idx = (_current_voicing_idx + 1) % len(voicings)
-    draw_fretboard(chord, _current_voicing_idx)
-    draw_mini_fretboard("tab_canvas_" + str(_selected_chord_idx), chord, _current_voicing_idx)
+    v = _chord_voicing_indices.get(_selected_chord_idx, 0)
+    _chord_voicing_indices[_selected_chord_idx] = (v + 1) % len(voicings)
+    draw_fretboard(chord, _chord_voicing_indices[_selected_chord_idx])
+    draw_mini_fretboard("tab_canvas_" + str(_selected_chord_idx), chord, _chord_voicing_indices[_selected_chord_idx])
     _update_voicing_label(chord)
 
 
 def on_prev_voicing(sender=None, app_data=None):
-    global _current_voicing_idx
+    global _chord_voicing_indices
     if _selected_chord_idx is None:
         return
     chord = _current_chords[_selected_chord_idx]
     voicings = get_all_voicings(chord)
     if len(voicings) <= 1:
         return
-    _current_voicing_idx = (_current_voicing_idx - 1) % len(voicings)
-    draw_fretboard(chord, _current_voicing_idx)
-    draw_mini_fretboard("tab_canvas_" + str(_selected_chord_idx), chord, _current_voicing_idx)
+    v = _chord_voicing_indices.get(_selected_chord_idx, 0)
+    _chord_voicing_indices[_selected_chord_idx] = (v - 1) % len(voicings)
+    draw_fretboard(chord, _chord_voicing_indices[_selected_chord_idx])
+    draw_mini_fretboard("tab_canvas_" + str(_selected_chord_idx), chord, _chord_voicing_indices[_selected_chord_idx])
     _update_voicing_label(chord)
 
 
@@ -670,8 +671,6 @@ def on_key_press(sender, app_data, user_data):
     if _current_tab == "tab_chords":
         idx = user_data
         if 0 <= idx < len(_current_chords):
-            global _current_voicing_idx
-            _current_voicing_idx = 0
             _select_chord(idx)
             _play_current_chord()
     elif _current_tab == "tab_progression":
@@ -902,7 +901,7 @@ def on_fretboard_mode_change(sender, app_data):
     set_fretboard_mode(new_mode)
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         chord = _current_chords[_selected_chord_idx]
-        draw_fretboard(chord, _current_voicing_idx)
+        draw_fretboard(chord, _chord_voicing_indices.get(_selected_chord_idx, 0))
     _rebuild_chord_ui()
     _save_prefs()
 
@@ -973,7 +972,7 @@ def _get_vel_max() -> int:
 def _update_voicing_label(chord):
     voicings = get_all_voicings(chord)
     num_v = len(voicings)
-    v_idx_display = min(_current_voicing_idx, num_v - 1) if num_v > 0 else 0
+    v_idx_display = min(_chord_voicing_indices.get(_selected_chord_idx, 0), num_v - 1) if num_v > 0 else 0
     if num_v > 1:
         label = f"  {v_idx_display + 1}/{num_v}"
     else:
@@ -1057,7 +1056,7 @@ def _rebuild_chord_ui():
                     pass
 
             draw_chord_label("chord_box_" + str(i), chord, i, show_keybind=_show_keybinds)
-            v_idx = _current_voicing_idx if i == _selected_chord_idx else 0
+            v_idx = _chord_voicing_indices.get(i, 0)
             draw_mini_fretboard("tab_canvas_" + str(i), chord, v_idx)
 
 
@@ -1261,7 +1260,7 @@ def _update_selected_chord():
     dpg.set_value("detail_intervals", " + ".join(str(x) for x in chord.intervals))
 
     _update_voicing_label(chord)
-    draw_fretboard(chord, _current_voicing_idx)
+    draw_fretboard(chord, _chord_voicing_indices.get(_selected_chord_idx, 0))
 
     _current_chord_pcs = {note_to_pc(n) for n in chord.notes}
     update_piano_keys(_current_chord_pcs, _current_scale_pcs, bass_pc=-1)
