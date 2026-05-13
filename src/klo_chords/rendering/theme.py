@@ -56,8 +56,8 @@ def _asset_path(subdir: str, filename: str) -> str:
 
 
 def font_path() -> str:
-    """Return the path to the bundled Noto Sans font."""
-    return _asset_path("fonts", "NotoSans-Regular.ttf")
+    """Return the path to the bundled DejaVu Sans font (full Unicode coverage)."""
+    return _asset_path("fonts", "DejaVuSans.ttf")
 
 
 def font_path_fallback() -> str:
