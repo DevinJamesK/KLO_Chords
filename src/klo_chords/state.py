@@ -83,6 +83,9 @@ _prog_sounding_idx: Optional[int] = None
 _show_keybinds = False
 """Show keyboard shortcut labels on chord cells (toggled via checkbox / Cmd+K)."""
 
+_use_jazz_symbols = False
+"""Use jazz glyphs (− △ ø) instead of text (min maj7 m7b5) for chord qualities."""
+
 
 
 def state() -> dict:
@@ -717,9 +720,10 @@ def _save_prefs():
         "vel_max":         s.get("vel_max", 100),
         "base_octave":     s.get("base_octave", 3),
         "show_note_names": get_fretboard_mode() == "note",
-        "show_keybinds":   _show_keybinds,
-        "sub_oscillator":  s.get("sub_oscillator", False),
-        "audio_device":    get_device_name(),
+        "show_keybinds":      _show_keybinds,
+        "use_jazz_symbols":   _use_jazz_symbols,
+        "sub_oscillator":     s.get("sub_oscillator", False),
+        "audio_device":       get_device_name(),
     })
 
 
@@ -857,12 +861,14 @@ def on_reset_prefs(sender=None, app_data=None):
         ("toolbar_wave_combo",   wave_display.get(d["wave"], "Triangle")),
         ("sound_quality_combo",  quality_display.get(d["audio_quality"], "Legacy")),
         ("playback_mode_combo",  playback_display.get(d["playback_mode"], "Toggle/Latch")),
+        ("use_jazz_symbols_toggle", d["use_jazz_symbols"]),
     ]:
         if dpg.does_item_exist(tag):
             dpg.set_value(tag, val)
 
-    global _show_keybinds
+    global _show_keybinds, _use_jazz_symbols
     _show_keybinds = d["show_keybinds"]
+    _use_jazz_symbols = d["use_jazz_symbols"]
 
     from klo_chords.rendering.fretboard import set_fretboard_mode
     set_fretboard_mode("note" if d["show_note_names"] else "fret")
@@ -944,6 +950,32 @@ def init_show_keybinds(val: bool):
     global _show_keybinds
     _show_keybinds = val
 
+
+def on_jazz_symbols_toggle(sender=None, app_data=None):
+    """Toggle jazz chord symbols (− △ ø) vs text (min maj7 m7b5)."""
+    global _use_jazz_symbols
+    if app_data is not None:
+        _use_jazz_symbols = bool(app_data)
+    else:
+        _use_jazz_symbols = not _use_jazz_symbols
+    _rebuild_chord_ui()
+    _rebuild_prog_ui()
+    if dpg.does_item_exist("suggestion_panel") and _sugg_last_suggestions:
+        dpg.delete_item("suggestion_panel", children_only=True)
+        _build_suggestion_cards(_sugg_last_suggestions, cat_idx=_sugg_current_cat_idx)
+        _rebuild_sugg_selection_highlights()
+    _save_prefs()
+
+
+def get_use_jazz_symbols() -> bool:
+    """Return whether jazz glyph symbols should be used for chord qualities."""
+    return _use_jazz_symbols
+
+
+def init_use_jazz_symbols(val: bool):
+    """Set jazz symbols state from saved prefs before DPG context exists."""
+    global _use_jazz_symbols
+    _use_jazz_symbols = val
 
 
 

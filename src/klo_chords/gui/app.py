@@ -54,6 +54,7 @@ from klo_chords.state import (
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds, init_show_keybinds,
+    on_jazz_symbols_toggle, get_use_jazz_symbols, init_use_jazz_symbols,
     on_sub_oscillator_toggle, on_reset_prefs,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
@@ -591,6 +592,22 @@ def _build_sound_tab():
                          " only the differing notes change. Smoother transitions.",
                           color=COLOR_TEXT_DIM, wrap=480)
 
+        dpg.add_spacer(height=12)
+        dpg.add_text("Display", color=COLOR_ACCENT)
+        dpg.add_separator()
+        dpg.add_spacer(height=6)
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=20)
+            dpg.add_checkbox(label="Use jazz chord symbols (− △ ø)",
+                             tag="use_jazz_symbols_toggle",
+                             default_value=get_use_jazz_symbols(),
+                             callback=on_jazz_symbols_toggle)
+        dpg.add_spacer(height=6)
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=20)
+            dpg.add_text("Replaces 'min' with −, 'maj7' with △7, 'm7b5' with ø.",
+                         color=COLOR_TEXT_DIM)
+
         dpg.add_spacer(height=20)
         dpg.add_text("Reset", color=COLOR_ACCENT)
         dpg.add_separator()
@@ -845,6 +862,7 @@ def _apply_preferences():
     set_base_octave(prefs_data.get("base_octave", 3))
     set_sub_oscillator(prefs_data.get("sub_oscillator", False))
     init_show_keybinds(prefs_data.get("show_keybinds", True))
+    init_use_jazz_symbols(prefs_data.get("use_jazz_symbols", False))
     # Apply saved audio device
     saved_device = prefs_data.get("audio_device", "system_default")
     if saved_device != "system_default":

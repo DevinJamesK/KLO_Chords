@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import dearpygui.dearpygui as dpg
 from klo_chords.core.chords import ChordInfo, ProgCell
-from klo_chords.core.quality import quality_symbol
+from klo_chords.core.quality import quality_symbol, get_quality_display
 from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_BG_LIGHT,
@@ -67,7 +67,8 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
     in the top‑right corner.
     """
     dpg.delete_item(canvas_tag, children_only=True)
-    q = quality_symbol(chord.quality).strip()
+    from klo_chords.state import get_use_jazz_symbols
+    q = get_quality_display(chord.quality, get_use_jazz_symbols()).strip()
     if q:
         title = chord.root + " " + q
     else:
@@ -156,7 +157,8 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                   color=COLOR_ACCENT, size=14, parent=canvas_tag)
 
     # Chord name
-    q = quality_symbol(cell.quality).strip()
+    from klo_chords.state import get_use_jazz_symbols
+    q = get_quality_display(cell.quality, get_use_jazz_symbols()).strip()
     name = cell.root + (" " + q if q else "")
     _draw_text_with_font([5, 20], name,
                   tag=f"prog_name_{idx}",
