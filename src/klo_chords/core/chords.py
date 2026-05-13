@@ -233,9 +233,9 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
         if natural_name[0].upper() == letter:
             degree = degree_names[i] if i < len(degree_names) else f"^{i+1}"
             if has_flat:
-                return "b" + degree
+                return "\u266d" + degree
             elif has_sharp:
-                return "#" + degree
+                return "\u266f" + degree
             else:
                 return degree
 
@@ -254,9 +254,9 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
     degree = degree_names[best_i] if best_i < len(degree_names) else f"^{best_i+1}"
     scale_pc = scale_pitches[best_i]
     if (root_pc - scale_pc) % 12 <= 6:
-        return "#" + degree
+        return "\u266f" + degree
     else:
-        return "b" + degree
+        return "\u266d" + degree
 
 
 def _seventh_quality_from_intervals(intervals: List[int]) -> str:
@@ -483,13 +483,13 @@ if __name__ == "__main__":
         ("G", "C", "Major", "V"),
         ("A", "C", "Major", "vi"),
         ("B", "C", "Major", "vii\u00b0"),
-        ("Bb", "C", "Major", "bvii"),
-        ("F#", "C", "Major", "#IV"),
-        ("Db", "C", "Major", "bII"),
-        ("G#", "C", "Major", "#V"),
-        ("C#", "C", "Major", "#I"),
-        ("Eb", "C", "Major", "bIII"),
-        ("Ab", "C", "Major", "bVI"),
+        ("Bb", "C", "Major", "\u266dvii"),
+        ("F#", "C", "Major", "\u266fIV"),
+        ("Db", "C", "Major", "\u266dII"),
+        ("G#", "C", "Major", "\u266fV"),
+        ("C#", "C", "Major", "\u266fI"),
+        ("Eb", "C", "Major", "\u266dIII"),
+        ("Ab", "C", "Major", "\u266dVI"),
     ]
     for root, key, scale, expected in cases:
         result = get_degree_for_root(root, key, scale)

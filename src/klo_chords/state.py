@@ -2215,12 +2215,12 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         cell.rotation = 0
         cell.base_octave = 3
         cell.voicing_idx = 0
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
         dpg.add_drawlist(tag=canvas_tag, width=PROG_CELL_W, height=PROG_CELL_H,
                          parent=row_grp)
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + 1",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod}1",
                        bg_color=_COLOR_ORIG_BG)
         dpg.add_spacer(width=6, parent=row_grp)
         orig_info.append((canvas_tag, s))
@@ -2238,8 +2238,8 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         dpg.add_drawlist(tag=canvas_tag,
                          width=PROG_CELL_W, height=PROG_CELL_H,
                          parent=row_grp)
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
-        sugg_lbl = f"{_mod} + {i + 2}" if i < 8 else ""
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
+        sugg_lbl = f"{_mod}{i + 2}" if i < 8 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=False, key=_prog_key, scale=_prog_scale,
                        show_keybind=get_show_keybinds(), keybind_label=sugg_lbl)
@@ -2297,8 +2297,8 @@ def _rebuild_sugg_selection_highlights():
         cell = ProgCell()
         cell.root, cell.quality = s.root, s.quality
         cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
-        sugg_lbl = f"{_mod} + {i + 2}" if i < 8 else ""
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
+        sugg_lbl = f"{_mod}{i + 2}" if i < 8 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=(i in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
@@ -2314,11 +2314,11 @@ def _rebuild_sugg_selection_highlights():
         cell = ProgCell()
         cell.root, cell.quality = s.root, s.quality
         cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=(_SUGG_ORIG_CARD_IDX in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + 1",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod}1",
                        bg_color=_COLOR_ORIG_BG)
         hreg_tag = f"sugg_orig_hreg_{j}"
         if dpg.does_item_exist(hreg_tag):

@@ -621,6 +621,23 @@ def build_ui():
     # draw_text sizes go up to 24px; bake the draw font at ≥24px to avoid upscaling.
     # On Mac _font_px=32 already exceeds 24, so reuse it; on Windows bake separately.
     _draw_px = max(_font_px, 24)
+
+    # DPG 2.x auto-detects glyph ranges from rendered text, but doesn't
+    # know about our symbols until they appear on screen.  Pre-render every
+    # character we need as invisible text so the font atlas includes them.
+    _ALL_GLYPHS = "".join(
+        chr(cp)
+        for lo, hi in [
+            (0x00B0, 0x00B0),   # °
+            (0x266D, 0x266F),   # ♭ ♯
+            (0x25B3, 0x25B3),   # △
+            (0x2318, 0x2318),   # ⌘
+            (0x2325, 0x2325),   # ⌥
+            (0x21E7, 0x21E7),   # ⇧
+        ]
+        for cp in range(lo, hi + 1)
+    )
+
     with dpg.font_registry():
         path = font_path()
         fallback = font_path_fallback()
@@ -636,6 +653,10 @@ def build_ui():
 
     with dpg.window(tag="main_win", no_close=True, no_collapse=True,
                     no_scrollbar=True, width=-1, height=-1):
+
+        # Force DPG's font atlas to include our Unicode symbols: add a real
+        # (visible) text element containing every glyph before any other UI.
+        dpg.add_text(_ALL_GLYPHS, tag="__glyph_warmup__")
 
         # ── Shared toolbar (visible on every page) ──────────────────────────
         dpg.add_spacer(height=4)

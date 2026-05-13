@@ -5,11 +5,11 @@ Short symbols for compact display, full names for the detail panel.
 
 
 def quality_symbol(quality: str) -> str:
-    """Short chord quality suffix, e.g. 'min', 'min7', 'maj7', '°'."""
+    """Short chord quality suffix, e.g. 'min', 'min7', '\u25b37', '\u00b0'."""
     return {
-        "M": "", "m": "min", "dim": "°", "aug": "+",
-        "7": "7", "m7": "min7", "maj7": "maj7", "dim7": "°7",
-        "m7b5": "min7b5", "mmaj7": "minMaj7", "aug7": "+7", "augmaj7": "+Maj7",
+        "M": "", "m": "min", "dim": "\u00b0", "aug": "+",
+        "7": "7", "m7": "min7", "maj7": "\u25b37", "dim7": "\u00b07",
+        "m7b5": "min7b5", "mmaj7": "min\u25b37", "aug7": "+7", "augmaj7": "+\u25b37",
         "sus2": "sus2", "sus4": "sus4",
     }.get(quality, quality)
 
