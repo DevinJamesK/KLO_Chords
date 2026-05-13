@@ -611,7 +611,7 @@ def _get_degree_for_col(col: int) -> str:
 # ── Keyboard callback ────────────────────────────────────────────────────────────
 
 def on_key_press(sender, app_data, user_data):
-    global _current_tab
+    global _current_tab, _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
     from klo_chords.widgets import dpg_keyboard
 
     # ~ key (backtick/tilde) selects the original/current chord in suggestions.
@@ -623,7 +623,6 @@ def on_key_press(sender, app_data, user_data):
             and dpg.does_item_exist("suggestion_panel")):
         available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
         if available_cats:
-            global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
             orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
             if orig_suggs:
                 s = orig_suggs[0]
@@ -652,7 +651,6 @@ def on_key_press(sender, app_data, user_data):
             card_idx = user_data
             available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
             if available_cats:
-                global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
                 if card_idx == _SUGG_ORIG_CARD_IDX:
                     orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
                     if orig_suggs:
