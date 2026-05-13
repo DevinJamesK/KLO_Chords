@@ -265,6 +265,7 @@ def on_prog_sevenths_toggle(sender, app_data):
 
 def on_prog_fill(sender=None, app_data=None):
     """Fill chords starting from the selected cell, right→down like reading."""
+    _reset_clear_confirm()
     global _prog_cells
     chords = get_diatonic_chords(
         _prog_key, _prog_scale, include_sevenths=_prog_sevenths
@@ -287,9 +288,26 @@ def on_prog_fill(sender=None, app_data=None):
         _select_prog_cell(start_idx)
 
 
+_prog_clear_confirm = False
+
+def _reset_clear_confirm():
+    global _prog_clear_confirm
+    _prog_clear_confirm = False
+    if dpg.does_item_exist("prog_clear_btn"):
+        dpg.configure_item("prog_clear_btn", label="Clear All")
+
+
 def on_prog_clear_all(sender=None, app_data=None):
-    """Clear all cells in the progression grid."""
-    global _prog_cells
+    """Clear all cells in the progression grid (double-click confirm)."""
+    global _prog_cells, _prog_clear_confirm
+    if not _prog_clear_confirm:
+        _prog_clear_confirm = True
+        if dpg.does_item_exist("prog_clear_btn"):
+            dpg.configure_item("prog_clear_btn", label="Clear?")
+        return
+    _prog_clear_confirm = False
+    if dpg.does_item_exist("prog_clear_btn"):
+        dpg.configure_item("prog_clear_btn", label="Clear All")
     stop_audio()
     for cell in _prog_cells:
         cell.clear()
@@ -414,6 +432,7 @@ def on_prog_import(sender=None, app_data=None):
 
 
 def on_prog_cell_click(sender, app_data, user_data):
+    _reset_clear_confirm()
     idx = user_data
     if 0 <= idx < len(_prog_cells):
         from klo_chords.widgets import dpg_keyboard

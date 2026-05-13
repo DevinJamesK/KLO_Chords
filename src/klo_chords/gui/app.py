@@ -318,6 +318,12 @@ def _build_progression_tab():
         dpg.add_button(label="Clear All", width=100,
                        tag="prog_clear_btn", callback=on_prog_clear_all)
 
+        dpg.add_spacer(width=10)
+        dpg.add_button(label="Import", width=100,
+                       tag="prog_import_btn", callback=on_prog_import)
+        dpg.add_spacer(width=10)
+        dpg.add_button(label="Export", width=100,
+                       tag="prog_export_btn", callback=on_prog_export)
 
 
     dpg.add_spacer(height=2)
@@ -366,12 +372,6 @@ def _build_progression_tab():
                       default_value="Preserve Shape",
                       tag="paste_shape_combo", width=120,
                       callback=on_paste_shape_change)
-        dpg.add_spacer(width=120)
-        dpg.add_button(label="Export", width=100,
-                       tag="prog_export_btn", callback=on_prog_export)
-        dpg.add_spacer(width=6)
-        dpg.add_button(label="Import", width=100,
-                       tag="prog_import_btn", callback=on_prog_import)
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
@@ -725,7 +725,7 @@ def build_ui():
         ("prog_fill_btn",   (50,  120, 200)),   # blue
         ("prog_clear_btn",  (180, 50,  50)),    # red
         ("prog_export_btn", (60,  130, 80)),    # green
-        ("prog_import_btn", (60,  130, 80)),    # green
+        ("prog_import_btn", (200, 160, 50)),    # yellow
     ]:
         if dpg.does_item_exist(tag):
             dpg.bind_item_theme(tag, _btn_theme(r, g, b))
