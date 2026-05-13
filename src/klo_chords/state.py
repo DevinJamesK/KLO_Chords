@@ -1323,8 +1323,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
-            except (SystemError, RuntimeError):
-                pass  # DPG item may have been destroyed
+            except Exception:
+                pass
 
     for i in range(PROG_CELLS_TOTAL):
         is_sounding = playing and _prog_sounding_idx == i
@@ -1332,8 +1332,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
-            except (SystemError, RuntimeError):
-                pass  # DPG item may have been destroyed
+            except Exception:
+                pass
 
     sugg_playing = (playing
                     and _prog_sounding_idx == _prog_selected_idx
@@ -1343,8 +1343,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=(sugg_playing and i == _sugg_playing_card_idx))
-            except (SystemError, RuntimeError):
-                pass  # DPG item may have been destroyed
+            except Exception:
+                pass
     _orig_sugg = next((s for s in _sugg_last_suggestions if s.category == "original"), None)
     _cell_is_original = (
         _orig_sugg is not None
@@ -1362,8 +1362,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=orig_bar_active)
-            except (SystemError, RuntimeError):
-                pass  # DPG item may have been destroyed
+            except Exception:
+                pass
 
     if not playing:
         _prog_sounding_idx = None
