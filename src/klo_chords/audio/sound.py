@@ -340,14 +340,14 @@ def _get_wave_fn():
     return _WAVE_GENS.get(_sound_mode, _gen_sine)
 
 
-def set_enabled\(def set_enabled(val: bool) -> None:[4+len(fn):-1]\) 
+def set_enabled(val: bool) -> None:
     global _sound_enabled
     _sound_enabled = val
     if not val:
         _engine.release_all()
 
 
-def set_mode\(def set_mode(mode: str) -> None:[4+len(fn):-1]\) -> None:
+def set_mode(mode: str) -> None:
     global _sound_mode
     _sound_mode = mode
 
@@ -358,7 +358,7 @@ def set_base_octave(octave: int):
     reset_voice_leading()
 
 
-def set_random_velocity\(def set_random_velocity(val: bool) -> None:[4+len(fn):-1]\) 
+def set_random_velocity(val: bool) -> None:
     global _random_velocity
     _random_velocity = val
 
@@ -369,7 +369,7 @@ def set_velocity_range(vmin: int, vmax: int):
     _velocity_max = max(vmin, vmax)
 
 
-def set_playback_mode\(def set_playback_mode(mode: str) -> None:[4+len(fn):-1]\) 
+def set_playback_mode(mode: str) -> None:
     """Change playback mode and release all active notes.
     
     When switching modes, any currently playing notes are released so
@@ -382,7 +382,7 @@ def set_playback_mode\(def set_playback_mode(mode: str) -> None:[4+len(fn):-1]\)
     _engine._note_history = []
 
 
-def set_legato\(def set_legato(val: bool) -> None:[4+len(fn):-1]\) 
+def set_legato(val: bool) -> None:
     """If True, shared notes between chords are held (not re-struck)."""
     _engine._legato = val
 
@@ -418,7 +418,7 @@ def set_sub_oscillator(val: bool) -> None:
             _sub_osc_freq = None
 
 
-def set_volume\(def set_volume(val: float) -> None:[4+len(fn):-1]\) 
+def set_volume(val: float) -> None:
     global _volume
     _volume = max(0.0, min(1.0, val))
 
@@ -466,7 +466,7 @@ def get_audio_devices() -> list[dict[str, object]]:
     return devices
 
 
-def set_device(device_id: int | None) 
+def set_device(device_id: int | None) -> None:
     """Set the output audio device by PortAudio device ID (None = system default).
 
     Restarts the audio stream if it's already running.
@@ -655,7 +655,7 @@ def _get_freqs_and_amps(notes: List[str]):
 
 # ── Public playback API ──────────────────────────────────────────────────────────
 
-def play_chord_notes(notes: List[str], root_note: str | None = None) 
+def play_chord_notes(notes: List[str], root_note: str | None = None):
     """Play chord notes via the streaming engine (never stops).
 
     If *root_note* is provided and sub oscillator is enabled, an
@@ -750,7 +750,7 @@ def _stack_root_position(pcs: List[int], base_octave: int, root_pc: int = 0) -> 
 
 
 
-def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0) 
+def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0):
     """Play chord notes for the progression tab with root-position voicing."""
     global _current_notes, _last_root_midi, _lowest_midi, _sub_osc_freq
     if not _sound_enabled or not notes:
@@ -806,7 +806,7 @@ def reset_note_history() -> None:
     _engine._note_history = []
 
 
-def stop_audio() 
+def stop_audio():
     global _current_notes, _sub_osc_freq, _last_root_midi, _lowest_midi
     _current_notes = []
     _sub_osc_freq = None
