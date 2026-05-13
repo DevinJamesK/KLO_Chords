@@ -311,18 +311,17 @@ def _build_progression_tab():
                          tag="prog_sevenths_toggle",
                          default_value=True,
                          callback=on_prog_sevenths_toggle)
-        dpg.add_spacer(width=82)
-        dpg.add_button(label="Fill Chords", width=100,
+        dpg.add_spacer(width=18)
+        dpg.add_button(label="Fill Chords", width=86,
                        tag="prog_fill_btn", callback=on_prog_fill)
-        dpg.add_spacer(width=10)
-        dpg.add_button(label="Clear All", width=100,
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Clear All", width=86,
                        tag="prog_clear_btn", callback=on_prog_clear_all)
-
-        dpg.add_spacer(width=10)
-        dpg.add_button(label="Import", width=100,
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Import", width=72,
                        tag="prog_import_btn", callback=on_prog_import)
-        dpg.add_spacer(width=10)
-        dpg.add_button(label="Export", width=100,
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Export", width=72,
                        tag="prog_export_btn", callback=on_prog_export)
 
 
