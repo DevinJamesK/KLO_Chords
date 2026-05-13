@@ -992,8 +992,10 @@ def build_midi_tab():
     dpg.add_spacer(height=4)
     dpg.add_button(label="Clear", callback=reset_cc, width=60)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_cc_window", width=-1, height=250):
-        pass
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        with dpg.child_window(tag="midi_cc_window", width=-20, height=250):
+            pass
 
     # ── Log ───────────────────────────────────────────────────────────────────────
     dpg.add_spacer(height=8)
@@ -1017,7 +1019,9 @@ def build_midi_tab():
         dpg.add_spacer(width=275)
         dpg.add_checkbox(label="Hex Display",   tag="midi_raw_hex",      default_value=False)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_log_window", width=-1, height=-1):
-        pass
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        with dpg.child_window(tag="midi_log_window", width=-20, height=-1):
+            pass
 
     _auto_connect()
