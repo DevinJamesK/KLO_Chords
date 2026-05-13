@@ -575,17 +575,25 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
     _play_prog_cell(_prog_selected_idx, force=True)
 
 
-# ── Arrow key callback (progression tab) ─────────────────────────────────────────
+# ── Arrow key callback (chords & progression tabs) ──────────────────────────────
 
 def on_prog_cell_arrow_press(sender, app_data, user_data):
-    """Arrow keys for the progression tab: Left/Right = inversion (Shift = root), Up/Down = quality."""
+    """Arrow keys: chords tab = Left/Right cycle guitar voicings;
+    progression tab = Left/Right inversion (Shift=root), Up/Down = quality."""
     global _current_tab
+    from klo_chords.widgets import dpg_keyboard
+    action = str(user_data)
+    if _current_tab == "tab_chords":
+        if action == "inv_prev":
+            on_prev_voicing()
+        elif action == "inv_next":
+            on_next_voicing()
+        # Up/Down on chords tab are unused for now
+        return
     if _current_tab != "tab_progression":
         return
     if _prog_selected_idx is None:
         return
-    from klo_chords.widgets import dpg_keyboard
-    action = str(user_data)
     if action == "inv_prev":
         if dpg_keyboard.shift_is_down():
             on_prog_cell_root_prev()
@@ -916,6 +924,7 @@ def on_keybinds_toggle(sender=None, app_data=None):
     # Sync the checkbox in the toolbar
     if dpg.does_item_exist("toolbar_show_keybinds"):
         dpg.set_value("toolbar_show_keybinds", _show_keybinds)
+    _update_tab_labels()
     _rebuild_chord_ui()
     _rebuild_prog_ui()
     if dpg.does_item_exist("suggestion_panel") and _sugg_last_suggestions:
@@ -935,6 +944,29 @@ def init_show_keybinds(val: bool):
     global _show_keybinds
     _show_keybinds = val
 
+
+
+
+def _update_tab_labels():
+    """Show or hide [Cmd+#] / [Ctrl+#] shortcut labels on the top tabs."""
+    _key = "\u2318" if _platform.system() == "Darwin" else "Ctrl+"
+    if _show_keybinds:
+        tab_labels = {
+            "tab_chords":       f"   Chords    [{_key}1]",
+            "tab_progression":  f" Progression [{_key}2]",
+            "tab_midi":         f"    MIDI     [{_key}3]",
+            "tab_sound":        f"  Settings   [{_key}4]",
+        }
+    else:
+        tab_labels = {
+            "tab_chords":       "   Chords    ",
+            "tab_progression":  " Progression ",
+            "tab_midi":         "    MIDI     ",
+            "tab_sound":        "  Settings   ",
+        }
+    for tag, label in tab_labels.items():
+        if dpg.does_item_exist(tag):
+            dpg.configure_item(tag, label=label)
 
 
 def on_stop(sender=None, app_data=None):
