@@ -5,10 +5,12 @@ Degree is rendered in a separate column to the left.
 Also provides the compact progression grid cell renderer.
 """
 
+from __future__ import annotations
+
 import dearpygui.dearpygui as dpg
-from klo_chords.chords import ChordInfo, ProgCell
-from klo_chords.quality import quality_symbol
-from klo_chords.theme import (
+from klo_chords.core.chords import ChordInfo, ProgCell
+from klo_chords.core.quality import quality_symbol
+from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM, COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_BG_LIGHT,
     get_draw_font,
@@ -92,16 +94,18 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
     # Keybind label in top‑right corner
     if show_keybind and idx < len(KEYBIND_LABELS):
         lbl = KEYBIND_LABELS[idx]
-        lbl_w = len(lbl) * 8  # rough width estimate
+        lbl_w = len(lbl) * 8
         _draw_text_with_font([CHORD_BOX_W - 8 - lbl_w, 4], lbl,
-                      color=COLOR_TEXT_DIM, size=12, parent=canvas_tag)
+                      color=COLOR_TEXT_DIM, size=14, parent=canvas_tag)
 
 
 
 def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                    idx: int, selected: bool = False,
                    key: str = "C", scale: str = "Major",
-                   show_keybind: bool = False):
+                   show_keybind: bool = False,
+                   keybind_label: str = "",
+                   bg_color=None):
     """Draw a compact progression grid cell inside *canvas_tag*.
 
     Shows degree symbol (computed from cell's root vs key/scale),
@@ -112,11 +116,12 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     dpg.delete_item(canvas_tag, children_only=True)
 
     # Background and border
+    fill_col = bg_color if bg_color is not None else COLOR_CHORD_BG
     border_col = COLOR_ACCENT if selected else COLOR_CHORD_BORDER
     border_thick = 2 if selected else 1
     dpg.draw_rectangle([0, 0],
                        [PROG_CELL_W - 1, PROG_CELL_H - 1],
-                       fill=COLOR_CHORD_BG, color=border_col,
+                       fill=fill_col, color=border_col,
                        thickness=border_thick,
                        tag=f"prog_border_{idx}", parent=canvas_tag)
 
@@ -126,12 +131,13 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
                        show=False,
                        tag=f"prog_play_bar_{idx}", parent=canvas_tag)
 
-    # Keybind label in top‑right corner (drawn even on empty cells)
-    if show_keybind and idx < len(KEYBIND_LABELS):
-        lbl = KEYBIND_LABELS[idx]
-        lbl_w = len(lbl) * 7
-        _draw_text_with_font([PROG_CELL_W - 8 - lbl_w, 3], lbl,
-                      color=COLOR_TEXT_DIM, size=10, parent=canvas_tag)
+    if show_keybind:
+        lbl = keybind_label or (KEYBIND_LABELS[idx] if idx < len(KEYBIND_LABELS) else "")
+        if lbl:
+            lbl_w = len(lbl) * (5 if keybind_label else 7)
+            lbl_x = PROG_CELL_W - 5 - lbl_w
+            _draw_text_with_font([lbl_x, 3], lbl,
+                          color=COLOR_TEXT_DIM, size=12, parent=canvas_tag)
 
     if cell.is_empty():
         _draw_text_with_font([PROG_CELL_W // 2 - 22, PROG_CELL_H // 2 - 8], "Empty",
@@ -140,7 +146,7 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
 
 
     # Degree symbol — compute from actual cell root vs key/scale
-    from klo_chords.chords import get_degree_for_root
+    from klo_chords.core.chords import get_degree_for_root
     if cell.root is not None:
         degree = get_degree_for_root(cell.root, key, scale)
     else:

@@ -101,5 +101,6 @@ def save(settings: Dict[str, Any]) -> None:
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2, sort_keys=True)
-    except OSError:
-        pass  # silently ignore (e.g. permissions)
+    except OSError as e:
+        import sys
+        print(f"[prefs] Warning: could not save preferences: {e}", file=sys.stderr)

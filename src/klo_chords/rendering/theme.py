@@ -51,7 +51,7 @@ def _asset_path(subdir: str, filename: str) -> str:
     """Return the path to a bundled asset file."""
     base = _frozen_base()
     if base is not None:
-        return str(base / "assets" / subdir / filename)
+        return str(base / "klo_chords" / "assets" / subdir / filename)
     return str(resources.files(PACKAGE).joinpath("assets", subdir, filename))
 
 
@@ -68,3 +68,10 @@ def font_path_fallback() -> str:
 def icon_path() -> str:
     """Return the path to the app icon."""
     return _asset_path("icons", "app_icon.ico")
+# ── Waveform display mappings (shared by gui/app.py and state.py) ────────────
+WAVE_INTERNAL_TO_DISPLAY = {
+    "triangle": "Triangle",
+    "sine": "Sine",
+    "sawtooth": "Sawtooth",
+}
+WAVE_DISPLAY_NAMES = ["Triangle", "Sine", "Sawtooth"]

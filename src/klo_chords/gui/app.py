@@ -1,9 +1,11 @@
-﻿"""
+"""
 KLO Chords - Application entry point.
 
 Builds the Dear PyGui window layout and runs the event loop.
 All logic (rendering, callbacks, state) lives in sibling modules.
 """
+
+from __future__ import annotations
 
 import math
 import platform
@@ -15,26 +17,27 @@ import os
 # draw_text() uses explicit pixel sizes and is unaffected by global font scale.
 _DISPLAY_SCALE = 2.0 if platform.system() == "Darwin" else 1.0
 
-import klo_chords.prefs as prefs
+import klo_chords.core.prefs as prefs
 
-from klo_chords.chords import KEY_NAMES, SCALE_TYPES
-from klo_chords.theme import (
+from klo_chords.core.chords import KEY_NAMES, SCALE_TYPES
+from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_BG_LIGHT, COLOR_TEXT_DIM, COLOR_TEXT,
+    WAVE_INTERNAL_TO_DISPLAY, WAVE_DISPLAY_NAMES,
     COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     font_path, font_path_fallback, icon_path,
     set_draw_font,
 )
-from klo_chords.piano import (
+from klo_chords.rendering.piano import (
     build_piano_keys, build_multi_octave_piano,
     PIANO_CANVAS_W, PIANO_CANVAS_H,
     PROG_PIANO_CANVAS_W, PROG_PIANO_CANVAS_H, PROG_PIANO_OCTAVES,
 )
-from klo_chords.chord_box import PROG_CELL_W, PROG_CELL_H, PROG_QUALITY_NAMES
+from klo_chords.rendering.chord_box import PROG_CELL_W, PROG_CELL_H, PROG_QUALITY_NAMES
 from klo_chords.state import (
     on_key_change, on_scale_change, on_sevenths_toggle,
     on_next_voicing, on_prev_voicing, on_key_press,
     on_prog_key_change, on_prog_scale_change, on_prog_sevenths_toggle,
-    on_prog_fill, on_prog_clear_all, on_prog_cell_click,
+    on_prog_fill, on_prog_clear_all, on_prog_export, on_prog_import, on_prog_cell_click,
     on_prog_cell_root_prev, on_prog_cell_root_next,
     on_prog_cell_quality_prev, on_prog_cell_quality_next,
     on_prog_cell_inversion_prev, on_prog_cell_inversion_next,
@@ -49,7 +52,6 @@ from klo_chords.state import (
     on_tab_change,
     on_fretboard_mode_change, on_mute_toggle, on_stop,
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
-    on_prog_show_suggestions, on_prog_cell_shift_click,
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds, init_show_keybinds,
     on_sub_oscillator_toggle, on_reset_prefs,
@@ -57,22 +59,15 @@ from klo_chords.state import (
 )
 
 
-from klo_chords.sound import get_settings as get_sound_settings
-import klo_chords.midi_tab as midi_tab
-from klo_chords.quality import quality_symbol
+from klo_chords.audio.sound import get_settings as get_sound_settings
+import klo_chords.audio.midi_engine as midi_tab
+from klo_chords.core.quality import quality_symbol
 
 SCALE_NAMES = list(SCALE_TYPES.keys())
 
 _IS_WINDOWS = platform.system() == "Windows"
 VIEWPORT_WIDTH  = 880 if _IS_WINDOWS else 860
 VIEWPORT_HEIGHT = 1030 if _IS_WINDOWS else 1000
-
-WAVE_INTERNAL_TO_DISPLAY = {
-    "triangle": "Triangle",
-    "sine": "Sine",
-    "sawtooth": "Sawtooth",
-}
-WAVE_DISPLAY_NAMES = ["Triangle", "Sine", "Sawtooth"]
 
 
 def _draw_wave_preview(internal_mode: str = "triangle"):
@@ -124,16 +119,16 @@ def _build_toolbar():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=6)
         dpg.add_text("Volume")
-        snd = get_sound_settings()
+        sound_cfg = get_sound_settings()
         dpg.add_slider_int(tag="volume_slider",
-                           default_value=int(round(snd["volume"] * 100)),
+                           default_value=int(round(sound_cfg["volume"] * 100)),
                            min_value=0, max_value=100,
                            width=100, callback=on_volume_change)
         dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
         dpg.add_spacer(width=8)
         dpg.add_text("Legato")
-        snd2 = get_sound_settings()
+        sound_cfg2 = get_sound_settings()
         dpg.add_checkbox(label="", tag="toolbar_legato_toggle",
                           default_value=True,
                           callback=on_legato_toggle)
@@ -142,7 +137,7 @@ def _build_toolbar():
         dpg.add_spacer(width=8)
         dpg.add_text("Wave:")
         dpg.add_combo(items=WAVE_DISPLAY_NAMES,
-                      default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
+                      default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
                       tag="toolbar_wave_combo", width=110,
                       callback=on_wave_type_change)
         dpg.add_spacer(width=16)
@@ -313,7 +308,7 @@ def _build_progression_tab():
         dpg.add_spacer(width=10)
         dpg.add_checkbox(label="Include 7th",
                          tag="prog_sevenths_toggle",
-                         default_value=False,
+                         default_value=True,
                          callback=on_prog_sevenths_toggle)
         dpg.add_spacer(width=82)
         dpg.add_button(label="Fill Chords", width=100,
@@ -362,14 +357,20 @@ def _build_progression_tab():
         dpg.add_spacer(width=6)
         dpg.add_combo(items=["Insert", "Replace", "Swap"],
                       default_value="Replace",
-                      tag="paste_mode_combo", width=100,
+                      tag="paste_mode_combo", width=108,
                       callback=on_paste_mode_change)
-        dpg.add_spacer(width=20)
-        dpg.add_text("Paste Shape:", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=8)
+        dpg.add_text("Paste Shape", color=COLOR_TEXT_DIM)
         dpg.add_combo(items=["Linear", "Preserve Shape"],
                       default_value="Preserve Shape",
-                      tag="paste_shape_combo", width=150,
+                      tag="paste_shape_combo", width=120,
                       callback=on_paste_shape_change)
+        dpg.add_spacer(width=120)
+        dpg.add_button(label="Export", width=100,
+                       tag="prog_export_btn", callback=on_prog_export)
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Import", width=100,
+                       tag="prog_import_btn", callback=on_prog_import)
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
@@ -401,17 +402,12 @@ def _build_progression_tab():
         dpg.bind_item_theme(tag, _chip_theme)
 
     with dpg.group(tag="prog_cell_detail_group", show=True):
-        with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
-            dpg.add_text("Selected: ", color=COLOR_TEXT_DIM)
-            dpg.add_text("None", tag="prog_detail_pos", color=COLOR_ACCENT)
+        dpg.add_text("None", tag="prog_detail_pos", show=False)
 
-        dpg.add_spacer(height=4)
-
-        _piano_pad = 20
+        piano_pad = 20
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
+            dpg.add_spacer(width=piano_pad)
             dpg.add_text("Root", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=16)
             dpg.add_button(label="<", width=25, height=22,
@@ -455,7 +451,7 @@ def _build_progression_tab():
         dpg.add_spacer(height=4)
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
+            dpg.add_spacer(width=piano_pad)
             dpg.add_text("Notes", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
             _chip("prog_detail_notes", "--", 108)
@@ -463,15 +459,13 @@ def _build_progression_tab():
             dpg.add_input_text(tag="prog_detail_inv_name", default_value="",
                                readonly=True, width=260, no_horizontal_scroll=True)
             dpg.bind_item_theme("prog_detail_inv_name", _plain_text_theme)
-            dpg.add_spacer(width=25)
-            dpg.add_button(label="Suggestions", tag="prog_suggest_btn",
-                           width=120, height=25, callback=on_prog_show_suggestions)
+
 
         # ── Multi-octave piano for cell detail (centered) ─────────────────
         dpg.add_spacer(height=8)
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
+            dpg.add_spacer(width=piano_pad)
             with dpg.drawlist(tag="prog_piano_canvas",
                               width=PROG_PIANO_CANVAS_W,
                               height=PROG_PIANO_CANVAS_H):
@@ -495,9 +489,9 @@ def _build_sound_tab():
             dpg.add_text("|", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=20)
             dpg.add_text("Wave type:")
-            snd = get_sound_settings()
+            sound_cfg = get_sound_settings()
             dpg.add_combo(items=WAVE_DISPLAY_NAMES,
-                          default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
+                          default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
                           tag="sound_mode_combo", width=120,
                           callback=on_wave_type_change)
 
@@ -507,7 +501,7 @@ def _build_sound_tab():
             dpg.add_spacer(width=20)
             dpg.add_text("Audio Device:")
             dpg.add_spacer(width=4)
-            from klo_chords.sound import get_audio_devices, get_device_name
+            from klo_chords.audio.sound import get_audio_devices, get_device_name
             devices = get_audio_devices()
             device_names = [d["name"] for d in devices]
             saved_device = get_device_name()
@@ -523,9 +517,9 @@ def _build_sound_tab():
             dpg.add_text("Audio Quality:")
             dpg.add_spacer(width=4)
             quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
-            snd2 = get_sound_settings()
+            sound_cfg2 = get_sound_settings()
             dpg.add_combo(items=["Smooth", "Responsive", "Legacy"],
-                          default_value=quality_display.get(snd2.get("audio_quality", "smooth"), "Smooth"),
+                          default_value=quality_display.get(sound_cfg2.get("audio_quality", "smooth"), "Smooth"),
                           tag="sound_quality_combo", width=120,
                           callback=on_audio_quality_change)
 
@@ -624,15 +618,21 @@ def build_ui():
     dpg.configure_app()
 
     _font_px = int(16 * _DISPLAY_SCALE)
+    # draw_text sizes go up to 24px; bake the draw font at ≥24px to avoid upscaling.
+    # On Mac _font_px=32 already exceeds 24, so reuse it; on Windows bake separately.
+    _draw_px = max(_font_px, 24)
     with dpg.font_registry():
         path = font_path()
+        fallback = font_path_fallback()
         _default_font = None
         if os.path.exists(path):
             _default_font = dpg.add_font(path, _font_px)
-            set_draw_font(_default_font)
-        fallback = font_path_fallback()
-        if os.path.exists(fallback):
-            _fallback_font = dpg.add_font(fallback, _font_px)
+            _draw_fnt = dpg.add_font(path, _draw_px) if _draw_px != _font_px else _default_font
+            set_draw_font(_draw_fnt)
+        elif os.path.exists(fallback):
+            _default_font = dpg.add_font(fallback, _font_px)
+            _draw_fnt = dpg.add_font(fallback, _draw_px) if _draw_px != _font_px else _default_font
+            set_draw_font(_draw_fnt)
 
     with dpg.window(tag="main_win", no_close=True, no_collapse=True,
                     no_scrollbar=True, width=-1, height=-1):
@@ -687,35 +687,25 @@ def build_ui():
     dpg.set_primary_window("main_win", True)
     dpg.show_viewport()
 
-    # Sexy "Fill" button styling
-    if dpg.does_item_exist("prog_fill_btn"):
-        with dpg.theme() as fill_theme:
+    def _btn_theme(r, g, b):
+        """Create a styled button theme: colored bg, white text, rounded."""
+        with dpg.theme() as t:
             with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(dpg.mvThemeCol_Button,
-                                    [50, 120, 200, 255])   # blue bg
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,
-                                    [60, 150, 240, 255])   # lighter on hover
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,
-                                    [30, 90, 170, 255])    # darker when pressed
-                dpg.add_theme_color(dpg.mvThemeCol_Text,
-                                    [255, 255, 255, 255])   # white text
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        [r,   g,   b,   255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [min(r+30,255), min(g+30,255), min(b+30,255), 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  [max(r-30,0),   max(g-30,0),   max(b-30,0),   255])
+                dpg.add_theme_color(dpg.mvThemeCol_Text,          [255, 255, 255, 255])
                 dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
-        dpg.bind_item_theme("prog_fill_btn", fill_theme)
+        return t
 
-    # "Clear All" button styling (slightly different shade)
-    if dpg.does_item_exist("prog_clear_btn"):
-        with dpg.theme() as clear_theme:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(dpg.mvThemeCol_Button,
-                                    [180, 50, 50, 255])    # red bg
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,
-                                    [220, 60, 60, 255])    # lighter on hover
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,
-                                    [140, 30, 30, 255])    # darker when pressed
-                dpg.add_theme_color(dpg.mvThemeCol_Text,
-                                    [255, 255, 255, 255])   # white text
-                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
-        dpg.bind_item_theme("prog_clear_btn", clear_theme)
+    for tag, (r, g, b) in [
+        ("prog_fill_btn",   (50,  120, 200)),   # blue
+        ("prog_clear_btn",  (180, 50,  50)),    # red
+        ("prog_export_btn", (60,  130, 80)),    # green
+        ("prog_import_btn", (60,  130, 80)),    # green
+    ]:
+        if dpg.does_item_exist(tag):
+            dpg.bind_item_theme(tag, _btn_theme(r, g, b))
 
     # ── Initialize ──────────────────────────────────────────────────────────────
     midi_tab.init()
@@ -747,6 +737,7 @@ def build_ui():
         ]
         for key, cell_idx in PROG_KEY_CELL_MAP:
             dpg.add_key_press_handler(key=key, callback=on_key_press, user_data=cell_idx)
+        # Alt+1 = original suggestion card (Alt+~ intercepted by macOS, not doable cross-platform)
         # Escape / Spacebar
         dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
         dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)
@@ -770,11 +761,12 @@ def build_ui():
         ]
         for key, tab_tag in _TAB_KEYS:
             dpg.add_key_press_handler(key=key, callback=_on_tab_shortcut, user_data=tab_tag)
-        # Delete key
+        # Delete key — mvKey_Delete is Forward Delete; mvKey_Back is the main Delete key on macOS
         dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
+        dpg.add_key_press_handler(key=dpg.mvKey_Back, callback=on_prog_delete_selection)
 
 
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     dpg_keyboard.setup()
 
     # ── Main loop ──────────────────────────────────────────────────────────────
@@ -792,7 +784,7 @@ def build_ui():
 
 
 def _on_tab_shortcut(sender, app_data, user_data):
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     if not dpg_keyboard.toggle_is_down():
         return
     dpg.set_value("main_tab_bar", user_data)
@@ -801,7 +793,7 @@ def _on_tab_shortcut(sender, app_data, user_data):
 
 def _on_key_with_ctrl(sender, app_data, user_data):
     """Handle key presses that require platform-native modifier (Ctrl on Win, Cmd on Mac)."""
-    from klo_chords import dpg_keyboard
+    from klo_chords.widgets import dpg_keyboard
     if not dpg_keyboard.toggle_is_down():
         return
     action = user_data
@@ -832,7 +824,7 @@ def main():
 def _apply_preferences():
     """Read preferences.json and push values into the sound engine."""
     prefs_data = prefs.load()
-    from klo_chords.sound import (
+    from klo_chords.audio.sound import (
         set_volume, set_enabled, set_mode,
         set_audio_quality, set_legato, set_playback_mode,
         set_random_velocity, set_velocity_range, set_base_octave,

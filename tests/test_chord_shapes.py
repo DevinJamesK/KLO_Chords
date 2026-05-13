@@ -10,12 +10,12 @@ Tests fall into two categories:
 
 import unittest
 
-from klo_chords.chord_shapes import (
+from klo_chords.core.chord_shapes import (
     _load_curated_shapes,
     get_ranked_voicings,
     shape_pitch_classes,
 )
-from klo_chords.chords import (
+from klo_chords.core.chords import (
     QUALITY_INTERVALS,
     SCALE_TYPES,
     NOTE_NAMES,

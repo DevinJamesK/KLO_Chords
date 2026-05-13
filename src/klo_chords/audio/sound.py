@@ -11,6 +11,8 @@ Playback modes:
   - legato:  Shared notes between chords are held (not re-struck).
 """
 
+from __future__ import annotations
+
 import math
 import threading
 import random
@@ -19,7 +21,7 @@ from typing import List
 import sounddevice as sd
 import numpy as np
 
-from klo_chords.chords import note_to_pc
+from klo_chords.core.chords import note_to_pc
 
 SAMPLE_RATE = 44100
 BLOCK_SIZE  = 512          # fallback; overridden by _get_blocksize() at stream creation
@@ -317,7 +319,7 @@ _lowest_midi: int | None = None        # lowest MIDI of the currently sounding c
 _sub_osc_freq: float | None = None     # frequency of the active sub oscillator voice
 
 
-def set_mute(val: bool):
+def set_mute(val: bool) -> None:
     """Mute/unmute audio. Saves current volume before muting, restores on unmute."""
     global _volume, _volume_before_mute
     if val:
@@ -338,14 +340,14 @@ def _get_wave_fn():
     return _WAVE_GENS.get(_sound_mode, _gen_sine)
 
 
-def set_enabled(val: bool):
+def set_enabled(val: bool) -> None:
     global _sound_enabled
     _sound_enabled = val
     if not val:
         _engine.release_all()
 
 
-def set_mode(mode: str):
+def set_mode(mode: str) -> None:
     global _sound_mode
     _sound_mode = mode
 
@@ -356,7 +358,7 @@ def set_base_octave(octave: int):
     reset_voice_leading()
 
 
-def set_random_velocity(val: bool):
+def set_random_velocity(val: bool) -> None:
     global _random_velocity
     _random_velocity = val
 
@@ -367,7 +369,7 @@ def set_velocity_range(vmin: int, vmax: int):
     _velocity_max = max(vmin, vmax)
 
 
-def set_playback_mode(mode: str):
+def set_playback_mode(mode: str) -> None:
     """Change playback mode and release all active notes.
     
     When switching modes, any currently playing notes are released so
@@ -380,12 +382,12 @@ def set_playback_mode(mode: str):
     _engine._note_history = []
 
 
-def set_legato(val: bool):
+def set_legato(val: bool) -> None:
     """If True, shared notes between chords are held (not re-struck)."""
     _engine._legato = val
 
 
-def set_sub_oscillator(val: bool):
+def set_sub_oscillator(val: bool) -> None:
     """If True, a copy of the chord root is played below the lowest chord note.
 
     When toggled on while notes are already playing, the sub voice is
@@ -416,7 +418,7 @@ def set_sub_oscillator(val: bool):
             _sub_osc_freq = None
 
 
-def set_volume(val: float):
+def set_volume(val: float) -> None:
     global _volume
     _volume = max(0.0, min(1.0, val))
 
@@ -437,8 +439,11 @@ def set_audio_quality(val: str):
         return
     _audio_quality = val
     # Restart audio stream to apply new blocksize/latency
-    _engine.stop()
-    _engine.start()
+    try:
+        _engine.stop()
+        _engine.start()
+    except (sd.PortAudioError, OSError) as e:
+        print(f"[sound] Warning: could not restart stream after quality change: {e}", flush=True)
 
 
 def get_audio_quality() -> str:
@@ -446,7 +451,7 @@ def get_audio_quality() -> str:
     return _audio_quality
 
 
-def get_audio_devices() -> list:
+def get_audio_devices() -> list[dict[str, object]]:
     """Return a list of output audio devices as {name, index} dicts.
 
     Index is the PortAudio device ID, or None for 'System Default'.
@@ -461,7 +466,7 @@ def get_audio_devices() -> list:
     return devices
 
 
-def set_device(device_id):
+def set_device(device_id: int | None) -> None:
     """Set the output audio device by PortAudio device ID (None = system default).
 
     Restarts the audio stream if it's already running.
@@ -495,7 +500,7 @@ def get_device_name() -> str:
     return _device_name
 
 
-def get_settings() -> dict:
+def get_settings() -> dict[str, object]:
     return dict(
         enabled=_sound_enabled,
         mode=_sound_mode,
@@ -517,7 +522,7 @@ def is_playing() -> bool:
     return _engine._vb.has_voices
 
 
-def reset_voice_leading():
+def reset_voice_leading() -> None:
     global _previous_midi_notes, _current_notes
     _previous_midi_notes = []
     _current_notes = []
@@ -796,7 +801,12 @@ def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int 
     _engine.play_notes(freqs, amps, notes)
 
 
-def stop_current():
+def reset_note_history() -> None:
+    """Clear toggle history so the next play is not treated as a toggle-off."""
+    _engine._note_history = []
+
+
+def stop_audio():
     global _current_notes, _sub_osc_freq, _last_root_midi, _lowest_midi
     _current_notes = []
     _sub_osc_freq = None

@@ -6,12 +6,14 @@ Supports two display modes:
   - "note":  Shows note names inside the circles (root highlighted green)
 """
 
+from __future__ import annotations
+
 import dearpygui.dearpygui as dpg
 from typing import List, Tuple, Optional
 
-from klo_chords.chords import ChordInfo, get_guitar_diagram, note_to_pc, pc_to_note
-from klo_chords.chord_shapes import OPEN_STRING_PCS
-from klo_chords.theme import (
+from klo_chords.core.chords import ChordInfo, get_guitar_diagram, note_to_pc, pc_to_note
+from klo_chords.core.chord_shapes import OPEN_STRING_PCS
+from klo_chords.rendering.theme import (
     COLOR_BG_LIGHT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_STRING, COLOR_FRET, COLOR_DOT, COLOR_ROOT_DOT,
     COLOR_MUTED, COLOR_OPEN,
@@ -44,16 +46,76 @@ def _centered_text(x: float, y: float, text: str, size: int, color, parent: str)
     )
 
 
+
+# ── Shared fretboard drawing helper ────────────────────────────────────────────
+
+def _draw_fretboard_string_map(diagram, root_pc: int):
+    """Build string→(fret|None) map and return root PC for dot coloring."""
+    string_map = {s: None for s in range(6)}
+    for s_idx, fret in diagram:
+        string_map[s_idx] = fret
+    return string_map
+
+
+def _fret_range(diagram):
+    """Return (start_fret, fret_count) to fit the diagram in visible range."""
+    if not diagram:
+        return 0, 5
+    frets = [f for _, f in diagram if f is not None]
+    if not frets:
+        return 0, 5
+    min_fret, max_fret = min(frets), max(frets)
+    has_open = any(f == 0 for _, f in diagram if f is not None)
+    start_fret = 0 if has_open else max(1, min_fret)
+    fret_count = min(5, max_fret - start_fret + 2)
+    return start_fret, fret_count
+
+
+def _draw_fret_dots(canvas_tag: str, string_map: dict, root_pc: int,
+                    x0: float, y0: float, str_gap: float, fret_gap: float,
+                    start_fret: int, radius: int = 11,
+                    show_note_names: bool = False, text_size: int = 18):
+    """Draw fret dots/circles with optional note-name labels."""
+    for s_idx, fret in string_map.items():
+        x = x0 + s_idx * str_gap
+        if fret is None:
+            dpg.draw_text([x - 5, y0 - 18], "X",
+                          color=[200, 60, 60, 255], size=text_size - 2,
+                          parent=canvas_tag)
+        elif fret == 0:
+            dpg.draw_text([x - 5, y0 - 18], "O",
+                          color=[60, 210, 100, 255], size=text_size - 2,
+                          parent=canvas_tag)
+        else:
+            dot_y = y0 + (fret - max(start_fret, 1)) * fret_gap
+            circle_cy = dot_y + fret_gap / 2
+            note_pc = (OPEN_STRING_PCS[s_idx] + fret) % 12
+            is_root = (note_pc == root_pc)
+            if show_note_names:
+                dot_color = [60, 210, 100, 255] if is_root else [210, 190, 150, 255]
+            else:
+                dot_color = [255, 210, 50, 255] if is_root else [210, 190, 150, 255]
+            dpg.draw_circle([x, circle_cy], radius,
+                            fill=dot_color, color=[0, 0, 0, 0],
+                            parent=canvas_tag)
+            if show_note_names:
+                label = pc_to_note(note_pc)
+            else:
+                label = str(fret)
+            text_col = [20, 20, 30, 255]
+            _centered_text(x, circle_cy, label, text_size, text_col, canvas_tag)
+
+
 # ── Mini fretboard (thumbnail in chord list) ──────────────────────────────────
 
-def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo):
+def draw_mini_fretboard(canvas_tag: str, chord: ChordInfo, voicing_idx: int = 0):
     """Draw a small 115x90 fretboard preview inside *canvas_tag*."""
     if not dpg.does_item_exist(canvas_tag):
         return
     dpg.delete_item(canvas_tag, children_only=True)
 
     W, H = 115, 90
-    diagram = get_guitar_diagram(chord)
+    diagram = get_guitar_diagram(chord, voicing_idx)
 
     if diagram is None:
         dpg.draw_text([W // 2 - 28, H // 2 - 5], "no diagram",

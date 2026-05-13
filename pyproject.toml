@@ -4,13 +4,42 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "klo-chords"
-version = "0.5.7"
+version = "0.5.10"
 description = "Chord theory tool with sound engine, piano keyboard, and progression builder."
 requires-python = ">=3.11"
 dependencies = ["dearpygui", "sounddevice", "numpy", "python-rtmidi"]
 
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=5"]
+
 [project.scripts]
-klo-chords = "klo_chords.gui:main"
+klo-chords = "klo_chords.gui.app:main"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src/klo_chords"]
+omit = ["src/klo_chords/gui/*", "src/klo_chords/assets/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 import copy
 
-from klo_chords.chord_shapes import get_ranked_voicings, shape_to_diagram
+from klo_chords.core.chord_shapes import get_ranked_voicings, shape_to_diagram
 
 # ── Note names ────────────────────────────────────────────────────────────────
 
