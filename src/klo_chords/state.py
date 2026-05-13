@@ -611,39 +611,8 @@ def _get_degree_for_col(col: int) -> str:
 # ── Keyboard callback ────────────────────────────────────────────────────────────
 
 def on_key_press(sender, app_data, user_data):
-    global _current_tab, _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
+    global _current_tab
     from klo_chords.widgets import dpg_keyboard
-
-    # ~ key (backtick/tilde) selects the original/current chord in suggestions.
-    # Handled before the Alt block because on macOS Option+` is a dead-key
-    # sequence that DPG/GLFW never receives.  The ~ key alone has no other
-    # valid action when the suggestion panel is visible.
-    if (user_data == _SUGG_ORIG_CARD_IDX
-            and _current_tab == "tab_progression"
-            and dpg.does_item_exist("suggestion_panel")):
-        available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
-        if available_cats:
-            orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
-            if orig_suggs:
-                s = orig_suggs[0]
-                if dpg_keyboard.shift_is_down():
-                    _sugg_range_select(_SUGG_ORIG_CARD_IDX)
-                elif dpg_keyboard.toggle_is_down():
-                    _toggle_suggestion_selection(_SUGG_ORIG_CARD_IDX)
-                else:
-                    if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
-                        stop_audio()
-                        from klo_chords.audio.midi_engine import stop_midi_notes
-                        stop_midi_notes()
-                        _sugg_playing_card_idx = None
-                    else:
-                        _sugg_selected_set = {_SUGG_ORIG_CARD_IDX}
-                        _sugg_selection_anchor = _SUGG_ORIG_CARD_IDX
-                        _sugg_playing_card_idx = _SUGG_ORIG_CARD_IDX
-                        _apply_suggestion(s)
-                        _rebuild_sugg_selection_highlights()
-        return
-
     # Alt+key: play/select suggestion cards
     # Shift+Alt → range select, Cmd/Ctrl+Alt → single toggle, Alt alone → play
     if dpg_keyboard.alt_is_down():
@@ -651,6 +620,7 @@ def on_key_press(sender, app_data, user_data):
             card_idx = user_data
             available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
             if available_cats:
+                global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
                 if card_idx == _SUGG_ORIG_CARD_IDX:
                     orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
                     if orig_suggs:
@@ -2215,7 +2185,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
                          parent=row_grp)
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label="~",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
                        bg_color=_COLOR_ORIG_BG)
         dpg.add_spacer(width=6, parent=row_grp)
         orig_info.append((canvas_tag, s))
@@ -2313,7 +2283,7 @@ def _rebuild_sugg_selection_highlights():
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=(_SUGG_ORIG_CARD_IDX in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label="~",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
                        bg_color=_COLOR_ORIG_BG)
         hreg_tag = f"sugg_orig_hreg_{j}"
         if dpg.does_item_exist(hreg_tag):
