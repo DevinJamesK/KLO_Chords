@@ -1025,7 +1025,7 @@ def build_midi_tab():
     dpg.add_spacer(height=4)
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
-        with dpg.child_window(tag="midi_log_window", width=-20, height=-1):
+        with dpg.child_window(tag="midi_log_window", width=-20, height=-20):
             pass
 
     _auto_connect()
