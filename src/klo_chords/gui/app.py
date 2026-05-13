@@ -272,7 +272,7 @@ def _build_chord_tab():
                 dpg.add_spacer(width=20)
                 with dpg.group():
                     with dpg.group(horizontal=True):
-                        dpg.add_button(label="◀  Prev", width=80,
+                        dpg.add_button(label="◄  Prev", width=80,
                                        callback=on_prev_voicing)
                         dpg.add_text("", tag="voicing_label",
                                      color=COLOR_ACCENT)
@@ -414,7 +414,7 @@ def _build_progression_tab():
                            tag="prog_root_prev_btn",
                            callback=on_prog_cell_root_prev)
             _chip("prog_detail_root", "C", 38)
-            dpg.add_button(label="▸", width=25, height=22,
+            dpg.add_button(label="►", width=25, height=22,
                            tag="prog_root_next_btn",
                            callback=on_prog_cell_root_next)
             dpg.add_spacer(width=20)
@@ -424,7 +424,7 @@ def _build_progression_tab():
                            tag="prog_quality_prev_btn",
                            callback=on_prog_cell_quality_prev)
             _chip("prog_detail_quality", "Major", 66)
-            dpg.add_button(label="▸", width=25, height=22,
+            dpg.add_button(label="►", width=25, height=22,
                            tag="prog_quality_next_btn",
                            callback=on_prog_cell_quality_next)
             dpg.add_spacer(width=16)
@@ -434,7 +434,7 @@ def _build_progression_tab():
                            tag="prog_inv_prev_btn",
                            callback=on_prog_cell_inversion_prev)
             _chip("prog_detail_inversion", "Root", 46)
-            dpg.add_button(label="▸", width=25, height=22,
+            dpg.add_button(label="►", width=25, height=22,
                            tag="prog_inv_next_btn",
                            callback=on_prog_cell_inversion_next)
             dpg.add_spacer(width=16)
@@ -444,7 +444,7 @@ def _build_progression_tab():
                            tag="prog_octave_prev_btn",
                            callback=on_prog_cell_octave_prev)
             _chip("prog_detail_octave", "3", 30)
-            dpg.add_button(label="▸", width=25, height=22,
+            dpg.add_button(label="►", width=25, height=22,
                            tag="prog_octave_next_btn",
                            callback=on_prog_cell_octave_next)
 
