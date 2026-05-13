@@ -673,7 +673,7 @@ def on_key_press(sender, app_data, user_data):
             _play_current_chord()
     elif _current_tab == "tab_progression":
         idx = user_data
-        if idx < PROG_CELLS_TOTAL and idx < len(_prog_cells):
+        if 0 <= idx < PROG_CELLS_TOTAL and idx < len(_prog_cells):
             if dpg_keyboard.shift_is_down():
                 if idx in _prog_selected_set or idx == _get_prog_selected_idx():
                     _prog_selected_set.discard(idx)
