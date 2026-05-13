@@ -2249,7 +2249,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         width=220, height=22, parent=hdr)
     dpg.bind_item_theme(lbl_btn, _get_cat_text_theme(color))
     dpg.add_spacer(width=6, parent=hdr)
-    dpg.add_button(label=">", width=25, height=22,
+    dpg.add_button(label="▶", width=25, height=22,
                    callback=lambda: _sugg_nav(1), parent=hdr)
 
     dpg.add_spacer(height=4, parent=sg)
