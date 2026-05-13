@@ -1,9 +1,11 @@
-﻿"""
+"""
 KLO Chords - Application entry point.
 
 Builds the Dear PyGui window layout and runs the event loop.
 All logic (rendering, callbacks, state) lives in sibling modules.
 """
+
+from __future__ import annotations
 
 import math
 import platform
@@ -123,16 +125,16 @@ def _build_toolbar():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=6)
         dpg.add_text("Volume")
-        snd = get_sound_settings()
+        sound_cfg = get_sound_settings()
         dpg.add_slider_int(tag="volume_slider",
-                           default_value=int(round(snd["volume"] * 100)),
+                           default_value=int(round(sound_cfg["volume"] * 100)),
                            min_value=0, max_value=100,
                            width=100, callback=on_volume_change)
         dpg.add_spacer(width=8)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
         dpg.add_spacer(width=8)
         dpg.add_text("Legato")
-        snd2 = get_sound_settings()
+        sound_cfg2 = get_sound_settings()
         dpg.add_checkbox(label="", tag="toolbar_legato_toggle",
                           default_value=True,
                           callback=on_legato_toggle)
@@ -141,7 +143,7 @@ def _build_toolbar():
         dpg.add_spacer(width=8)
         dpg.add_text("Wave:")
         dpg.add_combo(items=WAVE_DISPLAY_NAMES,
-                      default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
+                      default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
                       tag="toolbar_wave_combo", width=110,
                       callback=on_wave_type_change)
         dpg.add_spacer(width=16)
@@ -408,10 +410,10 @@ def _build_progression_tab():
     with dpg.group(tag="prog_cell_detail_group", show=True):
         dpg.add_text("None", tag="prog_detail_pos", show=False)
 
-        _piano_pad = 20
+        piano_pad = 20
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
+            dpg.add_spacer(width=piano_pad)
             dpg.add_text("Root", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=16)
             dpg.add_button(label="<", width=25, height=22,
@@ -455,7 +457,7 @@ def _build_progression_tab():
         dpg.add_spacer(height=4)
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
+            dpg.add_spacer(width=piano_pad)
             dpg.add_text("Notes", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
             _chip("prog_detail_notes", "--", 108)
@@ -469,7 +471,7 @@ def _build_progression_tab():
         dpg.add_spacer(height=8)
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=_piano_pad)
+            dpg.add_spacer(width=piano_pad)
             with dpg.drawlist(tag="prog_piano_canvas",
                               width=PROG_PIANO_CANVAS_W,
                               height=PROG_PIANO_CANVAS_H):
@@ -493,9 +495,9 @@ def _build_sound_tab():
             dpg.add_text("|", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=20)
             dpg.add_text("Wave type:")
-            snd = get_sound_settings()
+            sound_cfg = get_sound_settings()
             dpg.add_combo(items=WAVE_DISPLAY_NAMES,
-                          default_value=WAVE_INTERNAL_TO_DISPLAY.get(snd["mode"], "Triangle"),
+                          default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
                           tag="sound_mode_combo", width=120,
                           callback=on_wave_type_change)
 
@@ -521,9 +523,9 @@ def _build_sound_tab():
             dpg.add_text("Audio Quality:")
             dpg.add_spacer(width=4)
             quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
-            snd2 = get_sound_settings()
+            sound_cfg2 = get_sound_settings()
             dpg.add_combo(items=["Smooth", "Responsive", "Legacy"],
-                          default_value=quality_display.get(snd2.get("audio_quality", "smooth"), "Smooth"),
+                          default_value=quality_display.get(sound_cfg2.get("audio_quality", "smooth"), "Smooth"),
                           tag="sound_quality_combo", width=120,
                           callback=on_audio_quality_change)
 
@@ -691,55 +693,25 @@ def build_ui():
     dpg.set_primary_window("main_win", True)
     dpg.show_viewport()
 
-    # Sexy "Fill" button styling
-    if dpg.does_item_exist("prog_fill_btn"):
-        with dpg.theme() as fill_theme:
+    def _btn_theme(r, g, b):
+        """Create a styled button theme: colored bg, white text, rounded."""
+        with dpg.theme() as t:
             with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(dpg.mvThemeCol_Button,
-                                    [50, 120, 200, 255])   # blue bg
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,
-                                    [60, 150, 240, 255])   # lighter on hover
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,
-                                    [30, 90, 170, 255])    # darker when pressed
-                dpg.add_theme_color(dpg.mvThemeCol_Text,
-                                    [255, 255, 255, 255])   # white text
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        [r,   g,   b,   255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [min(r+30,255), min(g+30,255), min(b+30,255), 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  [max(r-30,0),   max(g-30,0),   max(b-30,0),   255])
+                dpg.add_theme_color(dpg.mvThemeCol_Text,          [255, 255, 255, 255])
                 dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
-        dpg.bind_item_theme("prog_fill_btn", fill_theme)
+        return t
 
-    # "Clear All" button styling (slightly different shade)
-    if dpg.does_item_exist("prog_clear_btn"):
-        with dpg.theme() as clear_theme:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(dpg.mvThemeCol_Button,
-                                    [180, 50, 50, 255])    # red bg
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,
-                                    [220, 60, 60, 255])    # lighter on hover
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,
-                                    [140, 30, 30, 255])    # darker when pressed
-                dpg.add_theme_color(dpg.mvThemeCol_Text,
-                                    [255, 255, 255, 255])   # white text
-                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
-        dpg.bind_item_theme("prog_clear_btn", clear_theme)
-
-    if dpg.does_item_exist("prog_export_btn"):
-        with dpg.theme() as export_theme:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(dpg.mvThemeCol_Button,        [60, 130, 80, 255])
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,  [75, 160, 100, 255])
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,   [40, 100, 60, 255])
-                dpg.add_theme_color(dpg.mvThemeCol_Text,           [255, 255, 255, 255])
-                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
-        dpg.bind_item_theme("prog_export_btn", export_theme)
-
-    if dpg.does_item_exist("prog_import_btn"):
-        with dpg.theme() as import_theme:
-            with dpg.theme_component(dpg.mvButton):
-                dpg.add_theme_color(dpg.mvThemeCol_Button,        [60, 130, 80, 255])
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered,  [75, 160, 100, 255])
-                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,   [40, 100, 60, 255])
-                dpg.add_theme_color(dpg.mvThemeCol_Text,           [255, 255, 255, 255])
-                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 6)
-        dpg.bind_item_theme("prog_import_btn", import_theme)
+    for tag, (r, g, b) in [
+        ("prog_fill_btn",   (50,  120, 200)),   # blue
+        ("prog_clear_btn",  (180, 50,  50)),    # red
+        ("prog_export_btn", (60,  130, 80)),    # green
+        ("prog_import_btn", (60,  130, 80)),    # green
+    ]:
+        if dpg.does_item_exist(tag):
+            dpg.bind_item_theme(tag, _btn_theme(r, g, b))
 
     # ── Initialize ──────────────────────────────────────────────────────────────
     midi_tab.init()

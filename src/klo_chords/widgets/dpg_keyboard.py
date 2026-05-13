@@ -19,6 +19,8 @@ Usage in build_ui():
         ...
 """
 
+from __future__ import annotations
+
 import dearpygui.dearpygui as dpg
 import sys
 

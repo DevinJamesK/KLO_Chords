@@ -8,6 +8,8 @@ Produces aligned log lines like:
     [row 0]  0:C      1:Dm     2:Em     3:F      4:G      5:Am     6:Bdim   7:--
 """
 
+from __future__ import annotations
+
 from typing import Optional
 
 from klo_chords.core.chords import pc_to_note

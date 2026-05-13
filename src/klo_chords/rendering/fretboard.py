@@ -6,6 +6,8 @@ Supports two display modes:
   - "note":  Shows note names inside the circles (root highlighted green)
 """
 
+from __future__ import annotations
+
 import dearpygui.dearpygui as dpg
 from typing import List, Tuple, Optional
 

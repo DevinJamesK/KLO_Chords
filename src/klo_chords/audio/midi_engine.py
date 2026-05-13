@@ -36,7 +36,7 @@ SUSTAIN_CC        = 64
 ALL_SOUND_OFF     = 120
 ALL_NOTES_OFF     = 123
 
-_NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+from klo_chords.core.chords import NOTE_NAMES as _NOTE_NAMES
 
 CC_NAMES = {
     1:  "Mod",   7:  "Vol",   10: "Pan",  11: "Expr",
@@ -722,6 +722,8 @@ def send_chord_midi(midi_notes: list, velocity: int = 100):
     global _sounding_midi_notes
     if not _driver or _driver._out_port is None:
         return
+
+from __future__ import annotations
 
     ch = 0
     if dpg.does_item_exist("midi_out_channel"):

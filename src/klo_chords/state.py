@@ -5,6 +5,8 @@ Holds the currently selected key, scale, chord list, etc.
 All state mutation goes through callbacks that trigger UI refreshes.
 """
 
+from __future__ import annotations
+
 import os
 from typing import List, Optional, Set
 

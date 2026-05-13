@@ -4,6 +4,8 @@ Shared constants used across the application.
 Progression grid dimensions, MIDI/logging column widths.
 """
 
+from __future__ import annotations
+
 # ── Progression grid ──────────────────────────────────────────────────────────
 PROG_COLS = 8
 PROG_ROWS = 4

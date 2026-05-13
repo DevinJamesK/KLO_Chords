@@ -7,6 +7,8 @@ Chord notes highlight in gold, scale notes in blue.
 The bass note (lowest sounding note) highlights in green.
 """
 
+from __future__ import annotations
+
 import dearpygui.dearpygui as dpg
 from typing import List, Set
 

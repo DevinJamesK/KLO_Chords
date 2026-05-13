@@ -11,6 +11,8 @@ Playback modes:
   - legato:  Shared notes between chords are held (not re-struck).
 """
 
+from __future__ import annotations
+
 import math
 import threading
 import random
@@ -437,8 +439,11 @@ def set_audio_quality(val: str):
         return
     _audio_quality = val
     # Restart audio stream to apply new blocksize/latency
-    _engine.stop()
-    _engine.start()
+    try:
+        _engine.stop()
+        _engine.start()
+    except (sd.PortAudioError, OSError) as e:
+        print(f"[sound] Warning: could not restart stream after quality change: {e}", flush=True)
 
 
 def get_audio_quality() -> str:

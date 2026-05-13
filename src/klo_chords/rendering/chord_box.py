@@ -5,6 +5,8 @@ Degree is rendered in a separate column to the left.
 Also provides the compact progression grid cell renderer.
 """
 
+from __future__ import annotations
+
 import dearpygui.dearpygui as dpg
 from klo_chords.core.chords import ChordInfo, ProgCell
 from klo_chords.core.quality import quality_symbol
