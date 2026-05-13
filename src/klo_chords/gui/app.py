@@ -737,8 +737,7 @@ def build_ui():
         ]
         for key, cell_idx in PROG_KEY_CELL_MAP:
             dpg.add_key_press_handler(key=key, callback=on_key_press, user_data=cell_idx)
-        # Alt+~ = original suggestion card
-        dpg.add_key_press_handler(key=dpg.mvKey_Tilde, callback=on_key_press, user_data=-1)
+        # Alt+1 = original suggestion card (Alt+~ intercepted by macOS, not doable cross-platform)
         # Escape / Spacebar
         dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=on_mute_toggle)
         dpg.add_key_press_handler(key=dpg.mvKey_Spacebar, callback=on_stop)

@@ -23,6 +23,7 @@
 - **Preferences save failures logged instead of swallowed** — `prefs.save()` now prints a warning to stderr on `OSError` instead of silently discarding the error.
 - **Audio stream restart wrapped in try/except** — `set_audio_quality()` now catches `PortAudioError` and `OSError` when restarting the stream after a quality change, preventing crashes if the audio device disappears.
 - **Import error handler narrowed** — `state.py:381` (`on_prog_import`) now catches `(json.JSONDecodeError, OSError)` instead of bare `Exception`.
+- **`Alt/Opt + ~` suggestion shortcut replaced with `Alt/Opt + 1`** — `Alt+~` is intercepted by macOS for OS-level window switching and cannot be seen by the app. The original (current) cell card in the suggestion panel is now triggered by `Alt/Opt + 1`. Suggestion cards shift accordingly: `Alt/Opt + 2–9` for cards 1–8. Labels updated across `_build_suggestion_cards` and `_rebuild_sugg_selection_highlights`.
 
 
 # Changelog

@@ -621,7 +621,8 @@ def on_key_press(sender, app_data, user_data):
             available_cats, cat_groups = _get_sugg_cat_groups(_sugg_last_suggestions)
             if available_cats:
                 global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
-                if card_idx == _SUGG_ORIG_CARD_IDX:
+                if card_idx == 0:
+                    # Alt+1 → original card (was Alt+~, which is intercepted by macOS)
                     orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
                     if orig_suggs:
                         s = orig_suggs[0]
@@ -641,24 +642,26 @@ def on_key_press(sender, app_data, user_data):
                                 _sugg_playing_card_idx = _SUGG_ORIG_CARD_IDX
                                 _apply_suggestion(s)
                                 _rebuild_sugg_selection_highlights()
-                else:
+                elif 1 <= card_idx <= 9:
+                    # Alt+2→9 → suggestion cards 0→7
                     visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
-                    if 0 <= card_idx < len(visible):
+                    sug_idx = card_idx - 1
+                    if 0 <= sug_idx < len(visible):
                         if dpg_keyboard.shift_is_down():
-                            _sugg_range_select(card_idx)
+                            _sugg_range_select(sug_idx)
                         elif dpg_keyboard.toggle_is_down():
-                            _toggle_suggestion_selection(card_idx)
+                            _toggle_suggestion_selection(sug_idx)
                         else:
-                            if card_idx == _sugg_playing_card_idx and is_playing():
+                            if sug_idx == _sugg_playing_card_idx and is_playing():
                                 stop_audio()
                                 from klo_chords.audio.midi_engine import stop_midi_notes
                                 stop_midi_notes()
                                 _sugg_playing_card_idx = None
                             else:
-                                _sugg_selected_set = {card_idx}
-                                _sugg_selection_anchor = card_idx
-                                _sugg_playing_card_idx = card_idx
-                                _apply_suggestion(visible[card_idx])
+                                _sugg_selected_set = {sug_idx}
+                                _sugg_selection_anchor = sug_idx
+                                _sugg_playing_card_idx = sug_idx
+                                _apply_suggestion(visible[sug_idx])
                                 _rebuild_sugg_selection_highlights()
         return
     # Don't fire if platform-native modifier is held (conflicts with shortcuts)
@@ -2185,7 +2188,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
                          parent=row_grp)
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + 1",
                        bg_color=_COLOR_ORIG_BG)
         dpg.add_spacer(width=6, parent=row_grp)
         orig_info.append((canvas_tag, s))
@@ -2204,7 +2207,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
                          width=PROG_CELL_W, height=PROG_CELL_H,
                          parent=row_grp)
         _mod = "opt" if _platform.system() == "Darwin" else "alt"
-        sugg_lbl = f"{_mod} + {i + 1}" if i < 9 else ""
+        sugg_lbl = f"{_mod} + {i + 2}" if i < 8 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=False, key=_prog_key, scale=_prog_scale,
                        show_keybind=get_show_keybinds(), keybind_label=sugg_lbl)
@@ -2263,7 +2266,7 @@ def _rebuild_sugg_selection_highlights():
         cell.root, cell.quality = s.root, s.quality
         cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
         _mod = "opt" if _platform.system() == "Darwin" else "alt"
-        sugg_lbl = f"{_mod} + {i + 1}" if i < 9 else ""
+        sugg_lbl = f"{_mod} + {i + 2}" if i < 8 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=(i in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
@@ -2283,7 +2286,7 @@ def _rebuild_sugg_selection_highlights():
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=(_SUGG_ORIG_CARD_IDX in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + ~",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + 1",
                        bg_color=_COLOR_ORIG_BG)
         hreg_tag = f"sugg_orig_hreg_{j}"
         if dpg.does_item_exist(hreg_tag):

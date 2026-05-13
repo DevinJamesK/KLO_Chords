@@ -62,9 +62,12 @@ A music theory desktop app built with [Dear PyGui](https://github.com/hoffstadt/
 
 | Shortcut | Action |
 |---|---|
-| `Alt/Opt + 1–9` | Play / toggle off that suggestion card |
-| `Shift + Alt/Opt + 1–9` | Range-select from anchor to card |
-| `Cmd/Ctrl + Alt/Opt + 1–9` | Toggle-select individual card |
+| `Alt/Opt + 1` | Play / toggle off the original (current) cell card |
+| `Alt/Opt + 2–9` | Play / toggle off a suggestion card |
+| `Shift + Alt/Opt + 1` | Range-select the original card |
+| `Shift + Alt/Opt + 2–9` | Range-select from anchor to card |
+| `Cmd/Ctrl + Alt/Opt + 1` | Toggle-select original card |
+| `Cmd/Ctrl + Alt/Opt + 2–9` | Toggle-select individual card |
 | `Shift+Click` | Range-select cards |
 | `Cmd/Ctrl+Click` | Toggle-select card |
 | `Ctrl/Cmd+C` | Copy selected cards with voice-leading |
