@@ -276,7 +276,7 @@ def _build_chord_tab():
                                        callback=on_prev_voicing)
                         dpg.add_text("", tag="voicing_label",
                                      color=COLOR_ACCENT)
-                        dpg.add_button(label="Next  >", width=80,
+                        dpg.add_button(label="Next  \u25b8", width=80,
                                        callback=on_next_voicing)
             dpg.add_spacer(height=10)
             with dpg.group(horizontal=True):
@@ -410,41 +410,41 @@ def _build_progression_tab():
             dpg.add_spacer(width=piano_pad)
             dpg.add_text("Root", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=16)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_root_prev_btn",
                            callback=on_prog_cell_root_prev)
             _chip("prog_detail_root", "C", 38)
-            dpg.add_button(label="▶", width=25, height=22,
+            dpg.add_button(label="▸", width=25, height=22,
                            tag="prog_root_next_btn",
                            callback=on_prog_cell_root_next)
             dpg.add_spacer(width=20)
             dpg.add_text("Quality", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_quality_prev_btn",
                            callback=on_prog_cell_quality_prev)
             _chip("prog_detail_quality", "Major", 66)
-            dpg.add_button(label="▶", width=25, height=22,
+            dpg.add_button(label="▸", width=25, height=22,
                            tag="prog_quality_next_btn",
                            callback=on_prog_cell_quality_next)
             dpg.add_spacer(width=16)
             dpg.add_text("Inv", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_inv_prev_btn",
                            callback=on_prog_cell_inversion_prev)
             _chip("prog_detail_inversion", "Root", 46)
-            dpg.add_button(label="▶", width=25, height=22,
+            dpg.add_button(label="▸", width=25, height=22,
                            tag="prog_inv_next_btn",
                            callback=on_prog_cell_inversion_next)
             dpg.add_spacer(width=16)
             dpg.add_text("Oct", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_octave_prev_btn",
                            callback=on_prog_cell_octave_prev)
             _chip("prog_detail_octave", "3", 30)
-            dpg.add_button(label="▶", width=25, height=22,
+            dpg.add_button(label="▸", width=25, height=22,
                            tag="prog_octave_next_btn",
                            callback=on_prog_cell_octave_next)
 
