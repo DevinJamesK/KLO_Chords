@@ -1,2 +1,2 @@
 """KLO Chords - chord theory and guitar tab explorer."""
-__version__ = "0.5.1"
+__version__ = "0.5.10"

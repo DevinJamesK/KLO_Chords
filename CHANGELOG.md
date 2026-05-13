@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.5.10] - 2026-05-12
+
+### Added
+
+- **Test infrastructure** — `tests/__init__.py` and `tests/conftest.py` with shared fixtures for chords, `ProgCell` instances, scale/key combos, and temporary file paths. All fixtures are function-scoped to prevent cross-test contamination.
+- **Pytest configuration in `pyproject.toml`** — `[tool.pytest.ini_options]` with `testpaths`, file/function patterns, strict marker enforcement, and `[tool.coverage.*]` sections. Dev dependencies (`pytest>=8`, `pytest-cov>=5`) added under `[project.optional-dependencies] dev`.
+- **CI test step** — `.github/workflows/build.yml` now runs `pytest` before the PyInstaller build on both macOS and Windows.
+- **Core logic test suite (6 new files)** — `test_chords.py` covers note-to-pitch-class conversion, scale definitions, diatonic chord generation, `ProgCell` getters, `get_degree_for_root`, enharmonic equivalence, accidental styles, interval definitions, seventh chord quality detection, and chord spelling rules. `test_quality.py` covers `quality_symbol` and `quality_spelled` for all 13 quality codes with consistency checks. `test_undo_manager.py` covers do/undo/redo lifecycle, batch commits, `MAX_HISTORY` trimming, `clear`, and the global singleton. `test_prefs.py` covers defaults, save/load round-trip, JSON corruption recovery, schema migrations, and platform path resolution. `test_chord_suggestions.py` covers `Suggestion` display names, `get_cell_context`, `get_suggestions` for empty cells, borrowed chords, secondary dominants, chromatic mediants, and advanced chords. `test_console_logging.py` covers MIDI note naming, sub-oscillator calculation, fixed-width event formatting, and progression row logging.
+
+### Changed
+
+- **`from __future__ import annotations` added to all modules** — `state.py`, `sound.py`, `midi_engine.py`, `chord_box.py`, `fretboard.py`, `piano.py`, `console_logging.py`, `dpg_keyboard.py`, `constants.py`, and `gui/app.py` now use deferred annotation evaluation, matching the existing pattern in `chord_shapes.py` and `chord_suggestions.py`.
+- **Display maps consolidated** — `WAVE_INTERNAL_TO_DISPLAY` and `WAVE_DISPLAY_NAMES` moved from `gui/app.py` into `rendering/theme.py` alongside the existing color palette. `state.py` and `gui/__init__.py` now import them from `theme.py` instead of reaching into the GUI module.
+- **Naming consistency** — `_piano_pad` renamed to `piano_pad` (it is a function-local variable, not a module-private). `snd` / `snd2` abbreviations in `gui/app.py` renamed to `sound_cfg` / `sound_cfg2`. `stop_current()` renamed to `stop_audio()` for symmetry with `stop_midi_notes()`. `_rebuild_chord_list()` → `_rebuild_chord_ui()` and `_rebuild_progression_grid()` → `_rebuild_prog_ui()` for consistent naming.
+- **Reduced code duplication** — `gui/app.py` button theme blocks (Fill, Clear All, Export, Import) replaced with a single `_btn_theme(r, g, b)` factory function. Fretboard drawing helpers (`_draw_fret_dots`, `_fret_range`, `_draw_fretboard_string_map`) extracted into shared functions in `fretboard.py` for future use by both mini and large fretboard renderers.
+- **Duplicate `_NOTE_NAMES` removed** — `midi_engine.py` now imports `NOTE_NAMES` from `chords.py` instead of defining its own identical list.
+- **Return type annotations added** — public functions in `sound.py` (`set_mute`, `set_volume`, `set_legato`, `set_playback_mode`, `set_enabled`, `set_mode`, `set_random_velocity`, `set_sub_oscillator`, `set_device`, `stop_audio`, `reset_voice_leading`, `reset_note_history`, `play_chord_notes`, `play_progression_notes`) now declare `-> None` return types. `get_audio_devices()` declares `-> list[dict[str, object]]`.
+
+### Fixed
+
+- **Preferences save failures logged instead of swallowed** — `prefs.save()` now prints a warning to stderr on `OSError` instead of silently discarding the error.
+- **Audio stream restart wrapped in try/except** — `set_audio_quality()` now catches `PortAudioError` and `OSError` when restarting the stream after a quality change, preventing crashes if the audio device disappears.
+- **Import error handler narrowed** — `state.py:381` (`on_prog_import`) now catches `(json.JSONDecodeError, OSError)` instead of bare `Exception`.
+
+
+# Changelog
+
 ## [0.5.9] - 2026-05-12
 
 ### Changed
