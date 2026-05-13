@@ -996,7 +996,7 @@ def build_midi_tab():
     dpg.add_spacer(height=4)
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
-        with dpg.child_window(tag="midi_cc_window", width=-20, height=250):
+        with dpg.child_window(tag="midi_cc_window", width=-20, height=234):
             pass
 
     # ── Log ───────────────────────────────────────────────────────────────────────
