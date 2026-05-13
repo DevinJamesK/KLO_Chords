@@ -33,7 +33,7 @@ from klo_chords.rendering.piano import (
 )
 
 from klo_chords.audio.sound import (
-    play_chord_notes, play_progression_notes, stop_current, reset_voice_leading,
+    play_chord_notes, play_progression_notes, stop_audio, reset_voice_leading,
     set_base_octave, set_playback_mode, set_legato, set_volume,
     set_mute, is_muted,
     set_mode as set_sound_mode,
@@ -167,7 +167,7 @@ def on_tab_change(sender, app_data):
     coming_from_midi = prev_visual == "tab_midi"
     returning_to_same = app_data == _current_tab
     if not (coming_from_midi and returning_to_same):
-        stop_current()
+        stop_audio()
         from klo_chords.audio.midi_engine import stop_midi_notes
         stop_midi_notes()
     _current_tab = app_data
@@ -184,7 +184,7 @@ def on_key_change(sender, app_data):
 
 def on_scale_change(sender, app_data):
     global _current_scale, _current_voicing_idx, _include_sevenths
-    stop_current()
+    stop_audio()
     _current_scale = app_data
     _current_voicing_idx = 0
     is_heptatonic = len(SCALE_TYPES[app_data].intervals) == 7
@@ -277,7 +277,7 @@ def on_prog_fill(sender=None, app_data=None):
         cell.rotation = 0
         cell.voicing_idx = 0
         cell.base_octave = 2
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
     # Auto-select the starting cell so arrow buttons work immediately
     if 0 <= start_idx < PROG_CELLS_TOTAL:
         _select_prog_cell(start_idx)
@@ -286,10 +286,10 @@ def on_prog_fill(sender=None, app_data=None):
 def on_prog_clear_all(sender=None, app_data=None):
     """Clear all cells in the progression grid."""
     global _prog_cells
-    stop_current()
+    stop_audio()
     for cell in _prog_cells:
         cell.clear()
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
     _select_prog_cell(0)
 
 
@@ -393,7 +393,7 @@ def on_prog_import(sender=None, app_data=None):
         _prog_sevenths = data["sevenths"]
         if dpg.does_item_exist("prog_sevenths_toggle"):
             dpg.set_value("prog_sevenths_toggle", _prog_sevenths)
-    stop_current()
+    stop_audio()
     for i, cell_data in enumerate(data.get("cells", [])):
         if i >= PROG_CELLS_TOTAL:
             break
@@ -403,7 +403,7 @@ def on_prog_import(sender=None, app_data=None):
         cell.rotation = cell_data.get("rotation", 0)
         cell.base_octave = cell_data.get("base_octave", 3)
         cell.voicing_idx = cell_data.get("voicing_idx", 0)
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
     _select_prog_cell(0)
 
 
@@ -428,7 +428,7 @@ def on_prog_cell_click(sender, app_data, user_data):
                     _clear_prog_selected_idx()
             else:
                 _prog_selected_set.add(idx)
-            _rebuild_progression_grid()
+            _rebuild_prog_ui()
         else:
             _select_prog_cell(idx)
             _play_prog_cell(idx)
@@ -631,7 +631,7 @@ def on_key_press(sender, app_data, user_data):
                             _toggle_suggestion_selection(_SUGG_ORIG_CARD_IDX)
                         else:
                             if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
-                                stop_current()
+                                stop_audio()
                                 from klo_chords.audio.midi_engine import stop_midi_notes
                                 stop_midi_notes()
                                 _sugg_playing_card_idx = None
@@ -650,7 +650,7 @@ def on_key_press(sender, app_data, user_data):
                             _toggle_suggestion_selection(card_idx)
                         else:
                             if card_idx == _sugg_playing_card_idx and is_playing():
-                                stop_current()
+                                stop_audio()
                                 from klo_chords.audio.midi_engine import stop_midi_notes
                                 stop_midi_notes()
                                 _sugg_playing_card_idx = None
@@ -681,7 +681,7 @@ def on_key_press(sender, app_data, user_data):
                         _clear_prog_selected_idx()
                 else:
                     _prog_selected_set.add(idx)
-                _rebuild_progression_grid()
+                _rebuild_prog_ui()
             else:
                 _select_prog_cell(idx)
                 _play_prog_cell(idx)
@@ -724,7 +724,7 @@ def on_wave_type_change(sender, app_data):
     internal = app_data.lower() if app_data in ("Triangle", "Sine", "Sawtooth") else app_data
     set_sound_mode(internal)
     # Update both combos if they exist
-    from klo_chords.gui import WAVE_INTERNAL_TO_DISPLAY
+    from klo_chords.rendering.theme import WAVE_INTERNAL_TO_DISPLAY
     display = WAVE_INTERNAL_TO_DISPLAY.get(internal, "Triangle")
     if dpg.does_item_exist("sound_mode_combo"):
         dpg.set_value("sound_mode_combo", display)
@@ -857,7 +857,7 @@ def on_reset_prefs(sender=None, app_data=None):
     from klo_chords.rendering.fretboard import set_fretboard_mode
     set_fretboard_mode("note" if d["show_note_names"] else "fret")
 
-    _rebuild_chord_list()
+    _rebuild_chord_ui()
 
 
 def on_volume_change(sender, app_data):
@@ -900,7 +900,7 @@ def on_fretboard_mode_change(sender, app_data):
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         chord = _current_chords[_selected_chord_idx]
         draw_fretboard(chord, _current_voicing_idx)
-    _rebuild_chord_list()
+    _rebuild_chord_ui()
     _save_prefs()
 
 
@@ -914,8 +914,8 @@ def on_keybinds_toggle(sender=None, app_data=None):
     # Sync the checkbox in the toolbar
     if dpg.does_item_exist("toolbar_show_keybinds"):
         dpg.set_value("toolbar_show_keybinds", _show_keybinds)
-    _rebuild_chord_list()
-    _rebuild_progression_grid()
+    _rebuild_chord_ui()
+    _rebuild_prog_ui()
     if dpg.does_item_exist("suggestion_panel") and _sugg_last_suggestions:
         dpg.delete_item("suggestion_panel", children_only=True)
         _build_suggestion_cards(_sugg_last_suggestions, cat_idx=_sugg_current_cat_idx)
@@ -937,7 +937,7 @@ def init_show_keybinds(val: bool):
 
 def on_stop(sender=None, app_data=None):
     """Stop any currently playing chord (spacebar handler)."""
-    stop_current()
+    stop_audio()
     from klo_chords.audio.midi_engine import stop_midi_notes
     stop_midi_notes()
 
@@ -1016,7 +1016,7 @@ def _update_inversion_display():
         dpg.set_value("detail_sounding_notes", "")
 
 
-def _rebuild_chord_list():
+def _rebuild_chord_ui():
     i = 0
     while dpg.does_item_exist("click_hreg_" + str(i)):
         dpg.delete_item("click_hreg_" + str(i))
@@ -1180,7 +1180,7 @@ def _update_prog_detail(idx: int):
         _update_prog_piano(cell)
 
 
-def _rebuild_progression_grid():
+def _rebuild_prog_ui():
     for idx in range(PROG_CELLS_TOTAL):
         _refresh_prog_cell(idx)
     if _prog_selected_idx is not None and _prog_selected_idx < len(_prog_cells):
@@ -1192,7 +1192,7 @@ def _select_prog_cell(idx: int):
     # Clear multi-selection on normal (non-shift) click
     _prog_selected_set.clear()
     _prog_selected_idx = idx
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
     _update_prog_detail(idx)
     _refresh_suggestion_panel()
 
@@ -1280,7 +1280,7 @@ def _refresh_chords():
         _current_scale_pcs = {note_to_pc(n) for n in notes}
 
     reset_voice_leading()
-    _rebuild_chord_list()
+    _rebuild_chord_ui()
 
 
 def _refresh_progression():
@@ -1305,7 +1305,7 @@ def _refresh_progression():
     for i in range(PROG_COLS, PROG_CELLS_TOTAL):
         if _prog_cells[i].root is not None:
             _prog_cells[i].clear()
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
     _log_progression_row(0, _prog_cells, PROG_COLS)
     # Auto-select the first cell so arrow buttons work immediately
     if _prog_cells and not _prog_cells[0].is_empty():
@@ -1323,8 +1323,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
-            except Exception:
-                pass
+            except (SystemError, RuntimeError):
+                pass  # DPG item may have been destroyed
 
     for i in range(PROG_CELLS_TOTAL):
         is_sounding = playing and _prog_sounding_idx == i
@@ -1332,8 +1332,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=is_sounding)
-            except Exception:
-                pass
+            except (SystemError, RuntimeError):
+                pass  # DPG item may have been destroyed
 
     sugg_playing = (playing
                     and _prog_sounding_idx == _prog_selected_idx
@@ -1343,8 +1343,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=(sugg_playing and i == _sugg_playing_card_idx))
-            except Exception:
-                pass
+            except (SystemError, RuntimeError):
+                pass  # DPG item may have been destroyed
     _orig_sugg = next((s for s in _sugg_last_suggestions if s.category == "original"), None)
     _cell_is_original = (
         _orig_sugg is not None
@@ -1362,8 +1362,8 @@ def _refresh_speaker_indicators():
         if dpg.does_item_exist(bar_tag):
             try:
                 dpg.configure_item(bar_tag, show=orig_bar_active)
-            except Exception:
-                pass
+            except (SystemError, RuntimeError):
+                pass  # DPG item may have been destroyed
 
     if not playing:
         _prog_sounding_idx = None
@@ -1430,7 +1430,7 @@ def on_prog_cell_shift_click(sender, app_data, user_data, union=False):
     else:
         # No primary selection — just select this cell as primary
         _select_prog_cell(idx)
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 # ── Persistent paste-shape setting ──────────────────────────────────────────────
@@ -1471,7 +1471,7 @@ def stop_prog_sound_for_idx(idx: int):
     """Stop sound if a specific cell is currently playing."""
     global _prog_sounding_idx
     if _prog_sounding_idx == idx:
-        stop_current()
+        stop_audio()
         _prog_sounding_idx = None
 
 
@@ -1556,7 +1556,7 @@ def on_prog_delete_selection(sender=None, app_data=None):
             _prog_cells[idx] = cell
 
     um.do(do_delete, undo_delete, description="delete cells")
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 # ── Grid mutation helpers  ────────────────────────────
@@ -1761,7 +1761,7 @@ def _do_paste(clipboard_data: list, mode: str):
             description="paste (swap)"
         )
     _select_prog_cell(target)
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 def _compute_clipboard_shape(data: list):
@@ -1853,7 +1853,7 @@ def _restore_replace(old_data: list, target: int):
         if idx >= PROG_CELLS_TOTAL:
             break
         _prog_cells[idx] = cell
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 def _paste_insert(data: list, target: int):
@@ -1885,7 +1885,7 @@ def _restore_insert(old_tail: list, target: int):
         if idx >= PROG_CELLS_TOTAL:
             break
         _prog_cells[idx] = cell
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 def _paste_swap(data: list, target: int):
@@ -1921,7 +1921,7 @@ def _paste_swap_backward(data: list, target: int):
         _prog_cells[idx].rotation = cell_data["rotation"]
         _prog_cells[idx].base_octave = cell_data["base_octave"]
         _prog_cells[idx].voicing_idx = cell_data["voicing_idx"]
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 # ── Multi-cell move up/down ────────────────────────────────────────────────────
 
@@ -1946,7 +1946,7 @@ def on_prog_move_up(sender=None, app_data=None):
         _prog_cells[idx] = swap
     um.commit_batch()
 
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 def on_prog_move_down(sender=None, app_data=None):
@@ -1967,7 +1967,7 @@ def on_prog_move_down(sender=None, app_data=None):
             _prog_cells[idx] = swap
     um.commit_batch()
 
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 # ── Persistent paste-mode setting ───────────────────────────────────────────────
@@ -2003,7 +2003,7 @@ def on_undo(sender=None, app_data=None):
         stop_prog_sound_for_idx(_prog_sounding_idx)
         from klo_chords.audio.midi_engine import stop_midi_notes
         stop_midi_notes()
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 def on_redo(sender=None, app_data=None):
@@ -2011,7 +2011,7 @@ def on_redo(sender=None, app_data=None):
     from klo_chords.core.undo_manager import get_undo_manager
     um = get_undo_manager()
     um.redo()
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
 
 
 # ── Suggestion panel integration ───────────────────────────────────────────────
@@ -2315,7 +2315,7 @@ def _make_orig_suggestion_callback(sug):
             _toggle_suggestion_selection(_SUGG_ORIG_CARD_IDX)
         else:
             if _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX and is_playing():
-                stop_current()
+                stop_audio()
                 from klo_chords.audio.midi_engine import stop_midi_notes
                 stop_midi_notes()
                 _sugg_playing_card_idx = None
@@ -2339,7 +2339,7 @@ def _make_suggestion_callback(sug, card_idx: int):
         else:
             # Toggle off if this card is already sounding
             if card_idx == _sugg_playing_card_idx and is_playing():
-                stop_current()
+                stop_audio()
                 from klo_chords.audio.midi_engine import stop_midi_notes
                 stop_midi_notes()
                 _sugg_playing_card_idx = None
@@ -2439,7 +2439,7 @@ def _apply_suggestion(sug):
         _prog_cells[_prog_selected_idx] = old_cell
 
     um.do(do_apply, undo_apply, description=f"apply {sug.display_name()}")
-    _rebuild_progression_grid()
+    _rebuild_prog_ui()
     _update_prog_detail(_prog_selected_idx)
     _play_prog_cell(_prog_selected_idx, force=True)
 

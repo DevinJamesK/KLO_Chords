@@ -22,6 +22,7 @@ import klo_chords.core.prefs as prefs
 from klo_chords.core.chords import KEY_NAMES, SCALE_TYPES
 from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_BG_LIGHT, COLOR_TEXT_DIM, COLOR_TEXT,
+    WAVE_INTERNAL_TO_DISPLAY, WAVE_DISPLAY_NAMES,
     COLOR_CHORD_BG, COLOR_CHORD_BORDER,
     font_path, font_path_fallback, icon_path,
     set_draw_font,
@@ -67,13 +68,6 @@ SCALE_NAMES = list(SCALE_TYPES.keys())
 _IS_WINDOWS = platform.system() == "Windows"
 VIEWPORT_WIDTH  = 880 if _IS_WINDOWS else 860
 VIEWPORT_HEIGHT = 1030 if _IS_WINDOWS else 1000
-
-WAVE_INTERNAL_TO_DISPLAY = {
-    "triangle": "Triangle",
-    "sine": "Sine",
-    "sawtooth": "Sawtooth",
-}
-WAVE_DISPLAY_NAMES = ["Triangle", "Sine", "Sawtooth"]
 
 
 def _draw_wave_preview(internal_mode: str = "triangle"):

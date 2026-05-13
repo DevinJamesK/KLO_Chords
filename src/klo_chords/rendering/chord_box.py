@@ -52,8 +52,8 @@ def _draw_text_with_font(pos, text, **kwargs):
     if font is not None:
         try:
             dpg.bind_item_font(item, font)
-        except Exception:
-            pass
+        except (SystemError, RuntimeError):
+            pass  # font binding may fail if item was destroyed
     return item
 
 

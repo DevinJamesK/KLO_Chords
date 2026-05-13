@@ -319,7 +319,7 @@ _lowest_midi: int | None = None        # lowest MIDI of the currently sounding c
 _sub_osc_freq: float | None = None     # frequency of the active sub oscillator voice
 
 
-def set_mute(val: bool):
+def set_mute(val: bool) 
     """Mute/unmute audio. Saves current volume before muting, restores on unmute."""
     global _volume, _volume_before_mute
     if val:
@@ -340,14 +340,14 @@ def _get_wave_fn():
     return _WAVE_GENS.get(_sound_mode, _gen_sine)
 
 
-def set_enabled(val: bool):
+def set_enabled\(def set_enabled(val: bool) -> None:[4+len(fn):-1]\) 
     global _sound_enabled
     _sound_enabled = val
     if not val:
         _engine.release_all()
 
 
-def set_mode(mode: str):
+def set_mode\(def set_mode(mode: str) -> None:[4+len(fn):-1]\) -> None:
     global _sound_mode
     _sound_mode = mode
 
@@ -358,7 +358,7 @@ def set_base_octave(octave: int):
     reset_voice_leading()
 
 
-def set_random_velocity(val: bool):
+def set_random_velocity\(def set_random_velocity(val: bool) -> None:[4+len(fn):-1]\) 
     global _random_velocity
     _random_velocity = val
 
@@ -369,7 +369,7 @@ def set_velocity_range(vmin: int, vmax: int):
     _velocity_max = max(vmin, vmax)
 
 
-def set_playback_mode(mode: str):
+def set_playback_mode\(def set_playback_mode(mode: str) -> None:[4+len(fn):-1]\) 
     """Change playback mode and release all active notes.
     
     When switching modes, any currently playing notes are released so
@@ -382,12 +382,12 @@ def set_playback_mode(mode: str):
     _engine._note_history = []
 
 
-def set_legato(val: bool):
+def set_legato\(def set_legato(val: bool) -> None:[4+len(fn):-1]\) 
     """If True, shared notes between chords are held (not re-struck)."""
     _engine._legato = val
 
 
-def set_sub_oscillator(val: bool):
+def set_sub_oscillator(val: bool) -> None:
     """If True, a copy of the chord root is played below the lowest chord note.
 
     When toggled on while notes are already playing, the sub voice is
@@ -418,7 +418,7 @@ def set_sub_oscillator(val: bool):
             _sub_osc_freq = None
 
 
-def set_volume(val: float):
+def set_volume\(def set_volume(val: float) -> None:[4+len(fn):-1]\) 
     global _volume
     _volume = max(0.0, min(1.0, val))
 
@@ -451,7 +451,7 @@ def get_audio_quality() -> str:
     return _audio_quality
 
 
-def get_audio_devices() -> list:
+def get_audio_devices() -> list[dict[str, object]]:
     """Return a list of output audio devices as {name, index} dicts.
 
     Index is the PortAudio device ID, or None for 'System Default'.
@@ -466,7 +466,7 @@ def get_audio_devices() -> list:
     return devices
 
 
-def set_device(device_id):
+def set_device(device_id: int | None) 
     """Set the output audio device by PortAudio device ID (None = system default).
 
     Restarts the audio stream if it's already running.
@@ -500,7 +500,7 @@ def get_device_name() -> str:
     return _device_name
 
 
-def get_settings() -> dict:
+def get_settings() -> dict[str, object]:
     return dict(
         enabled=_sound_enabled,
         mode=_sound_mode,
@@ -522,7 +522,7 @@ def is_playing() -> bool:
     return _engine._vb.has_voices
 
 
-def reset_voice_leading():
+def reset_voice_leading() -> None:
     global _previous_midi_notes, _current_notes
     _previous_midi_notes = []
     _current_notes = []
@@ -655,7 +655,7 @@ def _get_freqs_and_amps(notes: List[str]):
 
 # ── Public playback API ──────────────────────────────────────────────────────────
 
-def play_chord_notes(notes: List[str], root_note: str | None = None):
+def play_chord_notes(notes: List[str], root_note: str | None = None) 
     """Play chord notes via the streaming engine (never stops).
 
     If *root_note* is provided and sub oscillator is enabled, an
@@ -750,7 +750,7 @@ def _stack_root_position(pcs: List[int], base_octave: int, root_pc: int = 0) -> 
 
 
 
-def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0):
+def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int = 0) 
     """Play chord notes for the progression tab with root-position voicing."""
     global _current_notes, _last_root_midi, _lowest_midi, _sub_osc_freq
     if not _sound_enabled or not notes:
@@ -801,12 +801,12 @@ def play_progression_notes(notes: List[str], base_octave: int = 3, root_pc: int 
     _engine.play_notes(freqs, amps, notes)
 
 
-def reset_note_history():
+def reset_note_history() -> None:
     """Clear toggle history so the next play is not treated as a toggle-off."""
     _engine._note_history = []
 
 
-def stop_current():
+def stop_audio() 
     global _current_notes, _sub_osc_freq, _last_root_midi, _lowest_midi
     _current_notes = []
     _sub_osc_freq = None
