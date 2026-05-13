@@ -319,7 +319,7 @@ _lowest_midi: int | None = None        # lowest MIDI of the currently sounding c
 _sub_osc_freq: float | None = None     # frequency of the active sub oscillator voice
 
 
-def set_mute(val: bool) 
+def set_mute(val: bool) -> None:
     """Mute/unmute audio. Saves current volume before muting, restores on unmute."""
     global _volume, _volume_before_mute
     if val:
