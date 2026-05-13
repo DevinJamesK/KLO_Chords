@@ -135,7 +135,7 @@ def draw_prog_cell(canvas_tag: str, cell: ProgCell,
     if show_keybind:
         lbl = keybind_label or (KEYBIND_LABELS[idx] if idx < len(KEYBIND_LABELS) else "")
         if lbl:
-            lbl_w = len(lbl) * 7
+            lbl_w = len(lbl) * (9 if keybind_label else 6)
             lbl_x = PROG_CELL_W - 8 - lbl_w
             _draw_text_with_font([lbl_x, 3], lbl,
                           color=COLOR_TEXT_DIM, size=12, parent=canvas_tag)
