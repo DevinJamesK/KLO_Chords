@@ -706,6 +706,10 @@ def build_ui():
     dpg.set_primary_window("main_win", True)
     dpg.show_viewport()
 
+    # Apply keybind tab labels on boot if the preference was already set
+    from klo_chords.state import _update_tab_labels
+    _update_tab_labels()
+
     def _btn_theme(r, g, b):
         """Create a styled button theme: colored bg, white text, rounded."""
         with dpg.theme() as t:

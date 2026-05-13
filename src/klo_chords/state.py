@@ -267,7 +267,7 @@ def on_prog_fill(sender=None, app_data=None):
     """Fill chords starting from the selected cell, right→down like reading."""
     global _prog_cells
     chords = get_diatonic_chords(
-        _prog_key, _prog_scale, include_sevenths=True
+        _prog_key, _prog_scale, include_sevenths=_prog_sevenths
     )
     # Start filling from the selected cell, or column 0 row 0 if none selected
     start_idx = _prog_selected_idx if _prog_selected_idx is not None else 0
