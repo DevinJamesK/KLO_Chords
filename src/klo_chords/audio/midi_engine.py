@@ -1,5 +1,7 @@
 """MIDI tab — ports, send note, piano visualizer, sync monitor, CC monitor, log."""
 
+from __future__ import annotations
+
 import queue
 import threading
 import time
@@ -722,8 +724,6 @@ def send_chord_midi(midi_notes: list, velocity: int = 100):
     global _sounding_midi_notes
     if not _driver or _driver._out_port is None:
         return
-
-from __future__ import annotations
 
     ch = 0
     if dpg.does_item_exist("midi_out_channel"):
