@@ -1057,7 +1057,8 @@ def _rebuild_chord_ui():
                     pass
 
             draw_chord_label("chord_box_" + str(i), chord, i, show_keybind=_show_keybinds)
-            draw_mini_fretboard("tab_canvas_" + str(i), chord)
+            v_idx = _current_voicing_idx if i == _selected_chord_idx else 0
+            draw_mini_fretboard("tab_canvas_" + str(i), chord, v_idx)
 
 
             with dpg.item_handler_registry(tag="click_hreg_" + str(i)):
