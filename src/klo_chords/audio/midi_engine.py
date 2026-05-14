@@ -851,22 +851,25 @@ def build_midi_tab():
 
     # ── Ports ─────────────────────────────────────────────────────────────────────
     
+    if not dpg.does_item_exist("__midi_panic_theme__"):
+        with dpg.theme(tag="__midi_panic_theme__"):
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        [180, 40, 40, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [220, 50, 50, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  [140, 30, 30, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_Text,          [255, 255, 255, 255])
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
+
     dpg.add_spacer(height=2)
     with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
         dpg.add_text("Ports", color=COLOR_ACCENT)
-        dpg.add_spacer(width=415)
+        dpg.add_spacer(width=-1)
         dpg.add_checkbox(label="Auto-connect single device",
                         tag="midi_auto_connect", default_value=False)
         dpg.add_spacer(width=20)
         dpg.add_button(label="Panic All Channels", callback=panic_all, width=170, tag="midi_panic_btn")
-    with dpg.theme() as _panic_theme:
-        with dpg.theme_component(dpg.mvButton):
-            dpg.add_theme_color(dpg.mvThemeCol_Button,        [180, 40, 40, 255])
-            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [220, 50, 50, 255])
-            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  [140, 30, 30, 255])
-            dpg.add_theme_color(dpg.mvThemeCol_Text,          [255, 255, 255, 255])
-            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
-    dpg.bind_item_theme("midi_panic_btn", _panic_theme)
+        dpg.bind_item_theme("midi_panic_btn", "__midi_panic_theme__")
     dpg.add_separator()
 
     with dpg.table(header_row=False, borders_innerV=True,
