@@ -359,16 +359,18 @@ def _build_progression_tab():
     # ── Cell detail panel (below the grid) ──────────────────────────────────
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
-        dpg.add_text("Mode", color=COLOR_TEXT_DIM)
+        dpg.add_text("Paste Mode", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=4)
         dpg.add_combo(items=["Insert", "Replace", "Swap"],
                       default_value="Replace",
                       tag="paste_mode_combo", width=90,
                       callback=on_paste_mode_change)
-        dpg.add_spacer(width=12)
-        dpg.add_text("Shape", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=16)
+        dpg.add_text("Paste Shape", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=4)
         dpg.add_combo(items=["Linear", "Preserve Shape"],
                       default_value="Preserve Shape",
-                      tag="paste_shape_combo", width=120,
+                      tag="paste_shape_combo", width=130,
                       callback=on_paste_shape_change)
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
