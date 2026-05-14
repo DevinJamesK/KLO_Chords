@@ -73,7 +73,7 @@ def draw_chord_label(canvas_tag: str, chord: ChordInfo, idx: int,
         title = chord.root + " " + q
     else:
         title = chord.root
-    notes = "(" + " ".join(chord.notes) + ")"
+    notes = " ".join(chord.notes)
     border_col   = COLOR_ACCENT               if selected else COLOR_CHORD_BG
     border_thick = 2                          if selected else 0
     title_col    = COLOR_ACCENT               if selected else COLOR_TEXT

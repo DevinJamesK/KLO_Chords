@@ -109,16 +109,16 @@ class TestScales:
         assert scale.pitches(note_to_pc("C")) == [0, 2, 4, 5, 7, 9, 11]
 
     def test_natural_minor_scale_a(self):
-        scale = SCALE_TYPES["Natural Minor"]
+        scale = SCALE_TYPES["Natural minor"]
         assert scale.pitches(note_to_pc("A")) == [9, 11, 0, 2, 4, 5, 7]
 
     def test_heptatonic_count(self):
-        for scale in ["Major", "Natural Minor", "Dorian", "Mixolydian"]:
+        for scale in ["Major", "Natural minor", "Dorian", "Mixolydian"]:
             assert len(SCALE_TYPES[scale].intervals) == 7
 
     def test_pentatonic_count(self):
         assert len(SCALE_TYPES["Pentatonic Maj"].intervals) == 5
-        assert len(SCALE_TYPES["Pentatonic Minor"].intervals) == 5
+        assert len(SCALE_TYPES["Pentatonic min"].intervals) == 5
 
     def test_all_scales_valid_pitches(self):
         for scale in SCALE_TYPES.values():

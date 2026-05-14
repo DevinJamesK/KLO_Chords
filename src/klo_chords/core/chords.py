@@ -63,11 +63,11 @@ class ScaleType:
 
 SCALE_TYPES = {
     "Major":          ScaleType("Major",          [0, 2, 4, 5, 7, 9, 11]),
-    "Natural Minor":  ScaleType("Natural Minor",  [0, 2, 3, 5, 7, 8, 10]),
-    "Harmonic Minor": ScaleType("Harmonic Minor", [0, 2, 3, 5, 7, 8, 11]),
-    "Melodic Minor":  ScaleType("Melodic Minor",  [0, 2, 3, 5, 7, 9, 11]),
+    "Natural minor":  ScaleType("Natural Minor",  [0, 2, 3, 5, 7, 8, 10]),
+    "Harmonic minor": ScaleType("Harmonic Minor", [0, 2, 3, 5, 7, 8, 11]),
+    "Melodic minor":  ScaleType("Melodic Minor",  [0, 2, 3, 5, 7, 9, 11]),
     "Pentatonic Maj": ScaleType("Pentatonic Major", [0, 2, 4, 7, 9]),
-    "Pentatonic Minor": ScaleType("Pentatonic Minor", [0, 3, 5, 7, 10]),
+    "Pentatonic min": ScaleType("Pentatonic Minor", [0, 3, 5, 7, 10]),
     "Blues":          ScaleType("Blues",          [0, 3, 5, 6, 7, 10]),
     "Dorian":         ScaleType("Dorian",         [0, 2, 3, 5, 7, 9, 10]),
     "Phrygian":       ScaleType("Phrygian",       [0, 1, 3, 5, 7, 8, 10]),
@@ -78,9 +78,9 @@ SCALE_TYPES = {
 
 TRIAD_QUALITIES = {
     "Major":         ["M", "m", "m", "M", "M", "m", "dim"],
-    "Natural Minor": ["m", "dim", "M", "m", "m", "M", "M"],
-    "Harmonic Minor": ["m", "dim", "aug", "m", "M", "M", "dim"],
-    "Melodic Minor":  ["m", "m", "aug", "M", "M", "dim", "dim"],
+    "Natural minor": ["m", "dim", "M", "m", "m", "M", "M"],
+    "Harmonic minor": ["m", "dim", "aug", "m", "M", "M", "dim"],
+    "Melodic minor":  ["m", "m", "aug", "M", "M", "dim", "dim"],
     "Dorian":        ["m", "m", "M", "M", "m", "dim", "M"],
     "Phrygian":      ["m", "M", "M", "m", "dim", "M", "m"],
     "Lydian":        ["M", "M", "m", "dim", "M", "m", "m"],
