@@ -26,7 +26,8 @@ class TestDefaults:
         expected_keys = {
             "_version", "sound_enabled", "volume", "wave", "audio_quality",
             "legato", "playback_mode", "random_velocity", "vel_min", "vel_max",
-            "base_octave", "show_note_names", "show_keybinds", "sub_oscillator",
+            "base_octave", "show_note_names", "show_keybinds", "use_jazz_symbols",
+            "sub_oscillator",
             "audio_device",
         }
         assert set(d.keys()) == expected_keys
