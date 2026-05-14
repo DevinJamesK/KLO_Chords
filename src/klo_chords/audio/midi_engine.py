@@ -927,9 +927,9 @@ def build_midi_tab():
                               min_value=0, max_value=127, width=80,
                               callback=_on_pc_bank_lsb_change)
         dpg.add_spacer(width=30)
-        dpg.add_button(label="< Prev", callback=pc_prev, width=65)
+        dpg.add_button(label="\u25c0 Prev", callback=pc_prev, width=65)
         dpg.add_spacer(width=4)
-        dpg.add_button(label="Next >", callback=pc_next, width=65)
+        dpg.add_button(label="Next \u25b6", callback=pc_next, width=65)
         dpg.add_spacer(width=30)
         with dpg.group(horizontal=True, tag="midi_pc_bank_msb_grp", show=False):
             dpg.add_spacer(width=12)
