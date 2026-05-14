@@ -66,7 +66,7 @@ SCALE_TYPES = {
     "Natural Minor":  ScaleType("Natural Minor",  [0, 2, 3, 5, 7, 8, 10]),
     "Harmonic Minor": ScaleType("Harmonic Minor", [0, 2, 3, 5, 7, 8, 11]),
     "Melodic Minor":  ScaleType("Melodic Minor",  [0, 2, 3, 5, 7, 9, 11]),
-    "Pentatonic Major": ScaleType("Pentatonic Major", [0, 2, 4, 7, 9]),
+    "Pentatonic Maj": ScaleType("Pentatonic Major", [0, 2, 4, 7, 9]),
     "Pentatonic Minor": ScaleType("Pentatonic Minor", [0, 3, 5, 7, 10]),
     "Blues":          ScaleType("Blues",          [0, 3, 5, 6, 7, 10]),
     "Dorian":         ScaleType("Dorian",         [0, 2, 3, 5, 7, 9, 10]),

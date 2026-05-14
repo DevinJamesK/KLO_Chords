@@ -304,7 +304,7 @@ def _build_progression_tab():
         dpg.add_spacer(width=10)
         dpg.add_text("Scale")
         dpg.add_combo(items=SCALE_NAMES, default_value="Major",
-                      tag="prog_scale_combo", width=150,
+                      tag="prog_scale_combo", width=132,
                       callback=on_prog_scale_change)
         dpg.add_spacer(width=10)
         dpg.add_checkbox(label="Include 7th",
@@ -312,7 +312,7 @@ def _build_progression_tab():
                          default_value=True,
                          callback=on_prog_sevenths_toggle)
         dpg.add_spacer(width=18)
-        dpg.add_button(label="Fill Chords", width=86,
+        dpg.add_button(label="Fill Chords", width=100,
                        tag="prog_fill_btn", callback=on_prog_fill)
         dpg.add_spacer(width=6)
         dpg.add_button(label="Clear All", width=86,

@@ -117,7 +117,7 @@ class TestScales:
             assert len(SCALE_TYPES[scale].intervals) == 7
 
     def test_pentatonic_count(self):
-        assert len(SCALE_TYPES["Pentatonic Major"].intervals) == 5
+        assert len(SCALE_TYPES["Pentatonic Maj"].intervals) == 5
         assert len(SCALE_TYPES["Pentatonic Minor"].intervals) == 5
 
     def test_all_scales_valid_pitches(self):
