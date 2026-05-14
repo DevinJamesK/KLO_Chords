@@ -32,7 +32,7 @@ DEFAULTS: Dict[str, Any] = {
     "base_octave":    3,
     "show_note_names": False,
     "show_keybinds":      True,
-    "use_jazz_symbols":   False,
+    "use_jazz_symbols":   True,
     "sub_oscillator":     True,
     "audio_device":    "system_default",
 }

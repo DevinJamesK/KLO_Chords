@@ -83,7 +83,7 @@ _prog_sounding_idx: Optional[int] = None
 _show_keybinds = False
 """Show keyboard shortcut labels on chord cells (toggled via checkbox / Cmd+K)."""
 
-_use_jazz_symbols = False
+_use_jazz_symbols = True
 """Use jazz glyphs (− △ ø) instead of text (min maj7 m7b5) for chord qualities."""
 
 
