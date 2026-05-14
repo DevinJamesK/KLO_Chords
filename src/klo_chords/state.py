@@ -264,7 +264,7 @@ def on_prog_sevenths_toggle(sender, app_data):
 
 
 def on_prog_fill(sender=None, app_data=None):
-    """Fill chords starting from the selected cell, right→down like reading."""
+    """Fill chords starting from the selected cell, right▶down like reading."""
     _reset_clear_confirm()
     global _prog_cells
     chords = get_diatonic_chords(
@@ -645,7 +645,7 @@ def on_key_press(sender, app_data, user_data):
     global _current_tab
     from klo_chords.widgets import dpg_keyboard
     # Alt+key: play/select suggestion cards
-    # Shift+Alt → range select, Cmd/Ctrl+Alt → single toggle, Alt alone → play
+    # Shift+Alt ▶ range select, Cmd/Ctrl+Alt ▶ single toggle, Alt alone ▶ play
     if dpg_keyboard.alt_is_down():
         if _current_tab == "tab_progression" and dpg.does_item_exist("suggestion_panel"):
             card_idx = user_data
@@ -653,7 +653,7 @@ def on_key_press(sender, app_data, user_data):
             if available_cats:
                 global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
                 if card_idx == 0:
-                    # Alt+1 → original card (was Alt+~, which is intercepted by macOS)
+                    # Alt+1 ▶ original card (was Alt+~, which is intercepted by macOS)
                     orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
                     if orig_suggs:
                         s = orig_suggs[0]
@@ -674,7 +674,7 @@ def on_key_press(sender, app_data, user_data):
                                 _apply_suggestion(s)
                                 _rebuild_sugg_selection_highlights()
                 elif 1 <= card_idx <= 9:
-                    # Alt+2→9 → suggestion cards 0→7
+                    # Alt+2▶9 ▶ suggestion cards 0▶7
                     visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
                     sug_idx = card_idx - 1
                     if 0 <= sug_idx < len(visible):
@@ -2241,7 +2241,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
     # Category navigation header — plain buttons matching detail arrow style
     hdr = dpg.add_group(parent=sg, horizontal=True)
     dpg.add_spacer(width=20, parent=hdr)
-    dpg.add_button(label="\u2190", width=25, height=22,
+    dpg.add_button(label="\u25c0", width=25, height=22,
                    callback=lambda: _sugg_nav(-1), parent=hdr)
     dpg.add_spacer(width=6, parent=hdr)
     lbl_btn = dpg.add_button(
@@ -2249,7 +2249,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         width=220, height=22, parent=hdr)
     dpg.bind_item_theme(lbl_btn, _get_cat_text_theme(color))
     dpg.add_spacer(width=6, parent=hdr)
-    dpg.add_button(label="→", width=25, height=22,
+    dpg.add_button(label="▶", width=25, height=22,
                    callback=lambda: _sugg_nav(1), parent=hdr)
 
     dpg.add_spacer(height=4, parent=sg)
