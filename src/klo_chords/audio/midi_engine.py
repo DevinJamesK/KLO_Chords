@@ -862,9 +862,8 @@ def build_midi_tab():
 
     dpg.add_spacer(height=2)
     with dpg.group(horizontal=True):
-        dpg.add_spacer(width=20)
         dpg.add_text("Ports", color=COLOR_ACCENT)
-        dpg.add_spacer(width=150)
+        dpg.add_spacer(width=170)
         dpg.add_checkbox(label="Auto-Connect Single Device",
                         tag="midi_auto_connect", default_value=False)
         dpg.add_spacer(width=20)
