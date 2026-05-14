@@ -864,10 +864,11 @@ def build_midi_tab():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
         dpg.add_text("Ports", color=COLOR_ACCENT)
-        dpg.add_spacer(width=-1)
-        dpg.add_checkbox(label="Auto-connect single device",
+        dpg.add_spacer(width=12)
+        dpg.add_checkbox(label="Auto-Connect Single Device",
                         tag="midi_auto_connect", default_value=False)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=-1)
+        dpg.add_spacer(width=12)
         dpg.add_button(label="Panic All Channels", callback=panic_all, width=170, tag="midi_panic_btn")
         dpg.bind_item_theme("midi_panic_btn", "__midi_panic_theme__")
     dpg.add_separator()
