@@ -63,11 +63,11 @@ class ScaleType:
 
 SCALE_TYPES = {
     "Major":          ScaleType("Major",          [0, 2, 4, 5, 7, 9, 11]),
-    "Natural Minor":  ScaleType("Natural Minor",  [0, 2, 3, 5, 7, 8, 10]),
-    "Harmonic Minor": ScaleType("Harmonic Minor", [0, 2, 3, 5, 7, 8, 11]),
-    "Melodic Minor":  ScaleType("Melodic Minor",  [0, 2, 3, 5, 7, 9, 11]),
-    "Pentatonic Major": ScaleType("Pentatonic Major", [0, 2, 4, 7, 9]),
-    "Pentatonic Minor": ScaleType("Pentatonic Minor", [0, 3, 5, 7, 10]),
+    "Natural minor":  ScaleType("Natural Minor",  [0, 2, 3, 5, 7, 8, 10]),
+    "Harmonic minor": ScaleType("Harmonic Minor", [0, 2, 3, 5, 7, 8, 11]),
+    "Melodic minor":  ScaleType("Melodic Minor",  [0, 2, 3, 5, 7, 9, 11]),
+    "Pentatonic Maj": ScaleType("Pentatonic Major", [0, 2, 4, 7, 9]),
+    "Pentatonic min": ScaleType("Pentatonic Minor", [0, 3, 5, 7, 10]),
     "Blues":          ScaleType("Blues",          [0, 3, 5, 6, 7, 10]),
     "Dorian":         ScaleType("Dorian",         [0, 2, 3, 5, 7, 9, 10]),
     "Phrygian":       ScaleType("Phrygian",       [0, 1, 3, 5, 7, 8, 10]),
@@ -78,9 +78,9 @@ SCALE_TYPES = {
 
 TRIAD_QUALITIES = {
     "Major":         ["M", "m", "m", "M", "M", "m", "dim"],
-    "Natural Minor": ["m", "dim", "M", "m", "m", "M", "M"],
-    "Harmonic Minor": ["m", "dim", "aug", "m", "M", "M", "dim"],
-    "Melodic Minor":  ["m", "m", "aug", "M", "M", "dim", "dim"],
+    "Natural minor": ["m", "dim", "M", "m", "m", "M", "M"],
+    "Harmonic minor": ["m", "dim", "aug", "m", "M", "M", "dim"],
+    "Melodic minor":  ["m", "m", "aug", "M", "M", "dim", "dim"],
     "Dorian":        ["m", "m", "M", "M", "m", "dim", "M"],
     "Phrygian":      ["m", "M", "M", "m", "dim", "M", "m"],
     "Lydian":        ["M", "M", "m", "dim", "M", "m", "m"],
@@ -233,9 +233,9 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
         if natural_name[0].upper() == letter:
             degree = degree_names[i] if i < len(degree_names) else f"^{i+1}"
             if has_flat:
-                return "b" + degree
+                return "\u266d" + degree
             elif has_sharp:
-                return "#" + degree
+                return "\u266f" + degree
             else:
                 return degree
 
@@ -254,9 +254,9 @@ def get_degree_for_root(root: str, key: str, scale_name: str) -> str:
     degree = degree_names[best_i] if best_i < len(degree_names) else f"^{best_i+1}"
     scale_pc = scale_pitches[best_i]
     if (root_pc - scale_pc) % 12 <= 6:
-        return "#" + degree
+        return "\u266f" + degree
     else:
-        return "b" + degree
+        return "\u266d" + degree
 
 
 def _seventh_quality_from_intervals(intervals: List[int]) -> str:
@@ -483,13 +483,13 @@ if __name__ == "__main__":
         ("G", "C", "Major", "V"),
         ("A", "C", "Major", "vi"),
         ("B", "C", "Major", "vii\u00b0"),
-        ("Bb", "C", "Major", "bvii"),
-        ("F#", "C", "Major", "#IV"),
-        ("Db", "C", "Major", "bII"),
-        ("G#", "C", "Major", "#V"),
-        ("C#", "C", "Major", "#I"),
-        ("Eb", "C", "Major", "bIII"),
-        ("Ab", "C", "Major", "bVI"),
+        ("Bb", "C", "Major", "\u266dvii"),
+        ("F#", "C", "Major", "\u266fIV"),
+        ("Db", "C", "Major", "\u266dII"),
+        ("G#", "C", "Major", "\u266fV"),
+        ("C#", "C", "Major", "\u266fI"),
+        ("Eb", "C", "Major", "\u266dIII"),
+        ("Ab", "C", "Major", "\u266dVI"),
     ]
     for root, key, scale, expected in cases:
         result = get_degree_for_root(root, key, scale)

@@ -26,12 +26,12 @@ class TestQualitySymbol:
         ("aug",     "+"),        # augmented = +
         ("7",       "7"),
         ("m7",      "min7"),
-        ("maj7",    "maj7"),
+        ("maj7",    "\u25b37"),
         ("dim7",    "\u00b07"),  # °7
         ("m7b5",    "min7b5"),
-        ("mmaj7",   "minMaj7"),
+        ("mmaj7",   "min\u25b37"),
         ("aug7",    "+7"),
-        ("augmaj7", "+Maj7"),
+        ("augmaj7", "+\u25b37"),
         ("sus2",    "sus2"),
         ("sus4",    "sus4"),
     ])

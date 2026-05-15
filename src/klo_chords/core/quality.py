@@ -5,13 +5,30 @@ Short symbols for compact display, full names for the detail panel.
 
 
 def quality_symbol(quality: str) -> str:
-    """Short chord quality suffix, e.g. 'min', 'min7', 'maj7', '°'."""
+    """Short chord quality suffix, e.g. 'min', 'min7', '\u25b37', '\u00b0'."""
     return {
-        "M": "", "m": "min", "dim": "°", "aug": "+",
-        "7": "7", "m7": "min7", "maj7": "maj7", "dim7": "°7",
-        "m7b5": "min7b5", "mmaj7": "minMaj7", "aug7": "+7", "augmaj7": "+Maj7",
+        "M": "", "m": "min", "dim": "\u00b0", "aug": "+",
+        "7": "7", "m7": "min7", "maj7": "\u25b37", "dim7": "\u00b07",
+        "m7b5": "min7b5", "mmaj7": "min\u25b37", "aug7": "+7", "augmaj7": "+\u25b37",
         "sus2": "sus2", "sus4": "sus4",
     }.get(quality, quality)
+
+
+def quality_symbol_jazz(quality: str) -> str:
+    """Jazz chord quality suffix using standard glyphs: \u2212 \u25b3 \u00f8."""
+    return {
+        "M": "\u25b3", "m": "\u2212", "dim": "\u00b0", "aug": "+",
+        "7": "7", "m7": "\u22127", "maj7": "\u25b37", "dim7": "\u00b07",
+        "m7b5": "\u00f8", "mmaj7": "\u2212\u25b37", "aug7": "+7", "augmaj7": "+\u25b37",
+        "sus2": "sus2", "sus4": "sus4",
+    }.get(quality, quality)
+
+
+def get_quality_display(quality: str, jazz: bool = False) -> str:
+    """Return the appropriate quality symbol based on display mode."""
+    if jazz:
+        return quality_symbol_jazz(quality)
+    return quality_symbol(quality)
 
 
 def quality_spelled(quality: str) -> str:

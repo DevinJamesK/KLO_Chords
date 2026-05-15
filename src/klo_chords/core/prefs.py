@@ -31,8 +31,9 @@ DEFAULTS: Dict[str, Any] = {
     "vel_max":        100,
     "base_octave":    3,
     "show_note_names": False,
-    "show_keybinds":   True,
-    "sub_oscillator":  True,
+    "show_keybinds":      True,
+    "use_jazz_symbols":   True,
+    "sub_oscillator":     True,
     "audio_device":    "system_default",
 }
 

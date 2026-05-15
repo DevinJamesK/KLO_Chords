@@ -49,11 +49,11 @@ jobs:
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
-        run: pyinstaller --windowed --name "KLO Chords${{ steps.label.outputs.suffix }}" --paths src --collect-all dearpygui --icon app_icon.icns --add-data "src/klo_chords/assets/fonts/NotoSans-Regular.ttf:klo_chords/assets/fonts" --add-data "src/klo_chords/assets/fonts/JetBrainsMono-Regular.ttf:klo_chords/assets/fonts" --add-data "src/klo_chords/assets/chords/guitar_standard.json:klo_chords/assets/chords" src/klo_chords/gui/app.py
+        run: pyinstaller --windowed --name "KLO Chords${{ steps.label.outputs.suffix }}" --paths src --collect-all dearpygui --icon app_icon.icns --add-data "src/klo_chords/assets/fonts/DejaVuSans.ttf:klo_chords/assets/fonts" --add-data "src/klo_chords/assets/fonts/JetBrainsMono-Regular.ttf:klo_chords/assets/fonts" --add-data "src/klo_chords/assets/chords/guitar_standard.json:klo_chords/assets/chords" --add-data "src/klo_chords/assets/icons/app_icon.ico:klo_chords/assets/icons" src/klo_chords/gui/app.py
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        run: pyinstaller --windowed --onefile --name "KLO Chords${{ steps.label.outputs.suffix }}" --paths src --collect-all dearpygui --icon src/klo_chords/assets/icons/app_icon.ico --add-data "src/klo_chords/assets/fonts/NotoSans-Regular.ttf;klo_chords/assets/fonts" --add-data "src/klo_chords/assets/fonts/JetBrainsMono-Regular.ttf;klo_chords/assets/fonts" --add-data "src/klo_chords/assets/chords/guitar_standard.json;klo_chords/assets/chords" src/klo_chords/gui/app.py
+        run: pyinstaller --windowed --onefile --name "KLO Chords${{ steps.label.outputs.suffix }}" --paths src --collect-all dearpygui --icon src/klo_chords/assets/icons/app_icon.ico --add-data "src/klo_chords/assets/fonts/DejaVuSans.ttf;klo_chords/assets/fonts" --add-data "src/klo_chords/assets/fonts/JetBrainsMono-Regular.ttf;klo_chords/assets/fonts" --add-data "src/klo_chords/assets/chords/guitar_standard.json;klo_chords/assets/chords" --add-data "src/klo_chords/assets/icons/app_icon.ico;klo_chords/assets/icons" src/klo_chords/gui/app.py
 
       - name: Upload macOS artifact
         if: runner.os == 'macOS'

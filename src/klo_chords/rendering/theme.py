@@ -56,13 +56,13 @@ def _asset_path(subdir: str, filename: str) -> str:
 
 
 def font_path() -> str:
-    """Return the path to the bundled Noto Sans font."""
-    return _asset_path("fonts", "NotoSans-Regular.ttf")
+    """Return the path to the bundled JetBrains Mono font."""
+    return _asset_path("fonts", "JetBrainsMono-Regular.ttf")
 
 
 def font_path_fallback() -> str:
-    """Return the path to the JetBrains Mono fallback font."""
-    return _asset_path("fonts", "JetBrainsMono-Regular.ttf")
+    """Return the path to DejaVu Sans fallback (full Unicode glyph coverage)."""
+    return _asset_path("fonts", "DejaVuSans.ttf")
 
 
 def icon_path() -> str:

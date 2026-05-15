@@ -135,7 +135,7 @@ class TestBorrowedChords:
             assert quality in ("M", "m")
 
     def test_a_minor_borrowed(self):
-        borrowed = _get_borrowed_chords("A", "Natural Minor", "sharp")
+        borrowed = _get_borrowed_chords("A", "Natural minor", "sharp")
         assert len(borrowed) > 0
 
 

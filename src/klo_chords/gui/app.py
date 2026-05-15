@@ -54,6 +54,7 @@ from klo_chords.state import (
     on_undo, on_redo, on_prog_copy, on_prog_paste, on_prog_delete_selection,
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds, init_show_keybinds,
+    on_jazz_symbols_toggle, get_use_jazz_symbols, init_use_jazz_symbols,
     on_sub_oscillator_toggle, on_reset_prefs,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
@@ -271,11 +272,11 @@ def _build_chord_tab():
                 dpg.add_spacer(width=20)
                 with dpg.group():
                     with dpg.group(horizontal=True):
-                        dpg.add_button(label="<  Prev", width=80,
+                        dpg.add_button(label="\u25c0  Prev", width=80,
                                        callback=on_prev_voicing)
                         dpg.add_text("", tag="voicing_label",
                                      color=COLOR_ACCENT)
-                        dpg.add_button(label="Next  >", width=80,
+                        dpg.add_button(label="Next  \u25b6", width=80,
                                        callback=on_next_voicing)
             dpg.add_spacer(height=10)
             with dpg.group(horizontal=True):
@@ -303,20 +304,25 @@ def _build_progression_tab():
         dpg.add_spacer(width=10)
         dpg.add_text("Scale")
         dpg.add_combo(items=SCALE_NAMES, default_value="Major",
-                      tag="prog_scale_combo", width=150,
+                      tag="prog_scale_combo", width=132,
                       callback=on_prog_scale_change)
         dpg.add_spacer(width=10)
         dpg.add_checkbox(label="Include 7th",
                          tag="prog_sevenths_toggle",
                          default_value=True,
                          callback=on_prog_sevenths_toggle)
-        dpg.add_spacer(width=82)
+        dpg.add_spacer(width=18)
         dpg.add_button(label="Fill Chords", width=100,
                        tag="prog_fill_btn", callback=on_prog_fill)
-        dpg.add_spacer(width=10)
-        dpg.add_button(label="Clear All", width=100,
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Clear All", width=86,
                        tag="prog_clear_btn", callback=on_prog_clear_all)
-
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Import", width=72,
+                       tag="prog_import_btn", callback=on_prog_import)
+        dpg.add_spacer(width=6)
+        dpg.add_button(label="Export", width=72,
+                       tag="prog_export_btn", callback=on_prog_export)
 
 
     dpg.add_spacer(height=2)
@@ -354,23 +360,18 @@ def _build_progression_tab():
     with dpg.group(horizontal=True):
         dpg.add_spacer(width=20)
         dpg.add_text("Paste Mode", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=6)
+        dpg.add_spacer(width=4)
         dpg.add_combo(items=["Insert", "Replace", "Swap"],
                       default_value="Replace",
-                      tag="paste_mode_combo", width=108,
+                      tag="paste_mode_combo", width=90,
                       callback=on_paste_mode_change)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=16)
         dpg.add_text("Paste Shape", color=COLOR_TEXT_DIM)
+        dpg.add_spacer(width=4)
         dpg.add_combo(items=["Linear", "Preserve Shape"],
                       default_value="Preserve Shape",
-                      tag="paste_shape_combo", width=120,
+                      tag="paste_shape_combo", width=130,
                       callback=on_paste_shape_change)
-        dpg.add_spacer(width=120)
-        dpg.add_button(label="Export", width=100,
-                       tag="prog_export_btn", callback=on_prog_export)
-        dpg.add_spacer(width=6)
-        dpg.add_button(label="Import", width=100,
-                       tag="prog_import_btn", callback=on_prog_import)
     dpg.add_spacer(height=2)
     dpg.add_text(" Cell Detail", color=COLOR_ACCENT)
     dpg.add_separator()
@@ -410,41 +411,41 @@ def _build_progression_tab():
             dpg.add_spacer(width=piano_pad)
             dpg.add_text("Root", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=16)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_root_prev_btn",
                            callback=on_prog_cell_root_prev)
             _chip("prog_detail_root", "C", 38)
-            dpg.add_button(label=">", width=25, height=22,
+            dpg.add_button(label="\u25b6", width=25, height=22,
                            tag="prog_root_next_btn",
                            callback=on_prog_cell_root_next)
             dpg.add_spacer(width=20)
             dpg.add_text("Quality", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_quality_prev_btn",
                            callback=on_prog_cell_quality_prev)
             _chip("prog_detail_quality", "Major", 66)
-            dpg.add_button(label=">", width=25, height=22,
+            dpg.add_button(label="\u25b6", width=25, height=22,
                            tag="prog_quality_next_btn",
                            callback=on_prog_cell_quality_next)
             dpg.add_spacer(width=16)
             dpg.add_text("Inv", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_inv_prev_btn",
                            callback=on_prog_cell_inversion_prev)
             _chip("prog_detail_inversion", "Root", 46)
-            dpg.add_button(label=">", width=25, height=22,
+            dpg.add_button(label="\u25b6", width=25, height=22,
                            tag="prog_inv_next_btn",
                            callback=on_prog_cell_inversion_next)
             dpg.add_spacer(width=16)
             dpg.add_text("Oct", color=COLOR_TEXT_DIM)
             dpg.add_spacer(width=4)
-            dpg.add_button(label="<", width=25, height=22,
+            dpg.add_button(label="\u25c0", width=25, height=22,
                            tag="prog_octave_prev_btn",
                            callback=on_prog_cell_octave_prev)
             _chip("prog_detail_octave", "3", 30)
-            dpg.add_button(label=">", width=25, height=22,
+            dpg.add_button(label="\u25b6", width=25, height=22,
                            tag="prog_octave_next_btn",
                            callback=on_prog_cell_octave_next)
 
@@ -591,6 +592,22 @@ def _build_sound_tab():
                          " only the differing notes change. Smoother transitions.",
                           color=COLOR_TEXT_DIM, wrap=480)
 
+        dpg.add_spacer(height=12)
+        dpg.add_text("Display", color=COLOR_ACCENT)
+        dpg.add_separator()
+        dpg.add_spacer(height=6)
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=20)
+            dpg.add_checkbox(label="Use jazz chord symbols (− △ ø)",
+                             tag="use_jazz_symbols_toggle",
+                             default_value=get_use_jazz_symbols(),
+                             callback=on_jazz_symbols_toggle)
+        dpg.add_spacer(height=6)
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=20)
+            dpg.add_text("Replaces 'min' with −, 'maj7' with △7, 'm7b5' with ø.",
+                         color=COLOR_TEXT_DIM)
+
         dpg.add_spacer(height=20)
         dpg.add_text("Reset", color=COLOR_ACCENT)
         dpg.add_separator()
@@ -621,6 +638,7 @@ def build_ui():
     # draw_text sizes go up to 24px; bake the draw font at ≥24px to avoid upscaling.
     # On Mac _font_px=32 already exceeds 24, so reuse it; on Windows bake separately.
     _draw_px = max(_font_px, 24)
+
     with dpg.font_registry():
         path = font_path()
         fallback = font_path_fallback()
@@ -687,6 +705,10 @@ def build_ui():
     dpg.set_primary_window("main_win", True)
     dpg.show_viewport()
 
+    # Apply keybind tab labels on boot if the preference was already set
+    from klo_chords.state import _update_tab_labels
+    _update_tab_labels()
+
     def _btn_theme(r, g, b):
         """Create a styled button theme: colored bg, white text, rounded."""
         with dpg.theme() as t:
@@ -702,7 +724,7 @@ def build_ui():
         ("prog_fill_btn",   (50,  120, 200)),   # blue
         ("prog_clear_btn",  (180, 50,  50)),    # red
         ("prog_export_btn", (60,  130, 80)),    # green
-        ("prog_import_btn", (60,  130, 80)),    # green
+        ("prog_import_btn", (200, 160, 50)),    # yellow
     ]:
         if dpg.does_item_exist(tag):
             dpg.bind_item_theme(tag, _btn_theme(r, g, b))
@@ -843,6 +865,7 @@ def _apply_preferences():
     set_base_octave(prefs_data.get("base_octave", 3))
     set_sub_oscillator(prefs_data.get("sub_oscillator", False))
     init_show_keybinds(prefs_data.get("show_keybinds", True))
+    init_use_jazz_symbols(prefs_data.get("use_jazz_symbols", False))
     # Apply saved audio device
     saved_device = prefs_data.get("audio_device", "system_default")
     if saved_device != "system_default":

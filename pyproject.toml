@@ -48,4 +48,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-klo_chords = ["assets/fonts/verdana.ttf", "assets/fonts/NotoSans-Regular.ttf", "assets/chords/*.json", "assets/icons/*.ico"]
+klo_chords = ["assets/fonts/JetBrainsMono-Regular.ttf", "assets/fonts/DejaVuSans.ttf", "assets/fonts/verdana.ttf", "assets/fonts/NotoSans-Regular.ttf", "assets/chords/*.json", "assets/icons/*.ico"]

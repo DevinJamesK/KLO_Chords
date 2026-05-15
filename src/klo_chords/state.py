@@ -83,6 +83,9 @@ _prog_sounding_idx: Optional[int] = None
 _show_keybinds = False
 """Show keyboard shortcut labels on chord cells (toggled via checkbox / Cmd+K)."""
 
+_use_jazz_symbols = True
+"""Use jazz glyphs (− △ ø) instead of text (min maj7 m7b5) for chord qualities."""
+
 
 
 def state() -> dict:
@@ -261,10 +264,11 @@ def on_prog_sevenths_toggle(sender, app_data):
 
 
 def on_prog_fill(sender=None, app_data=None):
-    """Fill chords starting from the selected cell, right→down like reading."""
+    """Fill chords starting from the selected cell, right▶down like reading."""
+    _reset_clear_confirm()
     global _prog_cells
     chords = get_diatonic_chords(
-        _prog_key, _prog_scale, include_sevenths=True
+        _prog_key, _prog_scale, include_sevenths=_prog_sevenths
     )
     # Start filling from the selected cell, or column 0 row 0 if none selected
     start_idx = _prog_selected_idx if _prog_selected_idx is not None else 0
@@ -284,9 +288,26 @@ def on_prog_fill(sender=None, app_data=None):
         _select_prog_cell(start_idx)
 
 
+_prog_clear_confirm = False
+
+def _reset_clear_confirm():
+    global _prog_clear_confirm
+    _prog_clear_confirm = False
+    if dpg.does_item_exist("prog_clear_btn"):
+        dpg.configure_item("prog_clear_btn", label="Clear All")
+
+
 def on_prog_clear_all(sender=None, app_data=None):
-    """Clear all cells in the progression grid."""
-    global _prog_cells
+    """Clear all cells in the progression grid (double-click confirm)."""
+    global _prog_cells, _prog_clear_confirm
+    if not _prog_clear_confirm:
+        _prog_clear_confirm = True
+        if dpg.does_item_exist("prog_clear_btn"):
+            dpg.configure_item("prog_clear_btn", label="Clear?")
+        return
+    _prog_clear_confirm = False
+    if dpg.does_item_exist("prog_clear_btn"):
+        dpg.configure_item("prog_clear_btn", label="Clear All")
     stop_audio()
     for cell in _prog_cells:
         cell.clear()
@@ -411,6 +432,7 @@ def on_prog_import(sender=None, app_data=None):
 
 
 def on_prog_cell_click(sender, app_data, user_data):
+    _reset_clear_confirm()
     idx = user_data
     if 0 <= idx < len(_prog_cells):
         from klo_chords.widgets import dpg_keyboard
@@ -575,17 +597,25 @@ def on_prog_cell_octave_next(sender=None, app_data=None):
     _play_prog_cell(_prog_selected_idx, force=True)
 
 
-# ── Arrow key callback (progression tab) ─────────────────────────────────────────
+# ── Arrow key callback (chords & progression tabs) ──────────────────────────────
 
 def on_prog_cell_arrow_press(sender, app_data, user_data):
-    """Arrow keys for the progression tab: Left/Right = inversion (Shift = root), Up/Down = quality."""
+    """Arrow keys: chords tab = Left/Right cycle guitar voicings;
+    progression tab = Left/Right inversion (Shift=root), Up/Down = quality."""
     global _current_tab
+    from klo_chords.widgets import dpg_keyboard
+    action = str(user_data)
+    if _current_tab == "tab_chords":
+        if action == "inv_prev":
+            on_prev_voicing()
+        elif action == "inv_next":
+            on_next_voicing()
+        # Up/Down on chords tab are unused for now
+        return
     if _current_tab != "tab_progression":
         return
     if _prog_selected_idx is None:
         return
-    from klo_chords.widgets import dpg_keyboard
-    action = str(user_data)
     if action == "inv_prev":
         if dpg_keyboard.shift_is_down():
             on_prog_cell_root_prev()
@@ -615,7 +645,7 @@ def on_key_press(sender, app_data, user_data):
     global _current_tab
     from klo_chords.widgets import dpg_keyboard
     # Alt+key: play/select suggestion cards
-    # Shift+Alt → range select, Cmd/Ctrl+Alt → single toggle, Alt alone → play
+    # Shift+Alt ▶ range select, Cmd/Ctrl+Alt ▶ single toggle, Alt alone ▶ play
     if dpg_keyboard.alt_is_down():
         if _current_tab == "tab_progression" and dpg.does_item_exist("suggestion_panel"):
             card_idx = user_data
@@ -623,7 +653,7 @@ def on_key_press(sender, app_data, user_data):
             if available_cats:
                 global _sugg_playing_card_idx, _sugg_selected_set, _sugg_selection_anchor
                 if card_idx == 0:
-                    # Alt+1 → original card (was Alt+~, which is intercepted by macOS)
+                    # Alt+1 ▶ original card (was Alt+~, which is intercepted by macOS)
                     orig_suggs = [s for s in _sugg_last_suggestions if s.category == "original"]
                     if orig_suggs:
                         s = orig_suggs[0]
@@ -644,7 +674,7 @@ def on_key_press(sender, app_data, user_data):
                                 _apply_suggestion(s)
                                 _rebuild_sugg_selection_highlights()
                 elif 1 <= card_idx <= 9:
-                    # Alt+2→9 → suggestion cards 0→7
+                    # Alt+2▶9 ▶ suggestion cards 0▶7
                     visible = cat_groups.get(available_cats[_sugg_current_cat_idx], [])
                     sug_idx = card_idx - 1
                     if 0 <= sug_idx < len(visible):
@@ -709,9 +739,10 @@ def _save_prefs():
         "vel_max":         s.get("vel_max", 100),
         "base_octave":     s.get("base_octave", 3),
         "show_note_names": get_fretboard_mode() == "note",
-        "show_keybinds":   _show_keybinds,
-        "sub_oscillator":  s.get("sub_oscillator", False),
-        "audio_device":    get_device_name(),
+        "show_keybinds":      _show_keybinds,
+        "use_jazz_symbols":   _use_jazz_symbols,
+        "sub_oscillator":     s.get("sub_oscillator", False),
+        "audio_device":       get_device_name(),
     })
 
 
@@ -849,12 +880,14 @@ def on_reset_prefs(sender=None, app_data=None):
         ("toolbar_wave_combo",   wave_display.get(d["wave"], "Triangle")),
         ("sound_quality_combo",  quality_display.get(d["audio_quality"], "Legacy")),
         ("playback_mode_combo",  playback_display.get(d["playback_mode"], "Toggle/Latch")),
+        ("use_jazz_symbols_toggle", d["use_jazz_symbols"]),
     ]:
         if dpg.does_item_exist(tag):
             dpg.set_value(tag, val)
 
-    global _show_keybinds
+    global _show_keybinds, _use_jazz_symbols
     _show_keybinds = d["show_keybinds"]
+    _use_jazz_symbols = d["use_jazz_symbols"]
 
     from klo_chords.rendering.fretboard import set_fretboard_mode
     set_fretboard_mode("note" if d["show_note_names"] else "fret")
@@ -916,6 +949,7 @@ def on_keybinds_toggle(sender=None, app_data=None):
     # Sync the checkbox in the toolbar
     if dpg.does_item_exist("toolbar_show_keybinds"):
         dpg.set_value("toolbar_show_keybinds", _show_keybinds)
+    _update_tab_labels()
     _rebuild_chord_ui()
     _rebuild_prog_ui()
     if dpg.does_item_exist("suggestion_panel") and _sugg_last_suggestions:
@@ -935,6 +969,55 @@ def init_show_keybinds(val: bool):
     global _show_keybinds
     _show_keybinds = val
 
+
+def on_jazz_symbols_toggle(sender=None, app_data=None):
+    """Toggle jazz chord symbols (− △ ø) vs text (min maj7 m7b5)."""
+    global _use_jazz_symbols
+    if app_data is not None:
+        _use_jazz_symbols = bool(app_data)
+    else:
+        _use_jazz_symbols = not _use_jazz_symbols
+    _rebuild_chord_ui()
+    _rebuild_prog_ui()
+    if dpg.does_item_exist("suggestion_panel") and _sugg_last_suggestions:
+        dpg.delete_item("suggestion_panel", children_only=True)
+        _build_suggestion_cards(_sugg_last_suggestions, cat_idx=_sugg_current_cat_idx)
+        _rebuild_sugg_selection_highlights()
+    _save_prefs()
+
+
+def get_use_jazz_symbols() -> bool:
+    """Return whether jazz glyph symbols should be used for chord qualities."""
+    return _use_jazz_symbols
+
+
+def init_use_jazz_symbols(val: bool):
+    """Set jazz symbols state from saved prefs before DPG context exists."""
+    global _use_jazz_symbols
+    _use_jazz_symbols = val
+
+
+
+def _update_tab_labels():
+    """Show or hide [Cmd+#] / [Ctrl+#] shortcut labels on the top tabs."""
+    _key = "\u2318" if _platform.system() == "Darwin" else "Ctrl+"
+    if _show_keybinds:
+        tab_labels = {
+            "tab_chords":       f"   Chords    [{_key}1]",
+            "tab_progression":  f" Progression [{_key}2]",
+            "tab_midi":         f"    MIDI     [{_key}3]",
+            "tab_sound":        f"  Settings   [{_key}4]",
+        }
+    else:
+        tab_labels = {
+            "tab_chords":       "   Chords    ",
+            "tab_progression":  " Progression ",
+            "tab_midi":         "    MIDI     ",
+            "tab_sound":        "  Settings   ",
+        }
+    for tag, label in tab_labels.items():
+        if dpg.does_item_exist(tag):
+            dpg.configure_item(tag, label=label)
 
 
 def on_stop(sender=None, app_data=None):
@@ -2158,7 +2241,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
     # Category navigation header — plain buttons matching detail arrow style
     hdr = dpg.add_group(parent=sg, horizontal=True)
     dpg.add_spacer(width=20, parent=hdr)
-    dpg.add_button(label="<", width=25, height=22,
+    dpg.add_button(label="\u25c0", width=25, height=22,
                    callback=lambda: _sugg_nav(-1), parent=hdr)
     dpg.add_spacer(width=6, parent=hdr)
     lbl_btn = dpg.add_button(
@@ -2166,7 +2249,7 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         width=220, height=22, parent=hdr)
     dpg.bind_item_theme(lbl_btn, _get_cat_text_theme(color))
     dpg.add_spacer(width=6, parent=hdr)
-    dpg.add_button(label=">", width=25, height=22,
+    dpg.add_button(label="▶", width=25, height=22,
                    callback=lambda: _sugg_nav(1), parent=hdr)
 
     dpg.add_spacer(height=4, parent=sg)
@@ -2183,12 +2266,12 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         cell.rotation = 0
         cell.base_octave = 3
         cell.voicing_idx = 0
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
         dpg.add_drawlist(tag=canvas_tag, width=PROG_CELL_W, height=PROG_CELL_H,
                          parent=row_grp)
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=False, key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + 1",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod}1",
                        bg_color=_COLOR_ORIG_BG)
         dpg.add_spacer(width=6, parent=row_grp)
         orig_info.append((canvas_tag, s))
@@ -2206,8 +2289,8 @@ def _build_suggestion_cards(suggestions, cat_idx: int = 0):
         dpg.add_drawlist(tag=canvas_tag,
                          width=PROG_CELL_W, height=PROG_CELL_H,
                          parent=row_grp)
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
-        sugg_lbl = f"{_mod} + {i + 2}" if i < 8 else ""
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
+        sugg_lbl = f"{_mod}{i + 2}" if i < 8 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=False, key=_prog_key, scale=_prog_scale,
                        show_keybind=get_show_keybinds(), keybind_label=sugg_lbl)
@@ -2265,8 +2348,8 @@ def _rebuild_sugg_selection_highlights():
         cell = ProgCell()
         cell.root, cell.quality = s.root, s.quality
         cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
-        sugg_lbl = f"{_mod} + {i + 2}" if i < 8 else ""
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
+        sugg_lbl = f"{_mod}{i + 2}" if i < 8 else ""
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + i,
                        selected=(i in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
@@ -2282,11 +2365,11 @@ def _rebuild_sugg_selection_highlights():
         cell = ProgCell()
         cell.root, cell.quality = s.root, s.quality
         cell.rotation, cell.base_octave, cell.voicing_idx = 0, 3, 0
-        _mod = "opt" if _platform.system() == "Darwin" else "alt"
+        _mod = "\u2325" if _platform.system() == "Darwin" else "Alt+"
         draw_prog_cell(canvas_tag, cell, _SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j,
                        selected=(_SUGG_ORIG_CARD_IDX in _sugg_selected_set),
                        key=_prog_key, scale=_prog_scale,
-                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod} + 1",
+                       show_keybind=get_show_keybinds(), keybind_label=f"{_mod}1",
                        bg_color=_COLOR_ORIG_BG)
         hreg_tag = f"sugg_orig_hreg_{j}"
         if dpg.does_item_exist(hreg_tag):

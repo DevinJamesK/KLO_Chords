@@ -851,14 +851,24 @@ def build_midi_tab():
 
     # ── Ports ─────────────────────────────────────────────────────────────────────
     
+    if not dpg.does_item_exist("__midi_panic_theme__"):
+        with dpg.theme(tag="__midi_panic_theme__"):
+            with dpg.theme_component(dpg.mvButton):
+                dpg.add_theme_color(dpg.mvThemeCol_Button,        [180, 40, 40, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [220, 50, 50, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_ButtonActive,  [140, 30, 30, 255])
+                dpg.add_theme_color(dpg.mvThemeCol_Text,          [255, 255, 255, 255])
+                dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 4)
+
     dpg.add_spacer(height=2)
     with dpg.group(horizontal=True):
         dpg.add_text("Ports", color=COLOR_ACCENT)
-        dpg.add_spacer(width=415)
-        dpg.add_checkbox(label="Auto-connect single device",
+        dpg.add_spacer(width=170)
+        dpg.add_checkbox(label="Auto-Connect Single Device",
                         tag="midi_auto_connect", default_value=False)
         dpg.add_spacer(width=20)
-        dpg.add_button(label="Panic All Channels", callback=panic_all, width=-20)
+        dpg.add_button(label="Panic All Channels", callback=panic_all, width=170, tag="midi_panic_btn")
+        dpg.bind_item_theme("midi_panic_btn", "__midi_panic_theme__")
     dpg.add_separator()
 
     with dpg.table(header_row=False, borders_innerV=True,
@@ -916,9 +926,9 @@ def build_midi_tab():
                               min_value=0, max_value=127, width=80,
                               callback=_on_pc_bank_lsb_change)
         dpg.add_spacer(width=30)
-        dpg.add_button(label="< Prev", callback=pc_prev, width=65)
+        dpg.add_button(label="\u25c0 Prev", callback=pc_prev, width=65)
         dpg.add_spacer(width=4)
-        dpg.add_button(label="Next >", callback=pc_next, width=65)
+        dpg.add_button(label="Next \u25b6", callback=pc_next, width=65)
         dpg.add_spacer(width=30)
         with dpg.group(horizontal=True, tag="midi_pc_bank_msb_grp", show=False):
             dpg.add_spacer(width=12)
@@ -990,10 +1000,14 @@ def build_midi_tab():
     dpg.add_text("CC Monitor", color=COLOR_ACCENT)
     dpg.add_separator()
     dpg.add_spacer(height=4)
-    dpg.add_button(label="Clear", callback=reset_cc, width=60)
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        dpg.add_button(label="Clear", callback=reset_cc, width=60)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_cc_window", width=-1, height=250):
-        pass
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        with dpg.child_window(tag="midi_cc_window", width=-20, height=220):
+            pass
 
     # ── Log ───────────────────────────────────────────────────────────────────────
     dpg.add_spacer(height=8)
@@ -1001,23 +1015,27 @@ def build_midi_tab():
     dpg.add_separator()
     dpg.add_spacer(height=4)
     with dpg.group(horizontal=True):
-        dpg.add_checkbox(label="Notes",     tag="midi_filter_notes",     default_value=True)
-        dpg.add_spacer(width=4)
-        dpg.add_checkbox(label="CC",        tag="midi_filter_cc",        default_value=True)
-        dpg.add_spacer(width=4)
-        dpg.add_checkbox(label="PB",        tag="midi_filter_pb",        default_value=True)
-        dpg.add_spacer(width=4)
-        dpg.add_checkbox(label="Clock",     tag="midi_filter_clock",     default_value=False)
-        dpg.add_spacer(width=4)
-        dpg.add_checkbox(label="Tpt",       tag="midi_filter_transport", default_value=True)
-        dpg.add_spacer(width=4)
-        dpg.add_checkbox(label="Pos",       tag="midi_filter_songpos",   default_value=True)
-        dpg.add_spacer(width=4)
-        dpg.add_checkbox(label="SYS",       tag="midi_filter_sys",       default_value=True)
-        dpg.add_spacer(width=275)
+        dpg.add_spacer(width=20)
+        with dpg.group(horizontal=True):
+            dpg.add_checkbox(label="Notes",     tag="midi_filter_notes",     default_value=True)
+            dpg.add_spacer(width=4)
+            dpg.add_checkbox(label="CC",        tag="midi_filter_cc",        default_value=True)
+            dpg.add_spacer(width=4)
+            dpg.add_checkbox(label="PB",        tag="midi_filter_pb",        default_value=True)
+            dpg.add_spacer(width=4)
+            dpg.add_checkbox(label="Clock",     tag="midi_filter_clock",     default_value=False)
+            dpg.add_spacer(width=4)
+            dpg.add_checkbox(label="Tpt",       tag="midi_filter_transport", default_value=True)
+            dpg.add_spacer(width=4)
+            dpg.add_checkbox(label="Pos",       tag="midi_filter_songpos",   default_value=True)
+            dpg.add_spacer(width=4)
+            dpg.add_checkbox(label="SYS",       tag="midi_filter_sys",       default_value=True)
+        dpg.add_spacer(width=-1)
         dpg.add_checkbox(label="Hex Display",   tag="midi_raw_hex",      default_value=False)
     dpg.add_spacer(height=4)
-    with dpg.child_window(tag="midi_log_window", width=-1, height=-1):
-        pass
+    with dpg.group(horizontal=True):
+        dpg.add_spacer(width=20)
+        with dpg.child_window(tag="midi_log_window", width=-20, height=-20):
+            pass
 
     _auto_connect()
