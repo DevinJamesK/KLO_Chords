@@ -126,30 +126,30 @@ def _build_toolbar():
                            default_value=int(round(sound_cfg["volume"] * 100)),
                            min_value=0, max_value=100,
                            width=100, callback=on_volume_change)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=12)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=12)
         dpg.add_text("Legato")
         sound_cfg2 = get_sound_settings()
         dpg.add_checkbox(label="", tag="toolbar_legato_toggle",
                           default_value=True,
                           callback=on_legato_toggle)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=12)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=12)
         dpg.add_text("Wave:")
         dpg.add_combo(items=WAVE_DISPLAY_NAMES,
                       default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
                       tag="toolbar_wave_combo", width=110,
                       callback=on_wave_type_change)
-        dpg.add_spacer(width=16)
+        dpg.add_spacer(width=12)
         dpg.add_checkbox(label="Add Bass Root Note",
                          tag="toolbar_sub_osc_toggle",
                          default_value=get_sound_settings().get("sub_oscillator", True),
                          callback=on_sub_oscillator_toggle)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=12)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=20)
+        dpg.add_spacer(width=12)
         dpg.add_checkbox(label="Show Keybinds",
                          tag="toolbar_show_keybinds",
                          default_value=get_show_keybinds(),
