@@ -29,6 +29,7 @@ class TestDefaults:
             "base_octave", "show_note_names", "show_keybinds", "use_jazz_symbols",
             "sub_oscillator",
             "audio_device",
+            "midi_virtual_port", "midi_virtual_enabled",
         }
         assert set(d.keys()) == expected_keys
 
