@@ -960,8 +960,19 @@ def on_midi_virtual_toggle(sender, app_data):
     if not _driver or not _RTMIDI_OK:
         return
     if app_data:
-        _driver.open_virtual_output("KLO_Chords")
-        _midi_log("SYS", "Virtual output enabled from Settings.")
+        try:
+            _driver.open_virtual_output("KLO_Chords")
+            _midi_log("SYS", "Virtual output enabled from Settings.")
+        except NotImplementedError:
+            _midi_log("SYS", "Virtual ports are not supported on this platform.")
+            if dpg.does_item_exist("midi_virtual_toggle"):
+                dpg.set_value("midi_virtual_toggle", False)
+            return
+        except Exception as e:
+            _midi_log("SYS", f"Failed to enable virtual output: {e}")
+            if dpg.does_item_exist("midi_virtual_toggle"):
+                dpg.set_value("midi_virtual_toggle", False)
+            return
     else:
         _driver.close_virtual_output()
         _midi_log("SYS", "Virtual output disabled.")
