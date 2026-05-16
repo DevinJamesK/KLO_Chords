@@ -44,7 +44,8 @@ from klo_chords.state import (
     on_prog_cell_octave_prev, on_prog_cell_octave_next,
     on_prog_cell_arrow_press,
     on_sound_enable_toggle,
-    on_random_velocity_toggle, on_vel_min_change, on_vel_max_change,
+    on_random_velocity_toggle, on_vel_range_input, on_vel_range_step,
+    on_vel_center_change, on_vel_center_step,
     on_base_octave_change, on_playback_mode_change,
     on_legato_toggle, on_volume_change,
     on_wave_type_change, on_audio_quality_change,
@@ -55,7 +56,7 @@ from klo_chords.state import (
     on_paste_mode_change, on_paste_shape_change,
     on_keybinds_toggle, get_show_keybinds, init_show_keybinds,
     on_jazz_symbols_toggle, get_use_jazz_symbols, init_use_jazz_symbols,
-    on_sub_oscillator_toggle, on_reset_prefs,
+    on_sub_oscillator_toggle, on_midi_virtual_toggle, on_reset_prefs,
     _refresh_chords, _refresh_progression, _refresh_speaker_indicators,
 )
 
@@ -125,17 +126,17 @@ def _build_toolbar():
                            default_value=int(round(sound_cfg["volume"] * 100)),
                            min_value=0, max_value=100,
                            width=100, callback=on_volume_change)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=20)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=20)
         dpg.add_text("Legato")
         sound_cfg2 = get_sound_settings()
         dpg.add_checkbox(label="", tag="toolbar_legato_toggle",
                           default_value=True,
                           callback=on_legato_toggle)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=20)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=20)
         dpg.add_text("Wave:")
         dpg.add_combo(items=WAVE_DISPLAY_NAMES,
                       default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
@@ -146,9 +147,9 @@ def _build_toolbar():
                          tag="toolbar_sub_osc_toggle",
                          default_value=get_sound_settings().get("sub_oscillator", True),
                          callback=on_sub_oscillator_toggle)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=20)
         dpg.add_text("|", color=COLOR_TEXT_DIM)
-        dpg.add_spacer(width=8)
+        dpg.add_spacer(width=20)
         dpg.add_checkbox(label="Show Keybinds",
                          tag="toolbar_show_keybinds",
                          default_value=get_show_keybinds(),
@@ -474,149 +475,215 @@ def _build_progression_tab():
 
 
 def _build_sound_tab():
-    """Sound settings."""
+    """Settings tab — clean layout with labels next to controls."""
+
+    INDENT = 20
+
     with dpg.child_window(tag="sound_panel", width=-1,
-                          height=-1, border=False):
-        dpg.add_text("Sound Settings", color=COLOR_ACCENT)
+                          height=-1, border=False,
+                          horizontal_scrollbar=False):
+
+        # ═══════════════════════════════════════════════════════════════════
+        # Sound
+        # ═══════════════════════════════════════════════════════════════════
+        dpg.add_text("Sound", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
+            dpg.add_spacer(width=INDENT)
             dpg.add_checkbox(label="Enable sound",
-                             tag="sound_enable", default_value=True,
+                             tag="sound_enable",
+                             default_value=get_sound_settings().get("enabled", True),
                              callback=on_sound_enable_toggle)
-            dpg.add_spacer(width=20)
-            dpg.add_text("|", color=COLOR_TEXT_DIM)
-            dpg.add_spacer(width=20)
+
+        dpg.add_spacer(height=8)
+
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=INDENT)
             dpg.add_text("Wave type:")
+            dpg.add_spacer(width=4)
             sound_cfg = get_sound_settings()
             dpg.add_combo(items=WAVE_DISPLAY_NAMES,
                           default_value=WAVE_INTERNAL_TO_DISPLAY.get(sound_cfg["mode"], "Triangle"),
                           tag="sound_mode_combo", width=120,
                           callback=on_wave_type_change)
 
-        dpg.add_spacer(height=10)
+        dpg.add_spacer(height=8)
+
+        from klo_chords.audio.sound import get_audio_devices, get_device_name
+        devices = get_audio_devices()
+        device_names = [d["name"] for d in devices]
+        saved_device = get_device_name()
+        default_device = "System Default"
+        if saved_device != "system_default" and saved_device in device_names:
+            default_device = saved_device
 
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
+            dpg.add_spacer(width=INDENT)
             dpg.add_text("Audio Device:")
             dpg.add_spacer(width=4)
-            from klo_chords.audio.sound import get_audio_devices, get_device_name
-            devices = get_audio_devices()
-            device_names = [d["name"] for d in devices]
-            saved_device = get_device_name()
-            # Resolve saved device name to a display name (fall back to System Default if not found)
-            default_device = "System Default"
-            if saved_device != "system_default" and saved_device in device_names:
-                default_device = saved_device
             dpg.add_combo(items=device_names,
                           default_value=default_device,
-                          tag="sound_device_combo", width=180,
+                          tag="sound_device_combo", width=220,
                           callback=on_audio_device_change)
-            dpg.add_spacer(width=8)
+
+        dpg.add_spacer(height=6)
+
+        quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
+        sound_cfg2 = get_sound_settings()
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=INDENT)
             dpg.add_text("Audio Quality:")
             dpg.add_spacer(width=4)
-            quality_display = {"smooth": "Smooth", "responsive": "Responsive", "legacy": "Legacy"}
-            sound_cfg2 = get_sound_settings()
             dpg.add_combo(items=["Smooth", "Responsive", "Legacy"],
                           default_value=quality_display.get(sound_cfg2.get("audio_quality", "smooth"), "Smooth"),
-                          tag="sound_quality_combo", width=120,
+                          tag="sound_quality_combo", width=140,
                           callback=on_audio_quality_change)
 
-        dpg.add_spacer(height=12)
+        # ── Velocity ────────────────────────────────────────────────────
+        dpg.add_spacer(height=14)
         dpg.add_text("Velocity", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
+            dpg.add_spacer(width=INDENT)
             dpg.add_checkbox(label="Random velocity per note",
-                             tag="random_vel", default_value=True,
+                             tag="random_vel",
+                             default_value=get_sound_settings().get("random_vel", True),
                              callback=on_random_velocity_toggle)
-        dpg.add_spacer(height=6)
-        with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
-            dpg.add_text("Min:", color=COLOR_TEXT_DIM)
-            dpg.add_slider_int(tag="vel_min_slider",
-                               default_value=60,
-                               min_value=1, max_value=127,
-                               width=200, callback=on_vel_min_change)
-            dpg.add_spacer(width=24)
-            dpg.add_text("Max:", color=COLOR_TEXT_DIM)
-            dpg.add_slider_int(tag="vel_max_slider",
-                               default_value=100,
-                               min_value=1, max_value=127,
-                               width=200, callback=on_vel_max_change)
 
-        dpg.add_spacer(height=12)
+        dpg.add_spacer(height=8)
+
+        vcfg = get_sound_settings()
+        vmin = vcfg.get("vel_min", 60)
+        vmax = vcfg.get("vel_max", 100)
+        vrng = max(1, vmax - vmin + 1)
+        vcenter = vmin + vrng // 2
+        with dpg.group(horizontal=True):
+            dpg.add_spacer(width=INDENT)
+
+            dpg.add_text("Range:", color=COLOR_TEXT)
+            dpg.add_button(label="−", width=24, height=22,
+                           callback=lambda: on_vel_range_step(-1))
+            dpg.add_input_int(tag="vel_range_input",
+                              default_value=vrng,
+                              min_value=1, max_value=127,
+                              width=52, callback=on_vel_range_input,
+                              step=0, step_fast=0)
+            dpg.add_button(label="+", width=24, height=22,
+                           callback=lambda: on_vel_range_step(1))
+
+            dpg.add_spacer(width=20)
+
+            dpg.add_text("Center:", color=COLOR_TEXT)
+            dpg.add_button(label="−", width=24, height=22,
+                           callback=lambda: on_vel_center_step(-1))
+            dpg.add_input_int(tag="vel_center_input",
+                              default_value=vcenter,
+                              min_value=vrng // 2 + 1,
+                              max_value=127 - vrng // 2,
+                              width=52, callback=on_vel_center_change,
+                              step=0, step_fast=0)
+            dpg.add_button(label="+", width=24, height=22,
+                           callback=lambda: on_vel_center_step(1))
+
+            dpg.add_spacer(width=16)
+            dpg.add_text("Min", color=COLOR_TEXT_DIM)
+            with dpg.drawlist(tag="vel_graph", width=130, height=22):
+                pass
+            dpg.add_text("Max", color=COLOR_TEXT_DIM)
+
+        # ── Playback Mode ────────────────────────────────────────────────
+        dpg.add_spacer(height=14)
         dpg.add_text("Playback Mode", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=16)
+            dpg.add_spacer(width=INDENT)
             dpg.add_combo(items=["Toggle/Latch", "One-Shot"],
                           default_value="Toggle/Latch",
                           tag="playback_mode_combo", width=140,
                           callback=on_playback_mode_change)
-            dpg.add_spacer(width=10)
-            dpg.add_text("Toggle=on/off per chord, One-Shot=~1s",
+            dpg.add_spacer(width=20)
+            dpg.add_text("Toggle = on/off per chord,   One-Shot = ~1s play",
                          color=COLOR_TEXT_DIM)
 
-        dpg.add_spacer(height=12)
+        # ── Base Octave ──────────────────────────────────────────────────
+        dpg.add_spacer(height=14)
         dpg.add_text("Base Octave", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=16)
-            dpg.add_text("Lower", color=COLOR_TEXT_DIM)
+            dpg.add_spacer(width=INDENT)
+            dpg.add_text("Lower", color=COLOR_TEXT)
             dpg.add_slider_int(tag="base_octave_slider",
                                default_value=3,
                                min_value=2, max_value=6,
-                               width=300,
+                               width=320,
                                callback=on_base_octave_change)
-            dpg.add_text("Higher", color=COLOR_TEXT_DIM)
+            dpg.add_text("Higher", color=COLOR_TEXT)
+            dpg.add_spacer(width=20)
+            dpg.add_text("Shift all chords up/down by this many octaves.",
+                         color=COLOR_TEXT_DIM)
 
-        dpg.add_spacer(height=12)
+        # ── Legato Mode ──────────────────────────────────────────────────
+        dpg.add_spacer(height=14)
         dpg.add_text("Legato Mode", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=16)
+            dpg.add_spacer(width=INDENT)
             dpg.add_checkbox(label="Hold shared notes when switching chords",
                               tag="sound_legato_toggle", default_value=True,
                               callback=on_legato_toggle)
+            dpg.add_spacer(width=20)
+            dpg.add_text("Shared notes stay held; only new notes change.",
+                         color=COLOR_TEXT_DIM)
+
+        # ── Virtual MIDI ─────────────────────────────────────────────────
+        dpg.add_spacer(height=14)
+        dpg.add_text("Virtual MIDI", color=COLOR_ACCENT)
+        dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
+            dpg.add_spacer(width=INDENT)
+            midi_prefs = prefs.load()
+            dpg.add_checkbox(label="Enable Virtual MIDI Output",
+                             tag="midi_virtual_toggle",
+                             default_value=midi_prefs.get("midi_virtual_enabled", True),
+                             callback=on_midi_virtual_toggle)
             dpg.add_spacer(width=20)
-            dpg.add_text("When enabled, notes common to both chords stay held,"
-                         " only the differing notes change. Smoother transitions.",
-                          color=COLOR_TEXT_DIM, wrap=480)
+            dpg.add_text("Virtual port 'KLO_Chords' — select as MIDI input in your DAW.",
+                         color=COLOR_TEXT_DIM)
 
-        dpg.add_spacer(height=12)
+        # ── Display ──────────────────────────────────────────────────────
+        dpg.add_spacer(height=14)
         dpg.add_text("Display", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=6)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=20)
+            dpg.add_spacer(width=INDENT)
             dpg.add_checkbox(label="Use jazz chord symbols (− △ ø)",
                              tag="use_jazz_symbols_toggle",
                              default_value=get_use_jazz_symbols(),
                              callback=on_jazz_symbols_toggle)
-        dpg.add_spacer(height=6)
-        with dpg.group(horizontal=True):
             dpg.add_spacer(width=20)
             dpg.add_text("Replaces 'min' with −, 'maj7' with △7, 'm7b5' with ø.",
                          color=COLOR_TEXT_DIM)
 
-        dpg.add_spacer(height=20)
+        # ── Reset ────────────────────────────────────────────────────────
+        dpg.add_spacer(height=18)
         dpg.add_text("Reset", color=COLOR_ACCENT)
         dpg.add_separator()
         dpg.add_spacer(height=8)
         with dpg.group(horizontal=True):
-            dpg.add_spacer(width=16)
-            dpg.add_button(label="Delete Saved Preferences",
-                           tag="reset_prefs_btn", width=200, height=28,
-                           callback=on_reset_prefs)
+            dpg.add_spacer(width=INDENT)
+            with dpg.group():
+                dpg.add_spacer(height=2)
+                dpg.add_button(label="Delete Saved Preferences",
+                               tag="reset_prefs_btn", width=210,
+                               callback=on_reset_prefs)
             with dpg.theme() as _danger_theme:
                 with dpg.theme_component(dpg.mvButton):
                     dpg.add_theme_color(dpg.mvThemeCol_Button,        [120, 30, 30, 255])
@@ -625,7 +692,7 @@ def _build_sound_tab():
                     dpg.add_theme_color(dpg.mvThemeCol_Text,           [255, 100, 100, 255])
                     dpg.add_theme_style(dpg.mvStyleVar_FrameRounding,  4)
             dpg.bind_item_theme("reset_prefs_btn", _danger_theme)
-            dpg.add_spacer(width=12)
+            dpg.add_spacer(width=20)
             dpg.add_text("Resets all settings to defaults. Current session will also reset.",
                          color=COLOR_TEXT_DIM, wrap=300)
 
@@ -731,8 +798,14 @@ def build_ui():
 
     # ── Initialize ──────────────────────────────────────────────────────────────
     midi_tab.init()
+    # Auto-connect virtual MIDI port if it was active last session
+    midi_tab.auto_connect_virtual(prefs.load())
     build_piano_keys("piano_canvas")
     build_multi_octave_piano("prog_piano_canvas")
+    # Draw velocity graph on initial load
+    from klo_chords.state import _draw_vel_graph
+    sc = get_sound_settings()
+    _draw_vel_graph(sc.get("vel_min", 60), sc.get("vel_max", 100))
     _refresh_chords()
     _refresh_progression()
 
@@ -786,7 +859,6 @@ def build_ui():
         # Delete key — mvKey_Delete is Forward Delete; mvKey_Back is the main Delete key on macOS
         dpg.add_key_press_handler(key=dpg.mvKey_Delete, callback=on_prog_delete_selection)
         dpg.add_key_press_handler(key=dpg.mvKey_Back, callback=on_prog_delete_selection)
-
 
     from klo_chords.widgets import dpg_keyboard
     dpg_keyboard.setup()

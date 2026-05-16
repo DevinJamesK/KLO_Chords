@@ -108,6 +108,13 @@ class MidiDriver:
         self.midi_out = _rtmidi.MidiOut()
         self._in_port  = None
         self._out_port = None
+        # Virtual output port — uses a SEPARATE MidiOut so we never
+        # need to close_port() (which fails on virtual ports in some
+        # rtmidi versions).  We just delete the old object and create
+        # a fresh one.
+        self._virtual_midi_out = None
+        self._virtual_out = False
+        self._virtual_out_name = ""
 
     def list_ports(self):
         return self.midi_in.get_ports(), self.midi_out.get_ports()
@@ -122,8 +129,49 @@ class MidiDriver:
         self.midi_out.open_port(port)
         self._out_port = port
 
+    def open_virtual_output(self, name: str = "KLO_Chords"):
+        """Create a virtual MIDI output port visible to other applications (e.g. DAWs).
+
+        Idempotent: if a virtual port with the same name is already active,
+        this is a no-op.
+        """
+        if self._virtual_out and self._virtual_out_name == name:
+            return
+        # Tear down any existing virtual port (fresh MidiOut handles cleanup)
+        self._destroy_virtual_midi_out()
+        self._virtual_midi_out = _rtmidi.MidiOut()
+        self._virtual_midi_out.open_virtual_port(name)
+        self._virtual_out = True
+        self._virtual_out_name = name
+
+    def close_virtual_output(self):
+        """Close the virtual MIDI output port if one is open."""
+        self._destroy_virtual_midi_out()
+        self._virtual_out = False
+        self._virtual_out_name = ""
+
+    def _destroy_virtual_midi_out(self):
+        if self._virtual_midi_out is not None:
+            try:
+                self._virtual_midi_out.close_port()
+            except Exception:
+                pass
+            del self._virtual_midi_out
+            self._virtual_midi_out = None
+
+    @property
+    def virtual_output_active(self) -> bool:
+        return self._virtual_out
+
+    @property
+    def virtual_output_name(self) -> str:
+        return self._virtual_out_name
+
     def send(self, message):
-        self.midi_out.send_message(message)
+        if self._virtual_out and self._virtual_midi_out is not None:
+            self._virtual_midi_out.send_message(message)
+        else:
+            self.midi_out.send_message(message)
 
     def note_on(self, note, vel=127, ch=0):
         self.send([NOTE_ON | ch, note, vel])
@@ -145,6 +193,7 @@ class MidiDriver:
         if self._out_port is not None:
             self.midi_out.close_port()
             self._out_port = None
+        self.close_virtual_output()
 
 
 # ── Init / cleanup ─────────────────────────────────────────────────────────────
@@ -175,7 +224,7 @@ def _on_midi_in(message, _):
 
 
 def _output_ready():
-    if _driver and _driver._out_port is not None:
+    if _driver and (_driver._out_port is not None or _driver._virtual_out):
         return True
     _midi_log("SYS", "No output connected.")
     return False
@@ -275,6 +324,31 @@ def _poll_ports():
                 _ui_events.put(("ports", new_ins, new_outs))
         except Exception as e:
             _ui_events.put(("sys", f"Port poll error: {e}"))
+
+
+# ── Virtual port persistence helpers ─────────────────────────────────────────────
+
+def get_virtual_port_settings() -> dict:
+    """Return current virtual port state for preferences persistence."""
+    if _driver:
+        return {
+            "midi_virtual_port": _driver._virtual_out_name or "KLO_Chords",
+            "midi_virtual_enabled": _driver._virtual_out,
+        }
+    return {"midi_virtual_port": "KLO_Chords", "midi_virtual_enabled": True}
+
+
+def auto_connect_virtual(prefs_data: dict):
+    """Auto-create virtual MIDI output if it was enabled last session."""
+    if not _driver or not _RTMIDI_OK:
+        return
+    if prefs_data.get("midi_virtual_enabled", False):
+        name = prefs_data.get("midi_virtual_port", "KLO_Chords")
+        try:
+            _driver.open_virtual_output(name)
+            _midi_log("SYS", f"Virtual output auto-connected: '{name}'")
+        except Exception as e:
+            _midi_log("SYS", f"Failed to auto-connect virtual output: {e}")
 
 
 # ── Piano display ──────────────────────────────────────────────────────────────
@@ -696,10 +770,15 @@ def _hex_on() -> bool:
     return dpg.does_item_exist("midi_raw_hex") and dpg.get_value("midi_raw_hex")
 
 
+def midi_has_notes() -> bool:
+    """Return True if MIDI notes are currently sounding."""
+    return bool(_sounding_midi_notes)
+
+
 def stop_midi_notes():
     """Send note-offs for all currently sounding MIDI notes and clear the list."""
     global _sounding_midi_notes
-    if not _driver or _driver._out_port is None:
+    if not _driver or (_driver._out_port is None and not _driver._virtual_out):
         return
     ch = 0
     if dpg.does_item_exist("midi_out_channel"):
@@ -715,14 +794,22 @@ def stop_midi_notes():
     _sounding_midi_notes = []
 
 
-def send_chord_midi(midi_notes: list, velocity: int = 100):
+def send_chord_midi(midi_notes: list, velocity: int | list = 100,
+                    legato: bool = False):
     """Send note-offs for the previous chord and note-ons for the new one.
 
     Uses the channel selected in the MIDI tab output combo (0 if no UI yet).
-    Does nothing if no output port is connected.
+    Does nothing if no output (physical or virtual) is connected.
+
+    *velocity* can be a single int (applied to all notes) or a list of ints
+    (one per note) for per-note dynamics.
+
+    When *legato* is True, shared notes between the previous and new chord
+    are held (not re-struck) — only departing notes get note-off and only
+    arriving notes get note-on.
     """
     global _sounding_midi_notes
-    if not _driver or _driver._out_port is None:
+    if not _driver or (_driver._out_port is None and not _driver._virtual_out):
         return
 
     ch = 0
@@ -733,14 +820,34 @@ def send_chord_midi(midi_notes: list, velocity: int = 100):
         except (ValueError, TypeError):
             ch = 0
 
-    for note in _sounding_midi_notes:
-        _driver.note_off(note, ch)
-    _sounding_midi_notes = list(midi_notes)
     hex_mode = _hex_on()
-    for note in midi_notes:
-        _driver.note_on(note, velocity, ch)
-        msg = [NOTE_ON | ch, note, velocity]
-        _midi_log("Tx", _fmt_raw(msg) if hex_mode else _fmt(msg), "note")
+    prev_set = set(_sounding_midi_notes)
+    new_set = set(midi_notes)
+
+    if legato and _sounding_midi_notes:
+        # Only release notes that are leaving
+        for note in _sounding_midi_notes:
+            if note not in new_set:
+                _driver.note_off(note, ch)
+                msg = [NOTE_OFF | ch, note, 0]
+                _midi_log("Tx", _fmt_raw(msg) if hex_mode else _fmt(msg), "note")
+        # Only strike notes that are arriving
+        for i, note in enumerate(midi_notes):
+            if note not in prev_set:
+                vel = velocity[i] if isinstance(velocity, list) else velocity
+                _driver.note_on(note, vel, ch)
+                msg = [NOTE_ON | ch, note, vel]
+                _midi_log("Tx", _fmt_raw(msg) if hex_mode else _fmt(msg), "note")
+    else:
+        for note in _sounding_midi_notes:
+            _driver.note_off(note, ch)
+        for i, note in enumerate(midi_notes):
+            vel = velocity[i] if isinstance(velocity, list) else velocity
+            _driver.note_on(note, vel, ch)
+            msg = [NOTE_ON | ch, note, vel]
+            _midi_log("Tx", _fmt_raw(msg) if hex_mode else _fmt(msg), "note")
+
+    _sounding_midi_notes = list(midi_notes)
 
 
 # ── Event drain (call each frame) ──────────────────────────────────────────────
@@ -905,7 +1012,6 @@ def build_midi_tab():
                 with dpg.group(horizontal=True):
                     dpg.add_spacer(width=20)
                     dpg.add_button(label="Connect Output", callback=connect_output, width=-20)
-                dpg.add_spacer(height=4)
     dpg.add_separator()
 
     # ── Program Change ────────────────────────────────────────────────────────────

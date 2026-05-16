@@ -8,6 +8,7 @@ All state mutation goes through callbacks that trigger UI refreshes.
 from __future__ import annotations
 
 import os
+import random
 from typing import List, Optional, Set
 
 import dearpygui.dearpygui as dpg
@@ -44,7 +45,7 @@ from klo_chords.audio.sound import (
 from klo_chords.rendering.theme import (
     COLOR_ACCENT, COLOR_TEXT, COLOR_TEXT_DIM,
     COLOR_CHORD_BORDER,
-    COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER,
+    COLOR_ACTIVE_SPEAKER, COLOR_INACTIVE_SPEAKER, COLOR_MIDI_SPEAKER,
 )
 
 from klo_chords.core.constants import PROG_COLS, PROG_ROWS, PROG_CELLS_TOTAL
@@ -103,28 +104,52 @@ def state() -> dict:
 
 # ── Play helpers ─────────────────────────────────────────────────────────────────
 
+def _midi_velocities(n: int) -> list:
+    """Return a list of *n* MIDI velocities (0-127), one per note, respecting
+    the random-velocity settings."""
+    s = get_sound_settings()
+    if s.get("random_vel", True):
+        lo = s.get("vel_min", 60)
+        hi = s.get("vel_max", 100)
+        return [random.randint(lo, hi) for _ in range(n)]
+    return [100] * n
+
+
 def _play_current_chord():
     if _selected_chord_idx is not None and _selected_chord_idx < len(_current_chords):
         ci = _current_chords[_selected_chord_idx]
         was_playing = is_playing()
         play_chord_notes(ci.notes, root_note=ci.root)
         base_oct = get_sound_settings()["base_octave"]
-        from klo_chords.audio.sound import _stack_root_position
-        pcs = [note_to_pc(n) for n in ci.notes]
-        root_pc = note_to_pc(ci.root)
-        midis = _stack_root_position(pcs, base_oct, root_pc)
+        # Use voice-leading from the audio engine so MIDI follows the same
+        # minimal-movement voicing as the built-in synth.
+        from klo_chords.audio.sound import _voice_chord
+        midis = _voice_chord(ci.notes)
         midi_names = [_midi_to_note_name(m) for m in midis]
+        root_pc = note_to_pc(ci.root)
         sub = _sub_midi(root_pc, midis, get_sound_settings())
         sub_name = _midi_to_note_name(sub) if sub is not None else ""
         q = ci.quality if ci.quality != "M" else ""
         tag = f"[chord {_selected_chord_idx:2d}]"
         print(_fmt_event(tag, ci.degree, ci.root + q, f"oct={base_oct}", ci.notes, midi_names, sub_name))
-        from klo_chords.audio.midi_engine import send_chord_midi, stop_midi_notes
+        from klo_chords.audio.midi_engine import send_chord_midi, stop_midi_notes, midi_has_notes, _sounding_midi_notes
+
+        all_midis = midis + ([sub] if sub is not None else [])
+        s = get_sound_settings()
+        sound_on = s.get("enabled", True)
+        toggle_mode = s.get("playback_mode", "toggle") == "toggle"
+
+        # Audio toggle-off: audio was playing, now it's not → same chord pressed
         if was_playing and not is_playing():
             stop_midi_notes()
+        # MIDI-only toggle-off: sound off, toggle mode, same chord pressed again
+        elif not sound_on and toggle_mode and midi_has_notes() \
+                and set(_sounding_midi_notes) == set(all_midis):
+            stop_midi_notes()
         else:
-            all_midis = midis + ([sub] if sub is not None else [])
-            send_chord_midi(all_midis)
+            send_chord_midi(all_midis,
+                            velocity=_midi_velocities(len(all_midis)),
+                            legato=s.get("legato", True))
 
 
 def _play_prog_cell(idx: int, force: bool = False):
@@ -151,12 +176,22 @@ def _play_prog_cell(idx: int, force: bool = False):
                 print(_fmt_event(tag, degree, cell.root + q, f"rot={cell.rotation}", notes, midi_names, sub_name))
                 was_playing = is_playing()
                 play_progression_notes(notes, base_octave=eff_oct, root_pc=root_pc)
-                from klo_chords.audio.midi_engine import send_chord_midi, stop_midi_notes
+                from klo_chords.audio.midi_engine import send_chord_midi, stop_midi_notes, midi_has_notes, _sounding_midi_notes
+
+                all_midis = midis + ([sub] if sub is not None else [])
+                s = get_sound_settings()
+                sound_on = s.get("enabled", True)
+                toggle_mode = s.get("playback_mode", "toggle") == "toggle"
+
                 if was_playing and not is_playing():
                     stop_midi_notes()
+                elif not sound_on and toggle_mode and midi_has_notes() \
+                        and set(_sounding_midi_notes) == set(all_midis):
+                    stop_midi_notes()
                 else:
-                    all_midis = midis + ([sub] if sub is not None else [])
-                    send_chord_midi(all_midis)
+                    send_chord_midi(all_midis,
+                                    velocity=_midi_velocities(len(all_midis)),
+                                    legato=False if force else s.get("legato", True))
                 _prog_sounding_idx = idx
 
 
@@ -727,6 +762,8 @@ def _save_prefs():
     """Collect current sound/UI state and persist to preferences.json."""
     s = get_sound_settings()
     from klo_chords.rendering.fretboard import get_fretboard_mode
+    from klo_chords.audio.midi_engine import get_virtual_port_settings
+    midi_vp = get_virtual_port_settings()
     prefs.save({
         "sound_enabled":   s.get("enabled", True),
         "volume":          int(round(s.get("volume", 0.75) * 100)),
@@ -743,6 +780,8 @@ def _save_prefs():
         "use_jazz_symbols":   _use_jazz_symbols,
         "sub_oscillator":     s.get("sub_oscillator", False),
         "audio_device":       get_device_name(),
+        "midi_virtual_port":  midi_vp["midi_virtual_port"],
+        "midi_virtual_enabled": midi_vp["midi_virtual_enabled"],
     })
 
 
@@ -797,16 +836,94 @@ def on_random_velocity_toggle(sender, app_data):
     _save_prefs()
 
 
-def on_vel_min_change(sender, app_data):
+def _apply_vel_range(rng: int):
+    """Apply a new velocity range (width) and update all UI."""
     from klo_chords.audio.sound import set_velocity_range
-    set_velocity_range(app_data, _get_vel_max())
+    rng = max(1, min(127, rng))
+    center = _get_vel_center()
+    vmin = max(1, center - rng // 2)
+    vmax = min(127, vmin + rng - 1)
+    set_velocity_range(vmin, vmax)
+    _update_vel_ui(vmin, vmax)
+    # Clamp center input min/max
+    if dpg.does_item_exist("vel_center_input"):
+        dpg.configure_item("vel_center_input",
+                           min_value=rng // 2 + 1,
+                           max_value=127 - rng // 2)
+    if dpg.does_item_exist("vel_range_input"):
+        dpg.set_value("vel_range_input", rng)
     _save_prefs()
 
 
-def on_vel_max_change(sender, app_data):
+def _apply_vel_center(center: int):
+    """Apply a new velocity center and update all UI."""
     from klo_chords.audio.sound import set_velocity_range
-    set_velocity_range(_get_vel_min(), app_data)
+    center = max(1, min(127, center))
+    rng = _get_vel_range()
+    vmin = max(1, center - rng // 2)
+    vmax = min(127, vmin + rng - 1)
+    set_velocity_range(vmin, vmax)
+    _update_vel_ui(vmin, vmax)
+    if dpg.does_item_exist("vel_center_input"):
+        dpg.set_value("vel_center_input", center)
     _save_prefs()
+
+
+def on_vel_center_step(delta: int):
+    """+/- button for center. Steps by 5 for reasonable granularity."""
+    center = _get_vel_center() + delta * 5
+    _apply_vel_center(center)
+
+
+def _update_vel_ui(vmin: int, vmax: int):
+    """Update graph from current vmin/vmax."""
+    _draw_vel_graph(vmin, vmax)
+
+
+def on_vel_range_input(sender, app_data):
+    """Range text input changed."""
+    _apply_vel_range(int(app_data))
+
+
+def on_vel_range_step(delta: int):
+    """+/- button for range. Steps by 5 for reasonable granularity."""
+    rng = _get_vel_range() + delta * 5
+    _apply_vel_range(rng)
+
+
+def on_vel_center_change(sender, app_data):
+    """Center slider changed."""
+    _apply_vel_center(int(app_data))
+
+
+def _get_vel_range() -> int:
+    s = get_sound_settings()
+    return s.get("vel_max", 100) - s.get("vel_min", 60) + 1
+
+
+def _get_vel_center() -> int:
+    s = get_sound_settings()
+    vmin = s.get("vel_min", 60)
+    vmax = s.get("vel_max", 100)
+    return vmin + (vmax - vmin) // 2
+
+
+def _draw_vel_graph(vmin: int, vmax: int):
+    """Draw a small track showing the velocity window."""
+    if not dpg.does_item_exist("vel_graph"):
+        return
+    dpg.delete_item("vel_graph", children_only=True)
+    cw, ch = 120, 20
+    total = 127
+    x1 = int((vmin - 1) / (total - 1) * (cw - 2) + 1)
+    x2 = int((vmax - 1) / (total - 1) * (cw - 2) + 1)
+    dpg.draw_rectangle([0, 0], [cw, ch], fill=[35, 35, 42, 255],
+                       color=[60, 60, 70, 255], rounding=2,
+                       parent="vel_graph")
+    if x2 > x1:
+        dpg.draw_rectangle([x1, 1], [x2, ch - 1], fill=[80, 180, 120, 220],
+                           color=[0, 0, 0, 0], rounding=2,
+                           parent="vel_graph")
 
 
 def on_base_octave_change(sender, app_data):
@@ -833,6 +950,21 @@ def on_legato_toggle(sender, app_data):
 def on_sub_oscillator_toggle(sender, app_data):
     from klo_chords.audio.sound import set_sub_oscillator
     set_sub_oscillator(app_data)
+    _save_prefs()
+
+
+def on_midi_virtual_toggle(sender, app_data):
+    """Enable/disable the virtual MIDI output port."""
+    from klo_chords.audio.midi_engine import _driver, _RTMIDI_OK, _midi_log
+
+    if not _driver or not _RTMIDI_OK:
+        return
+    if app_data:
+        _driver.open_virtual_output("KLO_Chords")
+        _midi_log("SYS", "Virtual output enabled from Settings.")
+    else:
+        _driver.close_virtual_output()
+        _midi_log("SYS", "Virtual output disabled.")
     _save_prefs()
 
 
@@ -868,8 +1000,8 @@ def on_reset_prefs(sender=None, app_data=None):
         ("volume_slider",        d["volume"]),
         ("sound_enable",         d["sound_enabled"]),
         ("random_vel",           d["random_velocity"]),
-        ("vel_min_slider",       d["vel_min"]),
-        ("vel_max_slider",       d["vel_max"]),
+        ("vel_range_input",      d.get("vel_max", 100) - d.get("vel_min", 60) + 1),
+        ("vel_center_input",     d.get("vel_min", 60) + (d.get("vel_max", 100) - d.get("vel_min", 60)) // 2),
         ("base_octave_slider",   d["base_octave"]),
         ("sound_legato_toggle",  d["legato"]),
         ("toolbar_legato_toggle", d["legato"]),
@@ -885,12 +1017,24 @@ def on_reset_prefs(sender=None, app_data=None):
         if dpg.does_item_exist(tag):
             dpg.set_value(tag, val)
 
+    # Update velocity graph
+    vmin = d.get("vel_min", 60)
+    vmax = d.get("vel_max", 100)
+    _draw_vel_graph(vmin, vmax)
+
     global _show_keybinds, _use_jazz_symbols
     _show_keybinds = d["show_keybinds"]
     _use_jazz_symbols = d["use_jazz_symbols"]
 
     from klo_chords.rendering.fretboard import set_fretboard_mode
     set_fretboard_mode("note" if d["show_note_names"] else "fret")
+
+    # Reset virtual MIDI port
+    from klo_chords.audio.midi_engine import _driver, _RTMIDI_OK
+    if _driver and _RTMIDI_OK:
+        _driver.close_virtual_output()
+    if dpg.does_item_exist("midi_virtual_toggle"):
+        dpg.set_value("midi_virtual_toggle", True)
 
     _rebuild_chord_ui()
 
@@ -1402,33 +1546,37 @@ def _refresh_speaker_indicators():
     global _speaker_frame_count, _prog_sounding_idx
     _speaker_frame_count += 1
     playing = is_playing()
+    from klo_chords.audio.midi_engine import midi_has_notes
+    midi_only = midi_has_notes() and not playing
+    any_playing = playing or midi_only
+    bar_fill = COLOR_MIDI_SPEAKER if midi_only else COLOR_ACTIVE_SPEAKER
 
     for i in range(len(_current_chords)):
-        is_sounding = playing and _selected_chord_idx == i
+        is_sounding = any_playing and _selected_chord_idx == i
         bar_tag = "chord_play_bar_" + str(i)
         if dpg.does_item_exist(bar_tag):
             try:
-                dpg.configure_item(bar_tag, show=is_sounding)
+                dpg.configure_item(bar_tag, fill=bar_fill, show=is_sounding)
             except Exception:
                 pass
 
     for i in range(PROG_CELLS_TOTAL):
-        is_sounding = playing and _prog_sounding_idx == i
+        is_sounding = any_playing and _prog_sounding_idx == i
         bar_tag = "prog_play_bar_" + str(i)
         if dpg.does_item_exist(bar_tag):
             try:
-                dpg.configure_item(bar_tag, show=is_sounding)
+                dpg.configure_item(bar_tag, fill=bar_fill, show=is_sounding)
             except Exception:
                 pass
 
-    sugg_playing = (playing
+    sugg_playing = (any_playing
                     and _prog_sounding_idx == _prog_selected_idx
                     and _sugg_playing_card_idx is not None)
     for i in range(_sugg_card_count):
         bar_tag = f"prog_play_bar_{_SUGG_IDX_BASE + i}"
         if dpg.does_item_exist(bar_tag):
             try:
-                dpg.configure_item(bar_tag, show=(sugg_playing and i == _sugg_playing_card_idx))
+                dpg.configure_item(bar_tag, fill=bar_fill, show=(sugg_playing and i == _sugg_playing_card_idx))
             except Exception:
                 pass
     _orig_sugg = next((s for s in _sugg_last_suggestions if s.category == "original"), None)
@@ -1439,7 +1587,7 @@ def _refresh_speaker_indicators():
         and _prog_cells[_prog_selected_idx].root == _orig_sugg.root
         and _prog_cells[_prog_selected_idx].quality == _orig_sugg.quality
     )
-    orig_bar_active = (playing
+    orig_bar_active = (any_playing
                        and _prog_sounding_idx == _prog_selected_idx
                        and (_cell_is_original
                             or _sugg_playing_card_idx == _SUGG_ORIG_CARD_IDX))
@@ -1447,11 +1595,11 @@ def _refresh_speaker_indicators():
         bar_tag = f"prog_play_bar_{_SUGG_IDX_BASE + _SUGG_ORIG_IDX_BASE + j}"
         if dpg.does_item_exist(bar_tag):
             try:
-                dpg.configure_item(bar_tag, show=orig_bar_active)
+                dpg.configure_item(bar_tag, fill=bar_fill, show=orig_bar_active)
             except Exception:
                 pass
 
-    if not playing:
+    if not any_playing:
         _prog_sounding_idx = None
 
     _update_inversion_display()

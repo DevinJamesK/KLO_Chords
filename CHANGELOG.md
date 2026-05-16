@@ -1,30 +1,62 @@
 # Changelog
 
+## [0.6.2] - 2026-05-15
+
+### Added
+
+- **Virtual MIDI output port** -- a virtual MIDI bus (`KLO_Chords`) appears in Ableton/DAWs as an input source. Toggled via "Enable Virtual MIDI Output" checkbox in Sound Settings. Enabled by default. State persists and auto-connects on launch.
+- **MIDI legato mode** -- shared notes between chords are held (not re-struck) when legato is on, matching the audio engine.
+- **MIDI toggle mode works without sound** -- pressing the same chord again stops MIDI. Yellow play bar indicates MIDI-only playback.
+- **Per-note random MIDI velocity** -- each note gets its own random velocity instead of sharing one value.
+- **Velocity Range + Center controls** -- Range (text input with +/-) and Center (+/-). Small graph shows the active window. Defaults: center 90, range 20 (80-99).
+- **Chord tab MIDI voice-leading** -- MIDI notes follow the same minimal-movement voicing as the audio synth.
+- **Audio Device refresh button** -- rescans for newly connected interfaces.
+- **Force retrigger on cell detail edits** -- changing root/quality/inversion/octave retriggers all MIDI notes, ignoring legato.
+
+### Changed
+
+- **Sound enable checkbox** reads actual state on startup.
+- **Playback mode dropdown** always enabled -- toggle/one-shot controls both audio and MIDI.
+
+### Fixed
+
+- **Virtual port crash** -- dedicated `MidiOut` for virtual port avoids `close_port()` failure.
+- **`send_chord_midi` skipped virtual port** -- guards now permit sending when virtual output is active.
 ## [0.5.10] - 2026-05-12
 
 ### Added
 
 - **Test infrastructure** — `tests/__init__.py` and `tests/conftest.py` with shared fixtures for chords, `ProgCell` instances, scale/key combos, and temporary file paths. All fixtures are function-scoped to prevent cross-test contamination.
+
 - **Pytest configuration in `pyproject.toml`** — `[tool.pytest.ini_options]` with `testpaths`, file/function patterns, strict marker enforcement, and `[tool.coverage.*]` sections. Dev dependencies (`pytest>=8`, `pytest-cov>=5`) added under `[project.optional-dependencies] dev`.
+
 - **CI test step** — `.github/workflows/build.yml` now runs `pytest` before the PyInstaller build on both macOS and Windows.
+
 - **Core logic test suite (6 new files)** — `test_chords.py` covers note-to-pitch-class conversion, scale definitions, diatonic chord generation, `ProgCell` getters, `get_degree_for_root`, enharmonic equivalence, accidental styles, interval definitions, seventh chord quality detection, and chord spelling rules. `test_quality.py` covers `quality_symbol` and `quality_spelled` for all 13 quality codes with consistency checks. `test_undo_manager.py` covers do/undo/redo lifecycle, batch commits, `MAX_HISTORY` trimming, `clear`, and the global singleton. `test_prefs.py` covers defaults, save/load round-trip, JSON corruption recovery, schema migrations, and platform path resolution. `test_chord_suggestions.py` covers `Suggestion` display names, `get_cell_context`, `get_suggestions` for empty cells, borrowed chords, secondary dominants, chromatic mediants, and advanced chords. `test_console_logging.py` covers MIDI note naming, sub-oscillator calculation, fixed-width event formatting, and progression row logging.
 
 ### Changed
 
 - **`from __future__ import annotations` added to all modules** — `state.py`, `sound.py`, `midi_engine.py`, `chord_box.py`, `fretboard.py`, `piano.py`, `console_logging.py`, `dpg_keyboard.py`, `constants.py`, and `gui/app.py` now use deferred annotation evaluation, matching the existing pattern in `chord_shapes.py` and `chord_suggestions.py`.
+
 - **Display maps consolidated** — `WAVE_INTERNAL_TO_DISPLAY` and `WAVE_DISPLAY_NAMES` moved from `gui/app.py` into `rendering/theme.py` alongside the existing color palette. `state.py` and `gui/__init__.py` now import them from `theme.py` instead of reaching into the GUI module.
+
 - **Naming consistency** — `_piano_pad` renamed to `piano_pad` (it is a function-local variable, not a module-private). `snd` / `snd2` abbreviations in `gui/app.py` renamed to `sound_cfg` / `sound_cfg2`. `stop_current()` renamed to `stop_audio()` for symmetry with `stop_midi_notes()`. `_rebuild_chord_list()` → `_rebuild_chord_ui()` and `_rebuild_progression_grid()` → `_rebuild_prog_ui()` for consistent naming.
+
 - **Reduced code duplication** — `gui/app.py` button theme blocks (Fill, Clear All, Export, Import) replaced with a single `_btn_theme(r, g, b)` factory function. Fretboard drawing helpers (`_draw_fret_dots`, `_fret_range`, `_draw_fretboard_string_map`) extracted into shared functions in `fretboard.py` for future use by both mini and large fretboard renderers.
+
 - **Duplicate `_NOTE_NAMES` removed** — `midi_engine.py` now imports `NOTE_NAMES` from `chords.py` instead of defining its own identical list.
+
 - **Return type annotations added** — public functions in `sound.py` (`set_mute`, `set_volume`, `set_legato`, `set_playback_mode`, `set_enabled`, `set_mode`, `set_random_velocity`, `set_sub_oscillator`, `set_device`, `stop_audio`, `reset_voice_leading`, `reset_note_history`, `play_chord_notes`, `play_progression_notes`) now declare `-> None` return types. `get_audio_devices()` declares `-> list[dict[str, object]]`.
 
 ### Fixed
 
 - **Preferences save failures logged instead of swallowed** — `prefs.save()` now prints a warning to stderr on `OSError` instead of silently discarding the error.
-- **Audio stream restart wrapped in try/except** — `set_audio_quality()` now catches `PortAudioError` and `OSError` when restarting the stream after a quality change, preventing crashes if the audio device disappears.
-- **Import error handler narrowed** — `state.py:381` (`on_prog_import`) now catches `(json.JSONDecodeError, OSError)` instead of bare `Exception`.
-- **`Alt/Opt + ~` suggestion shortcut replaced with `Alt/Opt + 1`** — `Alt+~` is intercepted by macOS for OS-level window switching and cannot be seen by the app. The original (current) cell card in the suggestion panel is now triggered by `Alt/Opt + 1`. Suggestion cards shift accordingly: `Alt/Opt + 2–9` for cards 1–8. Labels updated across `_build_suggestion_cards` and `_rebuild_sugg_selection_highlights`.
 
+- **Audio stream restart wrapped in try/except** — `set_audio_quality()` now catches `PortAudioError` and `OSError` when restarting the stream after a quality change, preventing crashes if the audio device disappears.
+
+- **Import error handler narrowed** — `state.py:381` (`on_prog_import`) now catches `(json.JSONDecodeError, OSError)` instead of bare `Exception`.
+
+- **`Alt/Opt + ~` suggestion shortcut replaced with `Alt/Opt + 1`** — `Alt+~` is intercepted by macOS for OS-level window switching and cannot be seen by the app. The original (current) cell card in the suggestion panel is now triggered by `Alt/Opt + 1`. Suggestion cards shift accordingly: `Alt/Opt + 2–9` for cards 1–8. Labels updated across `_build_suggestion_cards` and `_rebuild_sugg_selection_highlights`.
 
 # Changelog
 
@@ -33,7 +65,9 @@
 ### Changed
 
 - **Package reorganized into subdirectories** — moved pure logic modules into `core/` (chords, chord_shapes, chord_suggestions, quality, prefs, undo_manager, constants), audio/MIDI engines into `audio/` (sound, midi_engine), rendering modules into `rendering/` (theme, chord_box, fretboard, piano), and the keyboard polling helper into `widgets/` (dpg_keyboard). The entry-point `gui.py` was moved into `gui/app.py` to avoid a directory-vs-module name collision. All cross-package imports updated to the new paths.
+
 - **Console logging extracted** — `midi_to_note_name`, `sub_midi`, `fmt_event`, and `log_progression_row` moved from `state.py` into `helpers/console_logging.py` with explicit parameterized interfaces (`sub_midi` now takes a `sound_settings` dict instead of reaching into the global engine; `log_progression_row` accepts `cells` and `cols` instead of reading module globals).
+
 - **Entry-point updated** — `pyproject.toml` console script and `__main__.py` now reference `klo_chords.gui.app:main`.
 
 ### Fixed
@@ -43,197 +77,325 @@
 ## [0.5.8] - 2026-05-11
 
 ### Added
+
 - **Suggestion keybind labels** — each suggestion card shows its keyboard shortcut (`opt + 1`–`opt + 9` on macOS, `alt + 1`–`alt + 9` on Windows/Linux) in the top-right corner, matching the style used in the progression grid.
+
 - **`Alt/Opt + #` plays suggestion** — pressing `Alt`/`Option` + a number key plays (or toggles off) the corresponding suggestion card without affecting selection.
+
 - **`Shift + Alt/Opt + #` range-selects suggestions** — extends the selection from the anchor card to the numbered card, same behavior as Shift+click in the main grid.
+
 - **`Cmd/Ctrl + Alt/Opt + #` toggle-selects suggestions** — adds or removes the numbered card from the current selection, same as Cmd/Ctrl+click.
+
 - **Suggestion multi-select** — Shift+click for range select, Cmd/Ctrl+click to toggle individual cards on and off within an existing selection.
+
 - **Copy from suggestions** — `Ctrl/Cmd+C` when suggestion cards are selected copies them with proper voice-leading (rotation and octave) computed via chained `_best_voice_leading`, so pasting into the grid produces smooth transitions.
+
 - **Progression Import/Export** — Export and Import buttons (`.kloc` format, JSON) save and restore the full grid including key, scale, sevenths setting, and all cell data. Native file dialogs: Finder save/open sheets on macOS (via `osascript`), tkinter subprocess on Windows/Linux to avoid NSApplication conflicts.
 
 ### Fixed
+
 - **Suggestion toggle-off** — clicking an already-playing suggestion card correctly stops playback; previously the toggle check could fail if voice-leading produced different parameters on the second click.
+
 - **Inversion display race condition** — progression cell inversion label now always reads from `_stack_root_position` output instead of `get_current_midi_notes()`, eliminating the stale-chord flash when applying a suggestion.
+
 - **Sub-oscillator skipped in inversion detection** — when "Add Bass Root Note" is enabled, the extra sub-bass note is stripped before detecting the bass pitch class, so chords no longer always report Root Position.
+
 - **Import/Export in Windows .exe opened a new app instance** — file dialogs now use tkinter directly instead of spawning a subprocess; on Windows the frozen executable is `sys.executable`, so subprocess was relaunching the whole app.
+
 - **Font rendering on Windows .exe** — NotoSans-Regular.ttf is now bundled in the Windows build; the draw-font atlas is baked at ≥24 px so text drawn at sizes up to 24 px is never upscaled from a smaller atlas.
+
 - **Suggestion cards intermittently unclickable** — `_rebuild_sugg_selection_highlights` now explicitly re-binds each card's item handler registry after `draw_prog_cell` redraws the canvas, guarding against DPG silently dropping the binding when draw children are deleted.
 
 ### Changed
+
 - **Keybind label sizes increased** — progression grid and suggestion cells: 10 → 12 px; chord tab cells: 12 → 14 px.
+
 - **Grid cell keybind labels right-aligned with margin** — labels sit 5 px from the right edge instead of flush against it.
+
 - **Suggestion cell keybind labels shifted right** — narrower per-character width estimate used for the longer "alt + N" labels so they appear closer to the right edge of the card.
 
 ## [0.5.7] - 2026-05-10
 
 ### Fixed (ui-cleanup)
+
 - **MIDI port disconnection** — selecting "None" in the Input or Output port dropdown and clicking Connect now closes the open port. Previously there was no way to disconnect a device without restarting.
+
 - **Auto-connect defaults to off** — the "Auto-connect single device" checkbox is now unchecked by default.
+
 - **Undo stops playback when cell is removed** — undoing an action that clears a playing progression cell now stops audio and MIDI output immediately.
+
 - **run.bat garbled characters on Windows** — Unicode checkmark and em dash replaced with ASCII equivalents so the launcher script displays cleanly in Windows Command Prompt.
 
 ### Added
+
 - **MIDI output** — chord plays and note toggles now send MIDI note-on/off messages to the selected output port and channel in real time.
+
 - **MIDI log entries for chord output** — each note-on and note-off from chord play/stop events appears in the MIDI log, with full hex-display support.
+
 - **`stop_midi_notes()`** — sends note-offs for all currently sounding MIDI notes and logs each one; called on spacebar, tab switch, transport stop, and app close.
+
 - **`send_chord_midi()`** — releases the previous MIDI chord before sending note-ons for the new one; mirrors the toggle-off behavior of the audio engine.
+
 - **Program Change panel** — single-row UI: mode combo (Program/Bank-Select), optional Bank MSB/LSB inputs, Prev/Program/Next controls, and Send button.
+
 - **Cmd+1/2/3/4 tab shortcuts** — switch between Chords, Progression, MIDI, and Settings tabs from the keyboard.
+
 - **Shift+Left/Right changes root note** — in the Progression tab, Left/Right alone cycles inversions; Shift+Left/Right steps the root note up or down by semitone.
+
 - **Conventional key names** — key dropdowns now show `C, Db, D, Eb, E, F, F#, G, Ab, A, Bb, B` instead of the all-sharps list.
 
 ### Fixed
+
 - **MIDI devices not appearing in dropdowns** — port polling now starts from an empty baseline so the first device scan always triggers a UI update.
+
 - **MIDI toggle sync** — MIDI note-offs are sent when the audio engine toggles a chord off (same note re-triggered), not just when switching tabs or pressing spacebar.
+
 - **MIDI tab doesn't steal shortcut focus** — switching to the MIDI tab no longer changes the active shortcut context; chords and progressions continue to respond to keyboard shortcuts while MIDI settings are adjusted.
+
 - **Returning from MIDI tab doesn't stop sound** — switching back to the tab that was playing leaves audio running; only switching to a *different* tab stops it.
+
 - **Root-note stepping respects key accidentals** — Shift+Left/Right now spells the new root using the key's preferred accidental (Bb in a flat key, never A# in Bb major).
+
 - **Green play bar after Spacebar + re-click** — `stop_current()` now clears the internal note history so re-clicking the same chord starts fresh rather than toggling off silently.
+
 - **"Show Keybinds" preference applied at boot** — keybind labels now appear on startup when the preference is checked, without needing to toggle it.
+
 - **Unicode ♭/♯ glyphs in chord cells** — canvas `draw_text` items now bind Noto Sans, enabling flat and sharp symbols to render.
 
 ### Changed
+
 - **Port layout condensed** — Input and Output sections each fit on one row: label, port combo, channel selector, and Connect button.
+
 - **All Notes Off on close** — `cleanup()` sends All Notes Off on all 16 MIDI channels before closing the output port.
 
 ### Added (midi-tab)
+
 - **Chord suggestions panel** — selecting any progression cell reveals a full panel of contextually relevant chord suggestions directly below the cell detail area. Suggestions are derived from the current key and scale and are awareness of what chords are already present in the progression.
+
 - **Five suggestion categories** — chords are organized into pages: *Safe* (diatonic chords that always fit the key), *Borrowed* (chords pulled from parallel modes for color), *Secondary Dominant* (V7 chords that tonicize scale degrees), *Chromatic Mediant* (major-third root relationships for dramatic contrast), and *Advanced* (Neapolitan, augmented sixth, and other extended chromatic options).
+
 - **Category navigation** — `<` / `>` buttons page through categories; a page counter (e.g. `2/5`) tracks position. Each category label is a color-coded chip so categories are visually distinct at a glance.
+
 - **One-click apply with auto voice-leading** — clicking a suggestion card writes the chord into the selected cell and automatically chooses the octave and voicing rotation that minimizes voice movement from the nearest non-empty neighbor cell. Neighbor priority: left cell → cell above → nearest occupied cell by distance. No manual inversion hunting needed.
+
 - **Live preview** — clicking a suggestion card immediately plays the chord so you can audition it in context before committing. The suggestion panel updates whenever a different cell is selected.
+
 - **Now-playing bar on suggestion cards** — a green play bar appears on the active suggestion card while it is sounding, matching the progression grid cell indicator.
+
 - **"Suggested Chords" section header** — accent-colored heading above the panel consistent with the "Cell Detail" section style.
+
 - **Include 7th defaults to on** — the "Include 7th" checkbox on the Progression tab now starts checked so suggestions and chord fills use seventh chords by default.
 
 ### Fixed (midi-tab)
+
 - **Setting changes stop playback** — changing octave, root, quality, or inversion on a playing progression cell was toggling sound off because toggle-mode matches note names without octave context. `reset_note_history()` is now called before each forced replay so the transition is seamless.
+
 - **Inversion detail always showed "Root Position" with bass root note on** — when "Add Bass Root Note" was enabled, the lowest sounding note (the added root copy below the chord) was being used as the bass for inversion detection, making every chord report Root Position. The sub note is now stripped from the bass calculation, matching the same fix already applied to the Chords tab.
+
 - **Suggestion card spacing** — added a small gap between the category navigation row and the chord cards below it.
 
 ## [0.5.6] - 2026-05-08
 
 ### Added
+
 - **Reset preferences button** — new "Reset" section at the bottom of the Settings tab with a red "Delete Saved Preferences" button. Deletes `preferences.json` from AppData (Windows) / `Application Support` (macOS) and immediately resets all in-memory settings and UI controls to defaults.
 
 ### Fixed
+
 - **Mini fretboard top clipping on Windows** — open/muted string markers (O/X) were drawn at `y = -4`, which DearPyGui clips on Windows but not macOS. Fretboard origin (`y0`) moved from 14 to 22 px so all markers render within the canvas on both platforms.
+
 - **Active chord selection lost on "Show Note Names" toggle** — `_rebuild_chord_list` always re-selected chord 0 after rebuilding. Now restores the previously selected index.
 
 ### Changed
+
 - **Settings tab** — "Sound" tab renamed to "Settings"; tab border removed.
+
 - **Tab widths equalized** — all three tabs padded to the same label width with increased `FramePadding`.
+
 - **Windows viewport size** — viewport is 880×1030 on Windows vs. 860×1000 on macOS to compensate for DPI/chrome differences.
+
 - **Chip detail fields centered** — Root, Quality, Inv, Oct, and Notes chips converted from `input_text` to `button` with `ButtonTextAlign (0.5, 0.5)` so values are centered in the box.
+
 - **Inversion name field fixed width** — inversion/notes string field is now a fixed 260 px transparent input so the Suggestions button stays stationary regardless of chord content.
+
 - **Default audio quality changed to Legacy.**
+
 - **Add Bass Root Note and Show Keybinds default to on.**
 
 ## [0.5.5] - 2026-05-08
 
 ### Changed
+
 - **Cell detail value fields styled as chips** — Root, Quality, Inv, Oct, and Notes are now fixed-width read-only input fields with gold text on the chord-cell background color (`COLOR_CHORD_BG`), a subtle border, and rounded corners. Layout no longer shifts when values change.
+
 - **"Suggestions" button moved inline** — the "Suggestions" button now sits on the Notes row to the right of the notes chip, reducing vertical height of the detail panel.
+
 - **Detail rows aligned to piano left edge** — both detail rows start at the same `_piano_pad = 20` indent as the piano keyboard below them.
+
 - **Sub oscillator checkbox relabeled** — toolbar checkbox reads "Add Bass Root Note" instead of "Sub Osc".
+
 - **Volume slider narrowed** — toolbar volume slider width reduced from 120 px to 100 px.
+
 - **Toolbar bottom spacer** — 8 px spacer added below the toolbar group so the separator line has breathing room.
 
 ## [0.5.4] - 2026-05-08
 
 ### Changed
+
 - **Crisp text on Retina displays** — font atlas is now baked at 2× on macOS (`_DISPLAY_SCALE = 2.0`) and the global font scale is halved, eliminating pixelation on HiDPI screens. Non-macOS builds are unaffected.
+
 - **Widget font size reduced to 16 px** — matches the chord-name text drawn inside progression grid cells.
+
 - **Toolbar spacing tightened** — inter-element spacers reduced from 20 px to 8 px; the opening left indent is unchanged.
 
 ## [0.5.3] - 2026-05-08
 
 ### Added
+
 - **Guitar chord shape audit** — new `tests/test_chord_shapes.py` suite with 1,516 subtests:
+
   - `CuratedShapeAuditTests` — every entry in `guitar_standard.json` is validated for chord-tone purity and root presence.
+
   - `DiatonicVoicingCoverageTests` — all 12 keys × 9 heptatonic scales × triads and 7ths confirmed to have at least one valid voicing; catches any `?` quality regressions.
+
   - `CanonicalShapeRankingTests` — canonical open shapes (C, D, Em, G7, …) must rank first.
+
 - **Console logging for Chord tab** — selecting or playing a diatonic chord now prints a fixed-column log line alongside the existing Progression tab logging.
+
 - **Sub oscillator note in log** — all event log lines now include a `sub:` column showing the sub oscillator MIDI note (e.g. `sub:C3`) when enabled, or `sub:--` when off.
 
 ### Fixed
+
 - **Two bad curated guitar shapes** — `B dim x2313x` had G# (not in B dim); corrected to `x2343x`. `C dim x3424x` had A (not in C dim); corrected to `x3454x`. Both were silently rejected by the validator at runtime; the JSON data now matches what the validator accepts.
 
 ### Changed
+
 - **Unified log format** — all play-event log lines (`[chord N]`, `[cell N]`) share a fixed-column formatter: tag, degree, chord name, context (oct/rot), note names, MIDI names, sub note. Fields no longer shift between chord-tab and progression-tab events.
 
 ## [0.5.2] - 2026-05-08
 
 ### Added
+
 - **Augmented major 7th chord** (`+Maj7`) — Harmonic Minor iii and Melodic Minor iii were displaying as `?7`; now correctly named and fully supported in the quality symbol and spelled-out name tables.
+
 - **Modal scale triad qualities** — Dorian, Phrygian, Lydian, Mixolydian, and Locrian now have correct diatonic triad quality tables instead of falling back to the Major scale pattern. Affected degrees: e.g. Dorian i (was Major, now minor), Mixolydian iii (was minor, now diminished), Locrian VII (was diminished, now Major), etc.
 
 ### Changed
+
 - **Progression grid expanded to 8×4** — grid is now 8 columns × 4 rows (32 cells, up from 7×4 / 28 cells). Keyboard shortcuts updated to match: `1–8`, `Q–I`, `A–K`, `Z–,`.
+
 - **Pentatonic and blues scales show no diatonic chords** — stacking scale degrees across a 5- or 6-note scale produces non-standard intervals that don't correspond to real chords. The chord list now shows an informational message directing users to the Progression tab instead.
+
 - **"Include 7th" disabled for non-heptatonic scales** — the checkbox is greyed out when a pentatonic or blues scale is selected.
+
 - **Scale change stops audio** — switching scales in the Chord tab now stops any currently playing sound.
 
 ## [0.5.1] - 2026-05-06
 
 ### Changed
+
 - **Inversion system simplified** — `ProgCell` now uses a single `rotation` field (replacing separate `inversion` + `octave`). Rotation tracks cumulative inversion steps from root position; `rotation % num_notes` gives inversion index, `rotation // num_notes` gives octave offset. Octave wraps naturally as you cycle through inversions.
+
 - **Inversion anchored to chord root** — `_stack_root_position` now anchors the bass note to the chord's actual root pitch class (e.g., F for F Major) instead of always C. Fixes inversion ordering for non-C roots.
+
 - **MIDI range clamping** — Inversion/rotation steps that would push notes outside MIDI range (0–127) are now prevented with automatic rollback.
 
 ### Added
+
 - **Audio quality presets** — new "Audio Quality" combo in the Sound Settings tab with three modes:
+
   - **Smooth** — polyBLEP anti-aliasing on triangle and sawtooth waves + soft tanh clipper + larger 1024-sample buffer for fewer dropouts
+
   - **Responsive** — standard 512-sample buffer with soft tanh clipper (no polyBLEP)
+
   - **Legacy** — original hard peak limiter, standard buffer
+
 - **Persistent preferences** — new `prefs.py` module saves sound settings, keybind display, and fretboard note-name mode to `preferences.json` (platform-native paths: `~/Library/Application Support/KLO_Chords/` on macOS, `%LOCALAPPDATA%/KLO_Chords/` on Windows, `~/.local/share/KLO_Chords/` on Linux). Settings persist across restarts and include schema versioning for future migrations.
 
 ### Fixed
+
 - **F Major inversion ordering** — anchor fix ensures correct bass note ordering for chords rooted on F and other notes where C-anchoring produced wrong octave placement.
+
 - **Octave search range** — expanded from `range(0,9)` to `range(0,11)` to correctly find MIDI placements at extreme pitches.
+
 - **Sound stops on octave change** — removed erroneous `stop_current()` call from octave callbacks; sound now continues playing when adjusting base octave.
 
 ## [0.5.0] - 2026-05-05
 
 ### Added
+
 - **Chord suggestions panel** — select any progression cell (empty or non-empty) to see categorized suggestions: safe (diatonic), borrowed chords, secondary dominants, chromatic mediants, and advanced chords. Click any suggestion to instantly apply it. `chord_suggestions.py` provides the full suggestion engine with voice-leading-based ranking.
+
 - **Multi-select in progression grid** — Shift+click to select a range of cells, Ctrl/Cmd+click to toggle individual cell selection. Copy (Ctrl+C) and Paste (Ctrl+V) with multiple paste modes:
+
   - **Replace mode** — overwrites cells starting at the paste position
+
   - **Insert mode** — shifts existing cells right to make room
+
   - **Swap mode** — exchanges clipboard contents with target cells
+
   - **Preserve Shape paste** — keeps the original 2D row/column layout of copied cells
+
 - **Undo/Redo manager** — `undo_manager.py` with full command-pattern undo/redo for all progression grid mutations (paste, insert, replace, swap, delete, fill, suggestions, move). Supports batched operations and unlimited history up to 100 steps.
+
 - **Delete selected cells** — press Delete to clear all multi-selected cells at once.
+
 - **Move selection up/down** — Ctrl+Up / Ctrl+Down moves multi-selected cells one row up or down, swapping with adjacent cells.
+
 - **Dynamic roman numerals** — each progression cell now computes its roman numeral from the cell's actual root vs the current key/scale (letter-name-based). Non-diatonic chords get ♭/♯ prefixes (e.g. ♭VII, ♯IV).
+
 - **Progression keyboard shortcuts** — map all 28 cells to keys: 1-7 (row 0), Q-U (row 1), A-J (row 2), Z-M (row 3). Hold Ctrl while pressing the key to select without triggering sound.
+
 - **Arrow key navigation in progression tab** — Left/Right = cycle inversion of selected cell, Up/Down = cycle quality of selected cell.
+
 - **Cross-platform modifier key module** — `dpg_keyboard.py` provides `ctrl_is_down()`, `shift_is_down()`, `cmd_is_down()`, and `toggle_is_down()` (platform-native: Cmd on macOS, Ctrl on Windows/Linux) for modifier+click operations. Polled every frame.
+
 - **Launcher scripts** — `run.sh` (macOS/Linux) and `run.bat` (Windows) with automatic Conda env creation, dependency installation, and editable package install — one-command launch on any platform.
+
 - **Mute/Unmute** — press `ESC` to toggle mute on/off. Volume slider turns red when muted; slider interaction auto-unmutes.
+
 - **Stop playback** — press `Spacebar` to stop any currently playing chord.
+
 - **Fretboard note-name mode** — new "Show Note Names" checkbox on the Chord Detail panel toggles between fret numbers (default) and actual note names inside the fretboard dots. Root notes are green in note-name mode.
 
 ### Changed
+
 - **Progression tab layout** — added suggestions panel below the grid; Paste Mode and Paste Shape combos moved to their own row below Key/Scale; cell detail panel relocated directly below the grid row.
+
 - **Roman numeral display** — degree is now computed per-cell (`get_degree_for_root()`) rather than derived from column position, accurately reflecting non-diatonic chords. Completely rewritten to use letter-name matching instead of pitch-distance tie-breaking.
+
 - **Mini fretboard proportions** — tighter string spacing, removed numbers from dots, shrink dot radius 6→4.
+
 - **Big fretboard canvas** — match canvas width to 360px, snap low E string to x=8.
+
 - **Fretboard nut bar color** — now renders as grey-yellow [190,185,140] on both mini and large fretboards when `start_fret==0`.
+
 - **Fretboard dot text readability** — dark text on gold root dots for clear contrast.
+
 - **Progression keyboard** — 7-column grid (was 8-column).
 
 ### Fixed
+
 - **macOS transparent window crash** — `dpg_keyboard.py` now uses DPG key codes 527/663 for Cmd press/release on macOS instead of `ctypes.windll.user32` (Win32 API which does not exist on macOS).
+
 - **Platform-native modifier+click** — `toggle_is_down()` returns Cmd on macOS (Ctrl is right-click on Mac) and Ctrl on Windows/Linux for multi-select toggle operations.
+
 - **Progression piano range** — the multi-octave piano dynamically shifts its displayed range so all sounding notes are always visible, regardless of the chord's octave.
+
 - **Fretboard leftmost dot clipping** — widen mini fretboard canvas to 390px and shift `x_start` to 12 (subsequently kept at 360px width with `x_start=12`).
+
 - **Fretboard X/O overlap with nut** — pushed text above nut on mini (y0→18) and large (`y_start`→24) fretboards.
+
 - **Large fretboard X/O clipping** — adjusted canvas height and `y_start` so X/O text isn't clipped.
+
 - **Speaker indicator crash on macOS** — catch generic `Exception` instead of `SystemError` in speaker indicator refresh to avoid crashes on non-Windows platforms.
+
 - **Legato mode stale voice detection** — exclude released (fading-out) voices from the "already playing" check so notes are properly re-triggered during legato transitions.
+
 - **Normal click deselects multi-selection** — clicking a single cell without modifiers clears any existing multi-selection before selecting the clicked cell.
+
 - **Bb in C Major roman numeral** — now correctly shows ♭vii° (was showing ♯vi due to ambiguous distance tie-breaking).
+
 - **Avoid global variable in click handler** — `on_prog_cell_click` uses getter/setter helpers instead of direct global access.
 
 ---
@@ -241,34 +403,57 @@
 ## [0.4.0] - 2026-05-04
 
 ### Added
+
 - **Mute/Unmute** — press `ESC` to toggle mute on/off. Volume slider turns red when muted; slider interaction auto-unmutes.
+
 - **Stop playback** — press `Spacebar` to stop any currently playing chord.
+
 - **Fretboard note-name mode** — new "Show Note Names" checkbox on the Chord Detail panel toggles between fret numbers (default) and actual note names inside the fretboard dots. Root notes are green in note-name mode.
+
 - **Multi-octave piano for progression tab** — 2-octave piano keyboard in the progression cell detail panel, dynamically centered on the selected cell's octave.
+
 - **Wave preview canvas** — small waveform preview in the toolbar that updates when the wave type changes (Triangle / Sine / Sawtooth).
+
 - **Progression fill from selected cell** — "Fill Chords" now starts from the currently selected cell (or column 0) and fills right→down.
+
 - **Clear All button** — red "Clear All" button on the progression tab to reset all grid cells at once.
+
 - **`ProgCell` dataclass** — moved from `state.py` to `chords.py` with `get_notes()` method accounting for inversion, and `clear()` convenience method.
+
 - **`QUALITY_INTERVALS` dict** — centralized interval definitions for all supported chord qualities.
+
 - **`font_path_fallback()`** — returns path to JetBrains Mono for potential use as a fallback font.
 
 ### Changed
+
 - **Viewport height** — reduced from 1080 to 960 for a more compact default window.
+
 - **Chord box dimensions** — narrowed from 154→140 px, height 89→90 px.
+
 - **Chord tab layout** — key/scale/7th toggle moved into a single top row above the two-panel layout.
+
 - **Fretboard centering** — both mini and large fretboards now center horizontally using dynamic string spacing.
+
 - **Voicing label** — padded to constant 8-character width to prevent layout shifts.
+
 - **Volume slider** — changed from float 0.0-1.0 to integer 0-100 with percentage-based internal conversion.
+
 - **Wave type combo** — now displays user-friendly names; toolbar and Sound Settings combos stay in sync.
+
 - **Speaker indicators** — removed blinking speaker dots from both chord list and progression cells. Play bars remain as the sole visual playback indicator.
+
 - **Toolbar layout** — volume label no longer accent-colored, visual separators between control groups.
 
 ### Removed
+
 - **Speaker indicator dots** — `spkr_dot_*` and `prog_spkr_dot_*` draw calls removed. `_refresh_speaker_indicators()` simplified to only handle play bars.
+
 - **`on_sound_mode_change` callback** — consolidated into `on_wave_type_change`.
 
 ### Fixed
+
 - **Progression fill only filled first row** — `on_prog_fill()` now fills from the selected cell across all 32 cells.
+
 - **Progression piano centered on wrong octave** — `_update_prog_piano()` now dynamically rebuilds the canvas centered on the cell's octave.
 
 ---
@@ -276,131 +461,227 @@
 ## [0.3.2] - 2026-05-03
 
 ### Changed
+
 - **Base font size** — increased from 16 to 20 for improved readability across the entire app
+
 - **All `draw_text` font sizes** — increased proportionally in `chord_box.py`, `fretboard.py`, and `state.py` (title: 20→24, notes: 16→18, grid cell text: 11-14→13-16, fretboard text: 12→14+)
 
 ### Fixed
+
 - **Progression tab key/scale chooser off-center** — added proper centering calculation with `_CHOOSER_PAD`
+
 - **Progression grid slightly right** — removed arbitrary `-14` fudge factor from `GRID_PAD` calculation, removed trailing spacer after last cell in each row
+
 - **Cell details too close to left wall** — added `24px` left padding to all detail controls (Selected, Root, Quality, Inversion, Octave, Notes)
+
 - **Piano slightly left on progression tab** — removed arbitrary `-60` fudge factor from `_piano_pad` calculation
 
 ## [0.3.1] - 2026-05-03
 
 ### Added
+
 - **8×4 progression grid** — clickable cells with degree, name, and notes display
+
 - **ProgCell dataclass** — stores root, quality, and inversion per progression cell
+
 - **Cell detail panel** — root/quality/inversion combos for editing any progression cell
+
 - **draw_prog_cell()** — compact grid cell renderer in `chord_box.py` with speaker dot and play bar
+
 - **Progression tab keyboard support** — keys 1-8 select/play cells from the first row
+
 - **Tab-aware keyboard routing** — number keys only work on the active tab
+
 - **Tab-switch sound stop** — sound stops when switching between tabs
 
 ### Changed
+
 - **Progression tab** — redesigned from horizontal slot list to 8×4 grid with edit controls
+
 - **Sound playback for progression cells** — uses cell's stored notes directly (no auto voice-leading)
+
 - **"Press 1-8" text** — centered in left panel of chord tab
+
 - **"Include 7th chords" checkbox** — aligned with combo boxes above using spacer
+
 - **Sound settings layout** — consistent margins and indentation throughout
+
 - **Speaker indicators** — now also handle progression cell dots and play bars
 
 ## [0.3.0] - 2026-05-03
 
 ### Added
+
 - **Streaming sound engine** — continuous `sounddevice` callback generates audio with numpy vectorized operations. No file I/O, glitch-free playback.
+
 - **Playable chords** — selecting a chord automatically plays its notes via the sound engine.
+
 - **Number key shortcuts (1-8)** — press 1-8 to select and play the corresponding diatonic chord.
+
 - **Toggle and One-Shot playback modes** — toggle chords on/off or play a ~1s burst.
+
 - **Legato mode** — notes shared between consecutive chords are held, only differing notes re-strike.
+
 - **Velocity controls** — random velocity per note with configurable min/max range for natural dynamics.
+
 - **Waveform selection** — triangle (default), sine, or sawtooth waveform.
+
 - **Base octave slider** — shift chord voicings up or down.
+
 - **Sound settings tab** — central panel for all audio configuration (enable, wave, velocity, playback mode, base octave, legato).
+
 - **Toolbar** — persistent volume slider, wave type combo, and legato toggle visible on every tab.
+
 - **Piano keyboard highlighting** — chord notes in gold, scale-only notes in blue, bass note in green.
+
 - **Inversion display** — shows inversion name (Root Position / 1st / 2nd / 3rd) and sounding note names below the piano keyboard.
+
 - **Speaker indicator dots** — small animated dots next to each chord row that blink when that chord is sounding.
+
 - **Play bar indicator** — thin colored bar at the bottom of the active chord box for extra visual feedback.
+
 - **Chord suggestions engine** — `get_chord_suggestions()` in `chords.py` returns parallel chords, borrowed chords, and secondary dominants for progression building.
+
 - **Green key + inversion update every frame** — bass note and inversion info appear immediately when sound starts and disappear instantly when sound stops.
 
 ### Changed
+
 - **Dependencies** — added `sounddevice` and `numpy` to `pyproject.toml`, `requirements.txt`, and `environment.yml`.
+
 - **Voice leading** — MIDI note computation with `_voice_chord()`, `_first_voicing()`, `_fix_spacing()`, and `_anti_drift()` ensures smooth transitions between chords.
+
 - **`update_piano_keys()`** — now accepts `bass_pc` parameter for green bass-note highlighting.
+
 - **Main loop** — `_refresh_speaker_indicators()` now called directly in the render loop instead of via recursive frame callbacks.
+
 - **Chord detail panel** — `_update_inversion_display()` moved entirely to the frame callback, removed from `_update_selected_chord()` to avoid race conditions with sound start.
 
 ### Fixed
+
 - **Speaker dots invisible** — added `COLOR_INACTIVE_SPEAKER` (dim gray) so dots are always visible.
+
 - **Mode switching leaves notes stuck** — `set_playback_mode()` now calls `release_all()` and clears note history.
+
 - **Green key / inversion lag** — removed `% 5` frame gate so inversion and bass key update every frame.
+
 - **Stray `c` file** — removed orphan file from project root.
 
 ## [0.2.0] - 2026-05-03
 
 ### Added
+
 - `.vscode/settings.json` — workspace-level Python interpreter, Conda path, and terminal activation settings.
+
 - `environment.yml` — Conda environment definition.
+
 - `chord_degree_dl_N` drawlist for each chord row — renders the Roman numeral degree in a fixed 40 px canvas so all chord boxes align vertically regardless of degree label width.
+
 - Degree drawlist is clickable (bound to the same click handler as the chord box and mini fretboard).
 
 ### Changed
+
 - **Font**: Switched from JetBrainsMono-Regular.ttf to Verdana.ttf. The font binary is bundled at `assets/fonts/verdana.ttf`.
+
 - **Asset path resolution**: `_frozen_base()` now returns `None` when not frozen (instead of an empty `Path()` that was truthy), so `_asset_path()` correctly falls through to `importlib.resources.files()` in dev mode. Both `icon_path()` and `font_path()` now return absolute paths that exist.
+
 - **Chord box labels**: Root and quality symbol are now separated by a space (e.g. `"A min"` instead of `"Amin"`) to prevent glyph collision in proportional fonts.
+
 - **Degree column**: Roman numerals (`I`, `ii`, ..., `vii°`) moved from the chord box title into a separate 40 px wide drawlist to the left of each chord box, giving aligned columns.
+
 - **Package data** in `pyproject.toml`: narrowed from `assets/fonts/*.ttf` to only `assets/fonts/verdana.ttf`.
+
 - `pyproject.toml` include-sevenths default remains `false`.
 
 ### Removed
+
 - **Dead code** in `chords.py`:
+
   - `note_name_with_octave()`, `generate_tab_text()`, `format_chord_summary()` — unused functions.
+
   - `TRIAD_PATTERNS`, `SEVENTH_PATTERNS` — duplicate interval data already covered by `TRIAD_QUALITIES`.
+
   - `STANDARD_TUNING`, `STRING_NAMES` — only used by the removed functions.
+
 - **Unused imports**:
+
   - `state.py`: `NOTE_NAMES`, `SCALE_TYPES`, `get_guitar_diagram`.
+
   - `piano.py`: `COLOR_ACCENT`.
+
   - `fretboard.py`: `List`, `Optional`, `Tuple` from `typing`.
+
 - **Duplicated constant**: `OPEN_STRING_PCS` in `fretboard.py` — now imports from `chord_shapes.py` (single source of truth for `[4, 9, 2, 7, 11, 4]`).
+
 - `python.conda.enabled` from `.vscode/settings.json` — this is not a real VS Code setting.
 
 ### Fixed
+
 - **Icon / font path bug**: `_frozen_base()` returned `Path()` (empty path, truthy in boolean context) when not frozen, causing `_asset_path()` to always take the frozen code branch and return a relative path like `assets\icons\app_icon.ico` that never resolves. Now returns `None` properly.
 
 ---
+
 ### Added (prior)
+
 - README with project overview, usage instructions, and structure diagram.
+
 - This changelog.
+
 - Local guitar chord-shape data file at `assets/chords/guitar_standard.json`.
+
 - `chord_shapes.py` for loading, validating, de-duplicating, and playability-ranking guitar chord shapes.
+
 - Unit tests that verify returned voicings only contain chord tones and that canonical open shapes rank first.
+
 - Conda/Miniforge setup instructions in the README.
 
 ### Changed
+
 - Refactored monolithic `gui.py` into separate modules:
+
   - `theme.py` - color palette, font path
+
   - `quality.py` - chord quality symbol/spelled formatting
+
   - `chord_box.py` - chord name tile rendering
+
   - `fretboard.py` - mini and large fretboard drawing
+
   - `piano.py` - piano keyboard drawing and highlighting
+
   - `state.py` - global state, all callbacks, chord list management
+
 - `gui.py` now only handles UI layout construction and the main loop.
+
 - Chord quality notation made consistent:
+
   - Short form: "C", "Dmin", "Emin7", "Fmaj7", "G7", etc.
+
   - Spelled form: "Major", "minor", "minor 7", "major 7", "7", etc.
+
 - Scale notes text now properly centered via horizontal group + spacer.
+
 - Chord boxes narrowed from 200px to 155px and centered in the left panel.
+
 - Top margin of chord list adjusted to align with the 0-fret on mini fretboards.
+
 - Quality detail colors changed from `COLOR_ACCENT_ORANGE` to `COLOR_ACCENT` for visual consistency.
+
 - Guitar voicings now use normal low-to-high string order: `E A D G B e`.
+
 - `get_all_voicings()` now uses the validated local chord-shape pipeline instead of the old hand-written runtime table.
+
 - Package data now includes bundled chord JSON files.
+
 - README dependency note now matches `pyproject.toml` by requiring Python 3.11+.
 
 ### Fixed
+
 - Syntax error on line 568 (stray character) resolved during refactor.
+
 - `m7` quality was incorrectly mapping to `"7"` in chord labels; now correctly shows `"min7"`.
+
 - Removed invalid hard-coded guitar voicings from runtime use.
+
 - Root highlighting on fretboard diagrams now checks the actual played note instead of assuming one string is the root.
+
 - README and changelog mojibake in punctuation and tree-drawing characters.

@@ -45,6 +45,7 @@ COLOR_CHORD_BG      = [28,  28,  36,  255]
 COLOR_CHORD_BORDER  = [59,  59,  64,  255]
 COLOR_ACTIVE_SPEAKER   = [0,   230, 80,  255]
 COLOR_INACTIVE_SPEAKER = [60,  60,  70,  255]
+COLOR_MIDI_SPEAKER     = [240, 200, 40,  255]   # yellow — MIDI-only playback indicator
 
 
 def _asset_path(subdir: str, filename: str) -> str:

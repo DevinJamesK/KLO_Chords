@@ -27,14 +27,16 @@ DEFAULTS: Dict[str, Any] = {
     "legato":         True,
     "playback_mode":  "toggle",
     "random_velocity": True,
-    "vel_min":        60,
-    "vel_max":        100,
+    "vel_min":        80,
+    "vel_max":        99,
     "base_octave":    3,
     "show_note_names": False,
     "show_keybinds":      True,
     "use_jazz_symbols":   True,
     "sub_oscillator":     True,
     "audio_device":    "system_default",
+    "midi_virtual_port":  "KLO_Chords",
+    "midi_virtual_enabled": True,
 }
 
 MIGRATIONS: Dict[int, Any] = {
