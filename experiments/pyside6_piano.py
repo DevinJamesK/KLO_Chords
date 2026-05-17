@@ -18,9 +18,9 @@ _WW, _WH = 48.0, 160.0
 _BW, _BH = 30.0, 100.0
 _BXO = [_WW-_BW/2, 2*_WW-_BW/2, 4*_WW-_BW/2, 5*_WW-_BW/2, 6*_WW-_BW/2]
 _TW = _NUM_OCTAVES*7*_WW+4; _TH = _WH+4
-_CW=QColor(255,255,255);_CB=QColor(24,24,28);_CBD=QColor(40,40,50)
-_CHC=QColor(255,210,50);_CHS=QColor(100,180,255);_CHB=QColor(80,230,80)
-_CHBL=QColor(200,160,30);_CT=QColor(20,20,30);_CBG=QColor(26,26,46)
+_CW=QColor(255,248,236);_CB=QColor(62,46,31);_CBD=QColor(196,168,130)
+_CHC=QColor(232,180,80);_CHS=QColor(139,181,160);_CHB=QColor(122,154,85)
+_CHBL=QColor(200,150,50);_CT=QColor(74,55,40);_CBG=QColor(245,240,232)
 
 class PianoWidget(QWidget):
     noteClicked=Signal(int,str)
@@ -82,7 +82,7 @@ class PianoWidget(QWidget):
             x=(wi+1)*kw+1-bw/2;y=2.0;r=QRectF(x,y,bw,bh)
             pc=midi%12
             if midi in s._hl:fl=s._hl[midi]
-            elif pc in s._sp:fl=QColor(40,80,180)
+            elif pc in s._sp:fl=_CHS
             else:fl=_CB
             pen=QPen(_CBG,2.0)if midi in s._hl else QPen(QColor(0,0,0,0),0)
             p.setBrush(QBrush(fl));p.setPen(pen);p.drawRoundedRect(r,2,2)
@@ -124,8 +124,8 @@ class PianoDemo(QWidget):
         s.setWindowTitle("Piano Keyboard - PySide6"); s.resize(1012,220)
         l=QVBoxLayout(s); l.setContentsMargins(0,0,0,0)
         s.pn=PianoWidget(); l.addWidget(s.pn)
-        s.pn.setStyleSheet("border:1px solid #505060;")
-        s.setStyleSheet("background-color:#1a1a2e;")
+        s.pn.setStyleSheet("border:1px solid #C4A882;")
+        s.setStyleSheet("background-color:#F5F0E8;")
         s.pn.noteClicked.connect(lambda midi,name:print(f"Note clicked: {name} (MIDI={midi})"))
 def main():
     app=QApplication(sys.argv); app.setStyle("Fusion")

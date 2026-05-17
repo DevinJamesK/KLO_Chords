@@ -36,21 +36,21 @@ OPEN_PITCHES  = [4, 9, 2, 7, 11, 4]   # low-E … high-e
 # Colour palette (Catppuccin Mocha-inspired)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-C_BG          = QColor("#1e1e2e")
-C_FRET_LINE   = QColor("#cdd6f4")
-C_NUT         = QColor("#f5c2e7")
-C_STRING      = QColor("#585b70")
-C_DOT         = QColor("#f9e2af")
-C_ROOT_GOLD   = QColor(255, 210, 50)
-C_ROOT_GREEN  = QColor(60, 210, 100)
-C_MUTED       = QColor(200, 60, 60)
-C_OPEN        = QColor(60, 210, 100)
-C_TEXT        = QColor("#cdd6f4")
-C_TEXT_DIM    = QColor("#a6adc8")
-C_DOT_TEXT    = QColor(20, 20, 30)
-C_HOVER       = QColor("#89b4fa")
-C_FRET_MARKER = QColor(140, 135, 100)
-C_START_FRET  = QColor(190, 185, 140)
+C_BG          = QColor("#F5F0E8")     # warm cream
+C_FRET_LINE   = QColor("#C4A882")     # warm tan
+C_NUT         = QColor("#5A412D")     # darker warm brown
+C_STRING      = QColor("#8B6F4E")     # warm brown
+C_DOT         = QColor("#D4C5B0")     # warm tan
+C_ROOT_GOLD   = QColor(232, 180, 80)   # warm gold
+C_ROOT_GREEN  = QColor(122, 154, 85)   # warm olive green
+C_MUTED       = QColor(200, 80, 60)    # warm red
+C_OPEN        = QColor(122, 154, 85)   # warm olive green
+C_TEXT        = QColor("#4A3728")     # warm dark brown
+C_TEXT_DIM    = QColor("#8B7355")     # warm medium brown
+C_DOT_TEXT    = QColor(245, 240, 232)  # warm cream on dots
+C_HOVER       = QColor("#E8A850")     # warm amber outline
+C_FRET_MARKER = QColor(180, 160, 135)  # warm tan marker
+C_START_FRET  = QColor("#8B7355")     # warm medium brown
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -639,7 +639,7 @@ class FretboardDemo(QWidget):
         mini_row = QHBoxLayout()
         mini_row.setContentsMargins(10, 4, 10, 0)
         lbl = QLabel("Mini previews:")
-        lbl.setStyleSheet("color:#a6adc8; font-family:Consolas; font-size:10px;")
+        lbl.setStyleSheet("color:#8B7355; font-family:Consolas; font-size:10px;")
         mini_row.addWidget(lbl)
 
         self.minis: list[MiniFretboardWidget] = []
@@ -657,14 +657,14 @@ class FretboardDemo(QWidget):
         bar.setContentsMargins(10, 6, 10, 6)
 
         self.info = QLabel("Mode: fret  |  Dots: 3  |  Click any fret to toggle")
-        self.info.setStyleSheet("color:#a6adc8; font-family:Consolas; font-size:11px;")
+        self.info.setStyleSheet("color:#8B7355; font-family:Consolas; font-size:11px;")
         bar.addWidget(self.info)
 
         btn_style = (
-            "QPushButton { background:#313244; color:#cdd6f4; "
-            "border:1px solid #45475a; padding:4px 10px; "
+            "QPushButton { background:#EDE4D3; color:#4A3728; "
+            "border:1px solid #D4C5B0; padding:4px 10px; "
             "font-family:Consolas; font-size:11px; }"
-            "QPushButton:hover { background:#45475a; }"
+            "QPushButton:hover { background:#E1D6C3; }"
         )
 
         # mode toggle
@@ -691,10 +691,10 @@ class FretboardDemo(QWidget):
         # clear button
         clr = QPushButton("Clear")
         clr.setStyleSheet(
-            "QPushButton { background:#45475a; color:#f38ba8; "
-            "border:1px solid #585b70; padding:4px 10px; "
+            "QPushButton { background:#E1D6C3; color:#f38ba8; "
+            "border:1px solid #D4C5B0; padding:4px 10px; "
             "font-family:Consolas; font-size:11px; }"
-            "QPushButton:hover { background:#585b70; }"
+            "QPushButton:hover { background:#D4C5B0; }"
         )
         clr.clicked.connect(lambda: (self.fb.clear_dots(), self._update_info()))
         bar.addWidget(clr)
@@ -706,7 +706,7 @@ class FretboardDemo(QWidget):
         name, shape, rpc = self.PRESETS[0]
         self.fb.set_chord_shape(shape, rpc)
 
-        self.setStyleSheet("background-color:#1e1e2e;")
+        self.setStyleSheet("background-color:#F5F0E8;")
         self.fb.noteClicked.connect(lambda *_: self._update_info())
 
     def _toggle_mode(self) -> None:
@@ -736,8 +736,8 @@ def main() -> None:
     app.setStyle("Fusion")
 
     p = app.palette()
-    p.setColor(p.ColorRole.Window, C_BG)
-    p.setColor(p.ColorRole.WindowText, C_TEXT)
+    p.setColor(p.ColorRole.Window, QColor("#F5F0E8"))
+    p.setColor(p.ColorRole.WindowText, QColor("#4A3728"))
     app.setPalette(p)
 
     w = FretboardDemo()

@@ -60,24 +60,24 @@ class CombinedDemo(QMainWindow):
 
         tb.addWidget(QLabel("Scale notes:"))
         s.snl=QLabel("C  D  E  F  G  A  B")
-        s.snl.setStyleSheet("font-family:Consolas;font-size:14px;font-weight:bold;color:#e0e0e0;padding:4px 8px;background-color:#2a2a3a;border-radius:4px;")
+        s.snl.setStyleSheet("font-family:Consolas;font-size:14px;font-weight:bold;color:#4A3728;padding:4px 8px;background-color:#EDE4D3;border-radius:4px;")
         tb.addWidget(s.snl,1)
         ml.addLayout(tb)
 
-        sep=QFrame(); sep.setFrameShape(QFrame.Shape.HLine); sep.setFrameShadow(QFrame.Shadow.Sunken); sep.setStyleSheet("color:#444;")
+        sep=QFrame(); sep.setFrameShape(QFrame.Shape.HLine); sep.setFrameShadow(QFrame.Shadow.Sunken); sep.setStyleSheet("color:#D4C5B0;")
         ml.addWidget(sep)
 
         bl=QVBoxLayout()
         pc_=QWidget(); pc_.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         pl=QVBoxLayout(pc_); pl.setContentsMargins(0,0,0,0)
-        pl.addWidget(QLabel("Piano Keyboard")); pl.itemAt(0).widget().setStyleSheet("font-weight:bold;color:#aaa;background:transparent;")
+        pl.addWidget(QLabel("Piano Keyboard")); pl.itemAt(0).widget().setStyleSheet("font-weight:bold;color:#8B7355;background:transparent;")
         s.pn=PianoWidget(); s.pn.setMinimumSize(200,100); pl.addWidget(s.pn,1)
         bl.addWidget(pc_,1)
 
 
         fc=QWidget(); fc.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         fl=QVBoxLayout(fc); fl.setContentsMargins(0,0,0,0)
-        fl.addWidget(QLabel("Guitar Fretboard")); fl.itemAt(0).widget().setStyleSheet("font-weight:bold;color:#aaa;background:transparent;")
+        fl.addWidget(QLabel("Guitar Fretboard")); fl.itemAt(0).widget().setStyleSheet("font-weight:bold;color:#8B7355;background:transparent;")
         s.fb=FretboardWidget(); s.fb.setMinimumSize(300,160); fl.addWidget(s.fb,1)
         bl.addWidget(fc,2)#fret
         s.pn.noteClicked.connect(s._pc); s.fb.noteClicked.connect(s._fc)
@@ -85,7 +85,7 @@ class CombinedDemo(QMainWindow):
 
         pc_=QWidget(); pc_.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         pl=QVBoxLayout(pc_); pl.setContentsMargins(0,0,0,0)
-        pl.addWidget(QLabel("Piano Keyboard")); pl.itemAt(0).widget().setStyleSheet("font-weight:bold;color:#aaa;background:transparent;")
+        pl.addWidget(QLabel("Piano Keyboard")); pl.itemAt(0).widget().setStyleSheet("font-weight:bold;color:#8B7355;background:transparent;")
         s.pn=PianoWidget(); s.pn.setMinimumSize(200,100); pl.addWidget(s.pn,1)
         s.pn=_pn; s.fb=_fb
         ml.addLayout(bl,1)
@@ -94,7 +94,7 @@ class CombinedDemo(QMainWindow):
         s.pn.noteClicked.connect(s._pc)
         s.fb.noteClicked.connect(s._fc)
 
-        s.setStyleSheet("QMainWindow{background-color:#1a1a2e}QWidget{background-color:#1a1a2e;color:#cdd6f4}QLabel{background:transparent}QComboBox{background-color:#2a2a3e;color:#cdd6f4;border:1px solid #444;border-radius:4px;padding:4px 8px;min-width:80px}QComboBox::drop-down{border:none}QComboBox QAbstractItemView{background-color:#2a2a3e;color:#cdd6f4;selection-background-color:#3a3a5e}QFrame{background-color:#444}")
+        s.setStyleSheet("QMainWindow{background-color:#F5F0E8}QWidget{background-color:#F5F0E8;color:#4A3728}QLabel{background:transparent}QComboBox{background-color:#EDE4D3;color:#4A3728;border:1px solid #D4C5B0;border-radius:4px;padding:4px 8px;min-width:80px}QComboBox::drop-down{border:none}QComboBox QAbstractItemView{background-color:#EDE4D3;color:#4A3728;selection-background-color:#E1D6C3}QFrame{background-color:#D4C5B0}")
         s._upd()
 
     def _upd(s):
@@ -118,10 +118,10 @@ class CombinedDemo(QMainWindow):
 
 def main():
     app=QApplication(sys.argv); app.setStyle("Fusion")
-    p=app.palette(); p.setColor(p.ColorRole.Window,QColor("#1a1a2e"))
-    p.setColor(p.ColorRole.WindowText,QColor("#cdd6f4"))
-    p.setColor(p.ColorRole.Base,QColor("#2a2a3e"))
-    p.setColor(p.ColorRole.Text,QColor("#cdd6f4")); app.setPalette(p)
+    p=app.palette(); p.setColor(p.ColorRole.Window,QColor("#F5F0E8"))
+    p.setColor(p.ColorRole.WindowText,QColor("#4A3728"))
+    p.setColor(p.ColorRole.Base,QColor("#EDE4D3"))
+    p.setColor(p.ColorRole.Text,QColor("#4A3728")); app.setPalette(p)
     w=CombinedDemo(); w.show(); sys.exit(app.exec())
 
 if __name__=="__main__": main()

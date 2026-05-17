@@ -17,7 +17,7 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Color Constants  (ported from DPG RGBA lists → QColor)
+# Color Constants — Dark Theme (ported from DPG RGBA lists → QColor)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 COLOR_BG_LIGHT        = QColor(25,  25,  33)
@@ -59,13 +59,55 @@ COLOR_ACTIVE_SPEAKER  = QColor(0,   230, 80)
 COLOR_INACTIVE_SPEAKER = QColor(60,  60,  70)
 COLOR_MIDI_SPEAKER    = QColor(240, 200, 40)
 
-# ── Derived / convenience colours ─────────────────────────────────────────────
+# ── Derived / convenience colours (dark) ────────────────────────────────────
 COLOR_WINDOW          = QColor(26,  26,  46)
 COLOR_SURFACE         = QColor(42,  42,  62)
 COLOR_SURFACE_HIGHER  = QColor(58,  58,  78)
 COLOR_BORDER          = QColor(68,  68,  88)
 COLOR_SCROLLBAR_BG    = QColor(35,  35,  50)
 COLOR_SCROLLBAR_HANDLE = QColor(80,  80,  100)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Color Constants — Earth-Tone Warm Theme
+# ═══════════════════════════════════════════════════════════════════════════════
+
+EARTH_BG              = QColor(245, 240, 232)   # #F5F0E8 warm cream
+EARTH_SURFACE         = QColor(237, 228, 211)   # #EDE4D3 warm tan card
+EARTH_SURFACE_HIGHER  = QColor(225, 214, 195)   # lighter warm tan
+EARTH_ACCENT          = QColor(196, 115, 79)    # #C4734F terracotta/rust
+EARTH_ACCENT_GREEN    = QColor(122, 154, 85)    # #7A9A55 warm olive green
+EARTH_ACCENT_ORANGE   = QColor(232, 168, 80)    # #E8A850 warm amber
+EARTH_ACCENT_GOLD     = QColor(232, 180, 80)    # #E8B450 warm gold/amber
+EARTH_TEXT            = QColor(74,  55,  40)    # #4A3728 warm dark brown
+EARTH_TEXT_DIM        = QColor(139, 115, 85)    # #8B7355 warm medium brown
+EARTH_TEXT_DIMMER     = QColor(160, 140, 115)   # lighter warm brown
+EARTH_BORDER          = QColor(212, 197, 176)   # #D4C5B0 warm tan
+EARTH_BORDER_DARK     = QColor(180, 160, 135)   # darker warm tan
+EARTH_SELECTION       = QColor(232, 168, 80)    # #E8A850 warm amber
+EARTH_SCROLLBAR_BG    = QColor(235, 228, 218)   # warm cream variant
+EARTH_SCROLLBAR_HANDLE = QColor(200, 185, 160)  # warm tan handle
+EARTH_STRING          = QColor(139, 111, 78)    # #8B6F4E warm brown
+EARTH_FRET            = QColor(196, 168, 130)   # #C4A882 warm tan
+EARTH_DOT             = QColor(212, 197, 176)   # warm tan (#D4C5B0)
+EARTH_ROOT_DOT        = QColor(232, 180, 80)    # #E8B450 warm gold
+EARTH_ROOT_GREEN      = QColor(122, 154, 85)    # #7A9A55 warm olive green
+EARTH_MUTED           = QColor(200, 80,  60)    # warm red
+EARTH_OPEN            = QColor(122, 154, 85)    # warm olive green
+EARTH_CHORD_BG        = QColor(237, 228, 211)   # #EDE4D3 warm tan card
+EARTH_CHORD_BORDER    = QColor(212, 197, 176)   # #D4C5B0 warm tan
+EARTH_ACTIVE_SPEAKER  = QColor(232, 168, 80)    # #E8A850 warm amber
+EARTH_INACTIVE_SPEAKER = QColor(220, 212, 195)   # warm tan lighter
+EARTH_MIDI_SPEAKER    = QColor(232, 180, 80)    # warm gold
+EARTH_KEY_BORDER      = QColor(196, 168, 130)   # #C4A882 warm tan
+EARTH_BLACK_KEY       = QColor(62,  46,  31)    # #3E2E1F dark warm brown
+EARTH_WHITE_KEY       = QColor(255, 248, 236)   # #FFF8EC warm ivory
+EARTH_SCALE_HIGHLIGHT = QColor(139, 181, 160)   # #8BB5A0 soft sage
+EARTH_BASS_NOTE       = QColor(122, 154, 85)    # #7A9A55 warm olive green
+EARTH_NUT_LINE        = QColor(90,  65,  45)    # darker warm brown
+EARTH_HOVER           = QColor(232, 168, 80)    # warm amber outline
+EARTH_FRET_MARKER     = QColor(180, 160, 135)   # warm tan marker
+EARTH_START_FRET      = QColor(139, 115, 85)    # warm medium brown
+EARTH_SUGG_BG         = QColor(245, 240, 225)   # warm cream suggestion bg
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Waveform display mappings  (mirror src/klo_chords/rendering/theme.py:72-78)
@@ -92,6 +134,23 @@ _FONT_FAMILY = (
 )
 
 DEFAULT_FONT_FAMILY = _FONT_FAMILY
+
+
+def _load_bundled_fonts() -> None:
+    """Load JetBrains Mono and DejaVu Sans from the project assets/fonts directory.
+
+    Called automatically by ``apply_dark_theme()`` and ``apply_earth_theme()``
+    so the QSS font-family references resolve without system-wide installation.
+    """
+    import os as _os
+    _here = _os.path.dirname(_os.path.abspath(__file__))
+    _fonts_dir = _os.path.join(_here, "..", "src", "klo_chords", "assets", "fonts")
+    if not _os.path.isdir(_fonts_dir):
+        return  # running from a different location; fonts may be installed system-wide
+    for _ttf in ("JetBrainsMono-Regular.ttf", "DejaVuSans.ttf", "NotoSans-Regular.ttf"):
+        _path = _os.path.join(_fonts_dir, _ttf)
+        if _os.path.isfile(_path):
+            QFontDatabase.addApplicationFont(_path)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Dark QPalette
@@ -138,6 +197,49 @@ def dark_palette() -> QPalette:
     return p
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Earth-Tone Warm QPalette
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def earth_palette() -> QPalette:
+    """Build and return a warm earth-tone QPalette."""
+    p = QPalette()
+
+    # Window / general
+    p.setColor(QPalette.ColorRole.Window,          EARTH_BG)
+    p.setColor(QPalette.ColorRole.WindowText,      EARTH_TEXT)
+    p.setColor(QPalette.ColorRole.Base,            EARTH_SURFACE)
+    p.setColor(QPalette.ColorRole.AlternateBase,   EARTH_CHORD_BG)
+    p.setColor(QPalette.ColorRole.ToolTipBase,     EARTH_SURFACE)
+    p.setColor(QPalette.ColorRole.ToolTipText,     EARTH_TEXT)
+    p.setColor(QPalette.ColorRole.PlaceholderText, EARTH_TEXT_DIM)
+
+    # Text
+    p.setColor(QPalette.ColorRole.Text,            EARTH_TEXT)
+    p.setColor(QPalette.ColorRole.BrightText,      EARTH_ACCENT)
+
+    # Buttons
+    p.setColor(QPalette.ColorRole.Button,          EARTH_SURFACE)
+    p.setColor(QPalette.ColorRole.ButtonText,      EARTH_TEXT)
+
+    # Highlights / selections
+    p.setColor(QPalette.ColorRole.Highlight,       EARTH_SELECTION)
+    p.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+
+    # Links
+    p.setColor(QPalette.ColorRole.Link,            EARTH_ACCENT)
+    p.setColor(QPalette.ColorRole.LinkVisited,     EARTH_ACCENT.darker(120))
+
+    # Disabled groups
+    p.setColor(QPalette.ColorGroup.Disabled,
+               QPalette.ColorRole.WindowText,      EARTH_TEXT_DIM)
+    p.setColor(QPalette.ColorGroup.Disabled,
+               QPalette.ColorRole.Text,            EARTH_TEXT_DIM)
+    p.setColor(QPalette.ColorGroup.Disabled,
+               QPalette.ColorRole.ButtonText,      EARTH_TEXT_DIM)
+
+    return p
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -246,7 +348,7 @@ QPushButton[accent="true"] {{
 }}
 
 QPushButton[accent="true"]:hover {{
-    background-color: {_color(COLOR_ACCENT.lighter(110))};
+    background-color: {_color(EARTH_ACCENT.lighter(110))};
 }}
 
 QPushButton[accent="true"]:pressed {{
@@ -301,7 +403,7 @@ QSlider::handle:horizontal {{
 }}
 
 QSlider::handle:horizontal:hover {{
-    background-color: {_color(COLOR_ACCENT.lighter(120))};
+    background-color: {_color(EARTH_ACCENT.lighter(120))};
 }}
 
 QSlider::sub-page:horizontal {{
@@ -325,7 +427,7 @@ QSlider::handle:vertical {{
 }}
 
 QSlider::handle:vertical:hover {{
-    background-color: {_color(COLOR_ACCENT.lighter(120))};
+    background-color: {_color(EARTH_ACCENT.lighter(120))};
 }}
 
 QSlider::sub-page:vertical {{
@@ -520,7 +622,386 @@ QMenu::separator {{
 
 
 
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
+# QSS Stylesheet — earth-tone warm theme for the entire application
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_QSS_EARTH = f"""
+/* ── Global defaults ─────────────────────────────────────────────────────── */
+
+QMainWindow {{
+    background-color: {_color(EARTH_BG)};
+}}
+
+QWidget {{
+    background-color: {_color(EARTH_BG)};
+    color: {_color(EARTH_TEXT)};
+    font-family: {_FONT_FAMILY};
+    font-size: 13px;
+}}
+
+/* ── QLabel ──────────────────────────────────────────────────────────────── */
+
+QLabel {{
+    background: transparent;
+    color: {_color(EARTH_TEXT)};
+    border: none;
+}}
+
+QLabel[dim="true"] {{
+    color: {_color(EARTH_TEXT_DIM)};
+}}
+
+/* ── QComboBox ───────────────────────────────────────────────────────────── */
+
+QComboBox {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 4px;
+    padding: 4px 10px;
+    min-width: 80px;
+}}
+
+QComboBox:hover {{
+    border-color: {_color(EARTH_ACCENT)};
+}}
+
+QComboBox::drop-down {{
+    border: none;
+    width: 20px;
+}}
+
+QComboBox::down-arrow {{
+    image: none;
+    border: none;
+    width: 0;
+    height: 0;
+}}
+
+QComboBox QAbstractItemView {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT)};
+    selection-background-color: {_color(EARTH_ACCENT)};
+    selection-color: white;
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 2px;
+    outline: none;
+}}
+
+/* ── QPushButton ─────────────────────────────────────────────────────────── */
+
+QPushButton {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 4px;
+    padding: 6px 14px;
+    min-width: 60px;
+}}
+
+QPushButton:hover {{
+    background-color: {_color(EARTH_SURFACE_HIGHER)};
+    border-color: {_color(EARTH_ACCENT)};
+}}
+
+QPushButton:pressed {{
+    background-color: {_color(EARTH_ACCENT.darker(140))};
+}}
+
+QPushButton:disabled {{
+    background-color: {_color(EARTH_CHORD_BG)};
+    color: {_color(EARTH_TEXT_DIM)};
+    border-color: {_color(EARTH_CHORD_BORDER)};
+}}
+
+QPushButton[accent="true"] {{
+    background-color: {_color(EARTH_ACCENT)};
+    color: white;
+    font-weight: bold;
+    border-color: {_color(EARTH_ACCENT)};
+}}
+
+QPushButton[accent="true"]:hover {{
+    background-color: {_color(EARTH_ACCENT.lighter(110))};
+}}
+
+QPushButton[accent="true"]:pressed {{
+    background-color: {_color(EARTH_ACCENT.darker(120))};
+}}
+
+/* ── QCheckBox ───────────────────────────────────────────────────────────── */
+
+QCheckBox {{
+    background: transparent;
+    color: {_color(EARTH_TEXT)};
+    spacing: 8px;
+}}
+
+QCheckBox::indicator {{
+    width: 16px;
+    height: 16px;
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 3px;
+    background-color: {_color(EARTH_SURFACE)};
+}}
+
+
+
+QCheckBox::indicator:hover {{
+    border-color: {_color(EARTH_ACCENT)};
+}}
+
+QCheckBox::indicator:checked {{
+    background-color: {_color(EARTH_ACCENT)};
+    border-color: {_color(EARTH_ACCENT)};
+}}
+
+QCheckBox::indicator:disabled {{
+    background-color: {_color(EARTH_CHORD_BG)};
+    border-color: {_color(EARTH_CHORD_BORDER)};
+}}
+
+/* ── QSlider ─────────────────────────────────────────────────────────────── */
+
+QSlider::groove:horizontal {{
+    height: 6px;
+    background-color: {_color(EARTH_CHORD_BG)};
+    border-radius: 3px;
+}}
+
+QSlider::handle:horizontal {{
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    background-color: {_color(EARTH_ACCENT)};
+    border-radius: 7px;
+    border: none;
+}}
+
+QSlider::handle:horizontal:hover {{
+    background-color: {_color(EARTH_ACCENT.lighter(120))};
+}}
+
+QSlider::sub-page:horizontal {{
+    background-color: {_color(EARTH_ACCENT)};
+    border-radius: 3px;
+}}
+
+QSlider::groove:vertical {{
+    width: 6px;
+    background-color: {_color(EARTH_CHORD_BG)};
+    border-radius: 3px;
+}}
+
+QSlider::handle:vertical {{
+    width: 14px;
+    height: 14px;
+    margin: 0 -5px;
+    background-color: {_color(EARTH_ACCENT)};
+    border-radius: 7px;
+    border: none;
+}}
+
+QSlider::handle:vertical:hover {{
+    background-color: {_color(EARTH_ACCENT.lighter(120))};
+}}
+
+QSlider::sub-page:vertical {{
+    background-color: {_color(EARTH_ACCENT)};
+    border-radius: 3px;
+}}
+
+
+/* ── QTabWidget / QTabBar ────────────────────────────────────────────────── */
+
+QTabWidget::pane {{
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 4px;
+    background-color: {_color(EARTH_BG)};
+    top: -1px;
+}}
+
+QTabBar::tab {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT_DIM)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 6px 16px;
+    margin-right: 2px;
+}}
+
+QTabBar::tab:hover {{
+    color: {_color(EARTH_TEXT)};
+    background-color: {_color(EARTH_SURFACE_HIGHER)};
+}}
+
+QTabBar::tab:selected {{
+    color: {_color(EARTH_ACCENT)};
+    background-color: {_color(EARTH_BG)};
+    border-bottom: 2px solid {_color(EARTH_ACCENT)};
+}}
+
+/* ── QScrollBar ──────────────────────────────────────────────────────────── */
+
+QScrollBar:vertical {{
+    background-color: {_color(EARTH_SCROLLBAR_BG)};
+    width: 10px;
+    margin: 0;
+    border: none;
+}}
+
+QScrollBar::handle:vertical {{
+    background-color: {_color(EARTH_SCROLLBAR_HANDLE)};
+    min-height: 30px;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background-color: {_color(EARTH_ACCENT)};
+}}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {{
+    height: 0;
+    background: none;
+    border: none;
+}}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {{
+    background: none;
+}}
+
+QScrollBar:horizontal {{
+    background-color: {_color(EARTH_SCROLLBAR_BG)};
+    height: 10px;
+    margin: 0;
+    border: none;
+}}
+
+QScrollBar::handle:horizontal {{
+    background-color: {_color(EARTH_SCROLLBAR_HANDLE)};
+    min-width: 30px;
+    border-radius: 5px;
+}}
+
+QScrollBar::handle:horizontal:hover {{
+    background-color: {_color(EARTH_ACCENT)};
+}}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {{
+    width: 0;
+    background: none;
+    border: none;
+}}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {{
+    background: none;
+}}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+
+/* ── QGroupBox ───────────────────────────────────────────────────────────── */
+
+QGroupBox {{
+    color: {_color(EARTH_TEXT)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 4px;
+    margin-top: 12px;
+    padding-top: 16px;
+    font-weight: bold;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 2px 8px;
+    color: {_color(EARTH_ACCENT)};
+}}
+
+/* ── QLineEdit / QTextEdit / QSpinBox / QDoubleSpinBox ───────────────────── */
+
+QLineEdit,
+QTextEdit,
+QPlainTextEdit,
+QSpinBox,
+QDoubleSpinBox {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 4px;
+    padding: 4px 8px;
+    selection-background-color: {_color(EARTH_ACCENT)};
+    selection-color: white;
+}}
+
+QLineEdit:focus,
+QTextEdit:focus,
+QPlainTextEdit:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus {{
+    border-color: {_color(EARTH_ACCENT)};
+}}
+
+QSpinBox::up-button,
+QDoubleSpinBox::up-button {{
+    border: none;
+    border-left: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 0;
+    width: 18px;
+}}
+
+QSpinBox::down-button,
+QDoubleSpinBox::down-button {{
+    border: none;
+    border-left: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 0;
+    width: 18px;
+}}
+
+/* ── QToolTip ────────────────────────────────────────────────────────────── */
+
+QToolTip {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 3px;
+    padding: 4px 8px;
+}}
+
+/* ── QMenu ───────────────────────────────────────────────────────────────── */
+
+QMenu {{
+    background-color: {_color(EARTH_SURFACE)};
+    color: {_color(EARTH_TEXT)};
+    border: 1px solid {_color(EARTH_BORDER)};
+    border-radius: 4px;
+    padding: 4px 0;
+}}
+
+QMenu::item {{
+    padding: 6px 24px;
+}}
+
+QMenu::item:selected {{
+    background-color: {_color(EARTH_ACCENT)};
+    color: white;
+}}
+
+QMenu::separator {{
+    height: 1px;
+    background-color: {_color(EARTH_BORDER)};
+    margin: 4px 8px;
+}}
+"""
+
 # Public API
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -532,6 +1013,7 @@ def stylesheet() -> str:
 
 def apply_dark_theme(app: QApplication) -> None:
     """Apply the dark palette + QSS stylesheet + default font to *app*."""
+    _load_bundled_fonts()
     app.setStyle("Fusion")
     app.setPalette(dark_palette())
     app.setStyleSheet(_QSS)
@@ -548,6 +1030,31 @@ def apply_dark_theme(app: QApplication) -> None:
     app.setFont(font)
 
 
+
+
+def earth_stylesheet() -> str:
+    """Return the full earth-tone QSS stylesheet string."""
+    return _QSS_EARTH
+
+
+def apply_earth_theme(app: QApplication) -> None:
+    """Apply the earth-tone warm palette + QSS stylesheet + default font to *app*."""
+    _load_bundled_fonts()
+    app.setStyle("Fusion")
+    app.setPalette(earth_palette())
+    app.setStyleSheet(_QSS_EARTH)
+
+    font = QFont()
+    font.setFamilies([
+        "JetBrains Mono",
+        "DejaVu Sans Mono",
+        "Consolas",
+        "Courier New",
+        "monospace",
+    ])
+    font.setPointSize(10)
+    app.setFont(font)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Theme preview demo
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -556,7 +1063,7 @@ def apply_dark_theme(app: QApplication) -> None:
 def demo() -> None:
     """Launch a small window exercising every themed widget for visual review."""
     app = QApplication.instance() or QApplication(sys.argv)
-    apply_dark_theme(app)
+    apply_earth_theme(app)
 
     window = QMainWindow()
     window.setWindowTitle("PySide6 Theme — Preview")
@@ -572,13 +1079,13 @@ def demo() -> None:
     title = QLabel("KLO Chords — PySide6 Theme Preview")
     title.setStyleSheet(
         f"font-size:18px; font-weight:bold; "
-        f"color:{COLOR_ACCENT.name()}; background:transparent;"
+        f"color:{EARTH_ACCENT.name()}; background:transparent;"
     )
     root.addWidget(title)
 
     dim_label = QLabel("This is a dim secondary text label")
     dim_label.setStyleSheet(
-        f"color: {COLOR_TEXT_DIM.name()}; background: transparent;"
+        f"color: {EARTH_TEXT_DIM.name()}; background: transparent;"
     )
     root.addWidget(dim_label)
 
@@ -596,12 +1103,12 @@ def demo() -> None:
 
     btn_accent = QPushButton("Accent")
     btn_accent.setStyleSheet(
-        f"QPushButton {{ background-color: {COLOR_ACCENT.name()}; "
+        f"QPushButton {{ background-color: {EARTH_ACCENT.name()}; "
         f"color: black; font-weight: bold; "
-        f"border: 1px solid {COLOR_ACCENT.name()}; "
+        f"border: 1px solid {EARTH_ACCENT.name()}; "
         f"border-radius: 4px; padding: 6px 14px; }}"
         f"QPushButton:hover {{ "
-        f"background-color: {COLOR_ACCENT.lighter(110).name()}; }}"
+        f"background-color: {EARTH_ACCENT.lighter(110).name()}; }}"
     )
     row1.addWidget(btn_accent)
 

@@ -27,17 +27,17 @@ from PySide6.QtWidgets import (
 # ============================================================================
 # Colour palette (mirrors src/klo_chords/rendering/theme.py)
 # ============================================================================
-COLOR_BG_LIGHT        = QColor(25,  25,  33,  255)
-COLOR_ACCENT          = QColor(80,  170, 255, 255)
-COLOR_ACCENT_GREEN    = QColor(60,  210, 100, 255)
-COLOR_ACCENT_ORANGE   = QColor(255, 160, 70,  255)
-COLOR_TEXT            = QColor(220, 220, 220, 255)
-COLOR_TEXT_DIM        = QColor(130, 130, 150, 255)
-COLOR_CHORD_BG        = QColor(28,  28,  36,  255)
-COLOR_CHORD_BORDER    = QColor(59,  59,  64,  255)
-COLOR_ACTIVE_SPEAKER  = QColor(0,   230, 80,  255)
-COLOR_INACTIVE_SPEAKER = QColor(60, 60, 70, 255)
-COLOR_SUGG_BG         = QColor(35, 35, 55, 255)
+COLOR_BG_LIGHT        = QColor(245, 240, 232, 255)   # warm cream
+COLOR_ACCENT          = QColor(196, 115, 79,  255)   # terracotta
+COLOR_ACCENT_GREEN    = QColor(122, 154, 85,  255)   # warm olive green
+COLOR_ACCENT_ORANGE   = QColor(232, 168, 80,  255)   # warm amber
+COLOR_TEXT            = QColor(74,  55,  40,  255)   # warm dark brown
+COLOR_TEXT_DIM        = QColor(139, 115, 85,  255)   # warm medium brown
+COLOR_CHORD_BG        = QColor(237, 228, 211, 255)   # warm tan card
+COLOR_CHORD_BORDER    = QColor(212, 197, 176, 255)   # warm tan
+COLOR_ACTIVE_SPEAKER  = QColor(232, 168, 80,  255)   # warm amber
+COLOR_INACTIVE_SPEAKER = QColor(220, 212, 195, 255)   # warm tan lighter
+COLOR_SUGG_BG         = QColor(245, 240, 225, 255)   # warm cream suggestion bg
 
 # ============================================================================
 # Dimensions (match DPG chord_box.py)
@@ -544,7 +544,7 @@ class ChordBoxDemo(QMainWindow):
         toggle_row.addWidget(self._keybind_cb)
 
         info_lbl = QLabel("Click a chord tile to select it (border turns blue)")
-        info_lbl.setStyleSheet("color:#888; font-size:10px;")
+        info_lbl.setStyleSheet("color:#8B7355; font-size:10px;")
         toggle_row.addWidget(info_lbl)
         toggle_row.addStretch()
 
@@ -552,13 +552,13 @@ class ChordBoxDemo(QMainWindow):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("color:#333;")
+        sep.setStyleSheet("color:#D4C5B0;")
         main_layout.addWidget(sep)
 
         # -- ChordBoxWidget row ----------------------------------------------
         lbl_chords = QLabel("ChordBoxWidget (140x90) - Diatonic triads in C Major")
         lbl_chords.setStyleSheet(
-            "font-weight:bold; color:#aaa; background:transparent;")
+            "font-weight:bold; color:#8B7355; background:transparent;")
         main_layout.addWidget(lbl_chords)
 
         chords_row = QHBoxLayout()
@@ -593,19 +593,19 @@ class ChordBoxDemo(QMainWindow):
         # -- Info label for selected chord -----------------------------------
         self._chord_info = QLabel("Selected chord: (none)")
         self._chord_info.setStyleSheet(
-            "color:#888; font-size:10px; background:transparent;")
+            "color:#8B7355; font-size:10px; background:transparent;")
         main_layout.addWidget(self._chord_info)
 
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.Shape.HLine)
-        sep2.setStyleSheet("color:#333;")
+        sep2.setStyleSheet("color:#D4C5B0;")
         main_layout.addWidget(sep2)
 
         # -- ProgressionCellWidget grid --------------------------------------
         lbl_prog = QLabel(
             "ProgressionCellWidget (88x78) - I-IV-V-I with degree computation")
         lbl_prog.setStyleSheet(
-            "font-weight:bold; color:#aaa; background:transparent;")
+            "font-weight:bold; color:#8B7355; background:transparent;")
         main_layout.addWidget(lbl_prog)
 
         grid_layout = QGridLayout()
@@ -643,7 +643,7 @@ class ChordBoxDemo(QMainWindow):
 
         self._prog_info = QLabel("Selected progression cell: (none)")
         self._prog_info.setStyleSheet(
-            "color:#888; font-size:10px; background:transparent;")
+            "color:#8B7355; font-size:10px; background:transparent;")
         main_layout.addWidget(self._prog_info)
 
         # -- Play bar test button --------------------------------------------
@@ -658,17 +658,17 @@ class ChordBoxDemo(QMainWindow):
 
         # Dark theme
         self.setStyleSheet("""
-            QMainWindow { background-color: #1a1a2e; }
-            QWidget { background-color: #1a1a2e; color: #cdd6f4; }
+            QMainWindow { background-color: #F5F0E8; }
+            QWidget { background-color: #F5F0E8; color: #4A3728; }
             QLabel { background: transparent; }
-            QCheckBox { color: #cdd6f4; background: transparent; spacing: 6px; }
+            QCheckBox { color: #4A3728; background: transparent; spacing: 6px; }
             QCheckBox::indicator { width: 14px; height: 14px; }
             QPushButton {
-                background-color: #2a2a3e; color: #cdd6f4;
-                border: 1px solid #444; border-radius: 4px;
+                background-color: #EDE4D3; color: #4A3728;
+                border: 1px solid #D4C5B0; border-radius: 4px;
                 padding: 6px 14px; font-size: 12px;
             }
-            QPushButton:hover { background-color: #3a3a5e; }
+            QPushButton:hover { background-color: #E1D6C3; }
         """)
 
     # -- slots ---------------------------------------------------------------
@@ -736,10 +736,10 @@ def main():
     app.setStyle("Fusion")
 
     palette = app.palette()
-    palette.setColor(palette.ColorRole.Window, QColor("#1a1a2e"))
-    palette.setColor(palette.ColorRole.WindowText, QColor("#cdd6f4"))
-    palette.setColor(palette.ColorRole.Base, QColor("#2a2a3e"))
-    palette.setColor(palette.ColorRole.Text, QColor("#cdd6f4"))
+    palette.setColor(palette.ColorRole.Window, QColor("#F5F0E8"))
+    palette.setColor(palette.ColorRole.WindowText, QColor("#4A3728"))
+    palette.setColor(palette.ColorRole.Base, QColor("#EDE4D3"))
+    palette.setColor(palette.ColorRole.Text, QColor("#4A3728"))
     app.setPalette(palette)
 
     demo = ChordBoxDemo()
